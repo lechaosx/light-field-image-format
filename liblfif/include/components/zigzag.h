@@ -16,10 +16,11 @@
 
 #include "block.h"
 
-template <size_t D>
-struct zigzagScanCore {
-  template <typename F>
-  zigzagScanCore(const size_t size[D], size_t pos[D], size_t rot[D], F &&callback) {
+template <size_t D, size_t N, typename F>
+void zigzagScanCore(const std::array<size_t, N> &size, std::array<size_t, N> &pos, std::array<size_t, N> &rot, F &&callback) {
+  if constexpr (D == 1) {
+    callback(pos);
+  } else {
     auto move = [&]() {
       if (pos[rot[D - 1]] < size[rot[D - 1]] - 1) {
         for (size_t i = 2; i <= D; i++) {
@@ -30,33 +31,21 @@ struct zigzagScanCore {
           }
         }
       }
-
       return false;
     };
 
     do {
-      zigzagScanCore<D - 1>(size, pos, rot, callback);
+      zigzagScanCore<D - 1, N>(size, pos, rot, callback);
     } while (move());
 
-    std::rotate(rot, rot + D - 1, rot + D);
+    std::rotate(rot.begin(), rot.begin() + D - 1, rot.begin() + D);
   }
-};
-
-template <>
-struct zigzagScanCore<1> {
-  template <typename F>
-  zigzagScanCore(const size_t[1], size_t pos[1], size_t[1], F &&callback) {
-    callback(pos);
-  }
-};
+}
 
 template <size_t D, typename F>
-void zigzagScanStart(const size_t size[D], size_t pos[D], F &&callback) {
-  size_t rot[D] {};
-
-  for (size_t i = 0; i < D; i++) {
-    rot[i] = i;
-  }
+void zigzagScanStart(const std::array<size_t, D> &size, std::array<size_t, D> &pos, F &&callback) {
+  std::array<size_t, D> rot {};
+  std::iota(rot.begin(), rot.end(), size_t{0});
 
   auto move = [&]() {
     for (size_t i = 0 ; i < D; i++) {
@@ -69,19 +58,19 @@ void zigzagScanStart(const size_t size[D], size_t pos[D], F &&callback) {
   };
 
   do {
-    zigzagScanCore<D>(size, pos, rot, callback);
-  } while(move());
+    zigzagScanCore<D, D>(size, pos, rot, callback);
+  } while (move());
 }
 
 template <size_t D, typename F>
-void zigzagScan(const size_t size[D], F &&callback) {
-  size_t pos[D] {};
+void zigzagScan(const std::array<size_t, D> &size, F &&callback) {
+  std::array<size_t, D> pos {};
   zigzagScanStart<D>(size, pos, callback);
 }
 
 template <size_t D, typename F>
-void zigzagScanSkipFirst(const size_t size[D], F &&callback) {
-  size_t pos[D] {};
+void zigzagScanSkipFirst(const std::array<size_t, D> &size, F &&callback) {
+  std::array<size_t, D> pos {};
   pos[0] = 1;
   zigzagScanStart<D>(size, pos, callback);
 }
@@ -90,23 +79,21 @@ template <size_t D>
 DynamicBlock<size_t, D> zigzagTable(const std::array<size_t, D> &size) {
   DynamicBlock<size_t, D> block(size);
   size_t i = 0;
-  zigzagScan<D>(size.data(), [&](size_t pos[D]) {
-    std::array<size_t, D> pos_array {};
-    std::copy(pos, pos + D, std::begin(pos_array));
-    block[pos_array] = i++; }
-  );
+  zigzagScan<D>(size, [&](const std::array<size_t, D> &pos) {
+    block[pos] = i++;
+  });
   return block;
 }
 
 template <typename F>
 [[deprecated]]
-void zigzagScan2D(const size_t size[2], F &&callback) {
+void zigzagScan2D(const std::array<size_t, 2> &size, F &&callback) {
   std::array<size_t, 2> rot { 0, 1 };
   std::array<size_t, 2> pos {};
 
   while (true) {
     while (true) {
-      callback(pos.data());
+      callback(pos);
 
       if (pos[rot[0]] > 0 && pos[rot[1]] < size[rot[1]] - 1) {
         pos[rot[0]]--;
@@ -133,14 +120,14 @@ void zigzagScan2D(const size_t size[2], F &&callback) {
 
 template <typename F>
 [[deprecated]]
-void zigzagScan3D(const size_t size[3], F &&callback) {
+void zigzagScan3D(const std::array<size_t, 3> &size, F &&callback) {
   std::array<size_t, 3> rot { 0, 1, 2 };
   std::array<size_t, 3> pos {};
 
   while (true) {
     while (true) {
       while (true) {
-        callback(pos.data());
+        callback(pos);
 
         if (pos[rot[0]] > 0 && pos[rot[1]] < size[rot[1]] - 1) {
           pos[rot[0]]--;
@@ -185,7 +172,7 @@ void zigzagScan3D(const size_t size[3], F &&callback) {
 
 template <typename F>
 [[deprecated]]
-void zigzagScan4D(const size_t size[4], F &&callback) {
+void zigzagScan4D(const std::array<size_t, 4> &size, F &&callback) {
   std::array<size_t, 4> rot { 0, 1, 2, 3 };
   std::array<size_t, 4> pos {};
 
@@ -193,7 +180,7 @@ void zigzagScan4D(const size_t size[4], F &&callback) {
     while (true) {
       while (true) {
         while (true) {
-          callback(pos.data());
+          callback(pos);
 
           if (pos[rot[0]] > 0 && pos[rot[1]] < size[rot[1]] - 1) {
             pos[rot[0]]--;
