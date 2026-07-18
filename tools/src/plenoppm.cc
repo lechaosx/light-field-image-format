@@ -3,12 +3,10 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include <iostream>
+#include <print>
 
 #include <plenoppm.h>
 #include <file_mask.h>
-
-using namespace std;
 
 int mapPPMs(const char *input_file_mask, uint64_t &width, uint64_t &height, uint32_t &color_depth, std::vector<PPM> &data) {
   FileMask file_name(input_file_mask);
@@ -26,7 +24,7 @@ int mapPPMs(const char *input_file_mask, uint64_t &width, uint64_t &height, uint
 
     if (width && height && color_depth) {
       if ((ppm.width() != width) || (ppm.height() != height) || (ppm.color_depth() != color_depth)) {
-        cerr << "ERROR: PPMs DIMENSIONS MISMATCH" << endl;
+        std::println(stderr, "ERROR: PPMs DIMENSIONS MISMATCH");
         return -1;
       }
     }
@@ -44,7 +42,7 @@ int createPPMs(const char *output_file_mask, uint64_t width, uint64_t height, ui
   FileMask file_name(output_file_mask);
 
   for (size_t image {}; image < data.size(); image++) {
-    if (create_directory(file_name[image].c_str())) {
+    if (create_directory(file_name[image])) {
       return -1;
     }
 
