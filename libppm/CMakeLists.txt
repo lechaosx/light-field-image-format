@@ -1,5 +1,2 @@
-cmake_minimum_required(VERSION 3.18)
-
-add_library(ppm STATIC SHARED src/ppm.cc)
-
+add_library(ppm STATIC src/ppm.cc)
 target_include_directories(ppm PUBLIC include)

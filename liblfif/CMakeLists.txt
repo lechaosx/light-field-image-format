@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 3.18)
-
-add_library(lfif INTERFACE)
-target_include_directories(lfif INTERFACE include)
+add_library(lfif STATIC src/huffman.cc src/bwt.cc src/runlength.cc)
+target_include_directories(lfif PUBLIC include)
+target_compile_features(lfif PUBLIC cxx_std_23)

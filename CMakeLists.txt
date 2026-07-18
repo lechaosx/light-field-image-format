@@ -3,10 +3,15 @@ cmake_minimum_required(VERSION 3.18)
 project(LFIF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_CXX_FLAGS "-std=c++20 -Wall -Wextra -pedantic -Wfatal-errors")
-set(CMAKE_CXX_FLAGS_DEBUG "-Og -g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fopenmp -march=native -DNDEBUG -s")
+add_compile_options(-Wall -Wextra -pedantic -Wfatal-errors)
+add_compile_options($<$<CONFIG:Debug>:-Og;-g>)
+add_compile_options($<$<CONFIG:Release>:-O3;-march=native;-DNDEBUG;-s>)
+
+find_package(OpenMP REQUIRED)
 
 add_subdirectory(liblfif)
 add_subdirectory(libppm)
