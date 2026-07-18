@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 
 #include "components/block.h"
 #include "components/cabac.h"
@@ -75,7 +76,7 @@ class BlockPredictor {
       predict_planar<D>(block, inputF);
     }
     else if (type.type == 3) {
-      predict_direction<D>(block, type.direction.data(), inputF);
+      predict_direction<D>(block, std::span<const int8_t, D>{type.direction}, inputF);
     }
   }
 

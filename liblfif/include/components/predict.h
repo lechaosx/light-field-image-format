@@ -11,15 +11,18 @@
 #include <cstdint>
 #include <cassert>
 #include <cmath>
+#include <concepts>
+#include <span>
 
 #include "block.h"
 #include "meta.h"
 
-template <size_t D>
-struct interpolate {
-  template <typename T, typename F>
-  interpolate(const size_t BS[D], F &&main_ref, const int64_t main_ref_pos[D], int8_t multiplier, T &output) {
-    int64_t pos = std::floor(main_ref_pos[D - 1] / static_cast<double>(multiplier));
+template <size_t D, typename T, typename F>
+void interpolate(std::span<const size_t, D> BS, F &&main_ref, std::span<const int64_t, D> main_ref_pos, int8_t multiplier, T &output) {
+  if constexpr (D == 0) {
+    output = main_ref(0);
+  } else {
+    int64_t pos  = std::floor(main_ref_pos[D - 1] / static_cast<double>(multiplier));
     int64_t frac = main_ref_pos[D - 1] % multiplier;
 
     auto inputF1 = [&](size_t index) {
@@ -27,9 +30,8 @@ struct interpolate {
     };
 
     if (frac == 0) {
-      interpolate<D - 1>(BS, inputF1, main_ref_pos, multiplier, output);
-    }
-    else {
+      interpolate<D - 1>(BS.template first<D - 1>(), inputF1, main_ref_pos.template first<D - 1>(), multiplier, output);
+    } else {
       T val1 {};
       T val2 {};
 
@@ -37,48 +39,17 @@ struct interpolate {
         return main_ref((pos + 1) * get_stride<D - 1>(BS) + index);
       };
 
-      interpolate<D - 1>(BS, inputF1, main_ref_pos, multiplier, val1);
-      interpolate<D - 1>(BS, inputF2, main_ref_pos, multiplier, val2);
+      interpolate<D - 1>(BS.template first<D - 1>(), inputF1, main_ref_pos.template first<D - 1>(), multiplier, val1);
+      interpolate<D - 1>(BS.template first<D - 1>(), inputF2, main_ref_pos.template first<D - 1>(), multiplier, val2);
 
       output = (val1 * (multiplier - frac) + val2 * frac) / multiplier;
     }
   }
-};
+}
 
-template <>
-struct interpolate<0> {
-  template <typename T, typename F>
-  interpolate(const size_t *, F &&main_ref, const int64_t *, int8_t, T &output) {
-    output = main_ref(0);
-  }
-};
-
-template <size_t D>
-struct low_pass_sum {
-  template <typename F>
-  low_pass_sum(const size_t BS[D], F &&input) {
-    for (size_t slice = 0; slice < BS[D - 1]; slice++) {
-      auto inputF = [&](size_t index) -> auto & {
-        return input(slice * get_stride<D - 1>(BS) + index);
-      };
-
-      low_pass_sum<D - 1>(BS, inputF);
-    }
-
-    for (size_t noodle = 0; noodle < get_stride<D - 1>(BS); noodle++) {
-      auto inputF = [&](size_t index) -> auto & {
-        return input(index * get_stride<D - 1>(BS) + noodle);
-      };
-
-      low_pass_sum<1>(&BS[D - 1], inputF);
-    }
-  }
-};
-
-template <>
-struct low_pass_sum<1> {
-  template <typename F>
-  low_pass_sum(const size_t BS[1], F &&input) {
+template <size_t D, typename F>
+void low_pass_sum(std::span<const size_t, D> BS, F &&input) {
+  if constexpr (D == 1) {
     auto prev_value = input(0);
 
     for (size_t i { 0 }; i < BS[0] - 1; i++) {
@@ -88,8 +59,24 @@ struct low_pass_sum<1> {
     }
 
     input(BS[0] - 1) = prev_value + 3 * input(BS[0] - 1);
+  } else {
+    for (size_t slice = 0; slice < BS[D - 1]; slice++) {
+      auto inputF = [&](size_t index) -> auto & {
+        return input(slice * get_stride<D - 1>(BS) + index);
+      };
+
+      low_pass_sum<D - 1>(BS.template first<D - 1>(), inputF);
+    }
+
+    for (size_t noodle = 0; noodle < get_stride<D - 1>(BS); noodle++) {
+      auto inputF = [&](size_t index) -> auto & {
+        return input(index * get_stride<D - 1>(BS) + noodle);
+      };
+
+      low_pass_sum<1>(BS.template last<1>(), inputF);
+    }
   }
-};
+}
 
 template <size_t D, typename T>
 void low_pass_filter(DynamicBlock<T, D> &main_ref) {
@@ -97,7 +84,7 @@ void low_pass_filter(DynamicBlock<T, D> &main_ref) {
     return main_ref[index];
   };
 
-  low_pass_sum<D>(main_ref.size().data(), inputF);
+  low_pass_sum<D>(std::span<const size_t, D>{main_ref.size()}, inputF);
 
   for (size_t i { 0 }; i < get_stride<D>(main_ref.size()); i++) {
     main_ref[i] /= constpow(4, D);
@@ -105,7 +92,7 @@ void low_pass_filter(DynamicBlock<T, D> &main_ref) {
 }
 
 template <size_t D, typename T, typename F>
-void project_neighbours_to_main_ref(const std::array<size_t, D> &BS, DynamicBlock<T, D - 1> &main_ref, const int8_t direction[D], size_t main_ref_idx, F &&inputF) {
+void project_neighbours_to_main_ref(const std::array<size_t, D> &BS, DynamicBlock<T, D - 1> &main_ref, std::span<const int8_t, D> direction, size_t main_ref_idx, F &&inputF) {
   std::array<int64_t, D> start_offsets {};
   std::array<int64_t, D> end_offsets   {};
 
@@ -175,7 +162,7 @@ void project_neighbours_to_main_ref(const std::array<size_t, D> &BS, DynamicBloc
 }
 
 template <size_t D, typename T>
-void predict_from_main_ref(DynamicBlock<T, D> &output, const int8_t direction[D], const DynamicBlock<T, D - 1> &main_ref, size_t main_ref_idx) {
+void predict_from_main_ref(DynamicBlock<T, D> &output, std::span<const int8_t, D> direction, const DynamicBlock<T, D - 1> &main_ref, size_t main_ref_idx) {
   std::array<int64_t, D> offsets {};
 
   for (size_t i = 0; i < D; i++) {
@@ -196,11 +183,11 @@ void predict_from_main_ref(DynamicBlock<T, D> &output, const int8_t direction[D]
     offsets[main_ref_idx] = 1;
   }
 
-  iterate_dimensions<D>(output.size(), [&](std::array<size_t, D> &pos) {
+  iterate_dimensions<D>(output.size(), [&](const std::array<size_t, D> &pos) {
 
     int64_t distance = pos[main_ref_idx] + offsets[main_ref_idx];
 
-    int64_t main_ref_pos[D - 1] {};
+    std::array<int64_t, D - 1> main_ref_pos {};
     for (size_t i { 0 }; i < D - 1; i++) {
       size_t idx = i < main_ref_idx ? i : i + 1;
       main_ref_pos[i] = pos[idx] + offsets[idx];
@@ -217,12 +204,12 @@ void predict_from_main_ref(DynamicBlock<T, D> &output, const int8_t direction[D]
       return main_ref[index];
     };
 
-    interpolate<D - 1>(main_ref.size().data(), inputF, main_ref_pos, direction[main_ref_idx], output[pos]);
+    interpolate<D - 1>(std::span{main_ref.size()}, inputF, std::span{main_ref_pos}, direction[main_ref_idx], output[pos]);
   });
 }
 
 template <size_t D, typename T, typename F>
-void predict_direction(DynamicBlock<T, D> &output, const int8_t direction[D], F &&inputF) {
+void predict_direction(DynamicBlock<T, D> &output, std::span<const int8_t, D> direction, F &&inputF) {
   size_t  main_ref_idx { 0 };
 
   auto positive = [&]() {
@@ -245,7 +232,7 @@ void predict_direction(DynamicBlock<T, D> &output, const int8_t direction[D], F 
     }
   }
 
-  size_t ref_size[D - 1] {};
+  std::array<size_t, D - 1> ref_size {};
 
   for (size_t i {}; i < D - 1; i++) {
     size_t idx = i < main_ref_idx ? i : i + 1;
@@ -272,7 +259,7 @@ T predict_DC(const std::array<size_t, D> &size, F &inputF) {
       neighbour_block_size[i] = size[idx];
     }
 
-    samples_cnt += get_stride<D - 1>(neighbour_block_size.data());
+    samples_cnt += get_stride<D - 1>(neighbour_block_size);
 
     iterate_dimensions<D - 1>(neighbour_block_size, [&](const std::array<size_t, D - 1> &pos) {
       std::array<int64_t, D> position {};
@@ -298,10 +285,10 @@ void predict_planar(DynamicBlock<T, D> &output, F &inputF) {
   for (size_t neighbour_idx { 0 }; neighbour_idx < D; neighbour_idx++) {
     DynamicBlock<T, D> tmp_prediction(output.size());
 
-    int8_t direction[D] {};
+    std::array<int8_t, D> direction {};
     direction[neighbour_idx] = 1;
 
-    predict_direction<D>(tmp_prediction, direction, inputF);
+    predict_direction<D>(tmp_prediction, std::span<const int8_t, D>{direction}, inputF);
 
     for (size_t i { 0 }; i < get_stride<D>(tmp_prediction.size()); i++) {
       output[i] += tmp_prediction[i];
