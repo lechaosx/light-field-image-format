@@ -11,13 +11,25 @@
 #include <cstddef>
 
 #include <array>
+#include <concepts>
+#include <functional>
+#include <numeric>
+#include <span>
 
 template<class T>
 inline constexpr T constpow(const T base, const unsigned exponent) {
     return (exponent == 0) ? 1 : (base * constpow(base, exponent - 1));
 }
 
-template<size_t D, typename T, typename F>
+template <typename F, size_t D>
+concept DimCallback = std::invocable<F, const std::array<size_t, D>&>;
+
+template <typename F, typename T>
+concept LinearRef = requires(F f, size_t i) {
+  { f(i) } -> std::same_as<T&>;
+};
+
+template<size_t D, typename T, DimCallback<D> F>
 void iterate_dimensions(const T &range, F &&callback) {
   if constexpr (D == 0) {
     callback(std::array<size_t, 0>{});
@@ -50,7 +62,7 @@ void block_for(const T &start, const T &step, const T &stop, F &&callback) {
   }
 }
 
-template<size_t BS, size_t D, typename F>
+template<size_t BS, size_t D, DimCallback<D> F>
 void iterate_cube(F &&callback) {
   if constexpr (D == 0) {
     callback(std::array<size_t, 0>{});
@@ -80,18 +92,14 @@ size_t make_cube_index(const std::array<size_t, D> &pos) {
   return index;
 }
 
-template<size_t D>
-size_t get_stride(const size_t BS[D]) {
-  if constexpr (D == 0) {
-    return 1;
-  } else {
-    return get_stride<D - 1>(BS) * BS[D - 1];
-  }
+template<size_t D, size_t N>
+size_t get_stride(const std::array<size_t, N> &size) {
+  return std::reduce(size.begin(), size.begin() + D, size_t{1}, std::multiplies{});
 }
 
 template<size_t D, size_t N>
-size_t get_stride(const std::array<size_t, N> &size) {
-  return get_stride<D>(size.data());
+size_t get_stride(std::span<const size_t, N> size) {
+  return std::reduce(size.begin(), size.begin() + D, size_t{1}, std::multiplies{});
 }
 
 template<size_t D, typename T>
