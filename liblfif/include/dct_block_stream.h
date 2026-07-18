@@ -34,7 +34,7 @@ protected:
   DCTCompressedBlockStreamState(const std::array<size_t, D> &block_size) {
     this->block_size = block_size;
 
-    diagonals = num_diagonals<D>(block_size);
+    diagonals = num_diagonals(block_size);
 
     threshold = diagonals / 2;
 

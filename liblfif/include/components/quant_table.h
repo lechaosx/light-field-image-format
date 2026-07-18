@@ -9,15 +9,16 @@
 #ifndef QUANT_TABLE_H
 #define QUANT_TABLE_H
 
-#include "lfiftypes.h"
-#include "dct.h"
-#include "endian_t.h"
-#include "block.h"
-
 #include <istream>
 #include <ostream>
+#include <vector>
 
-using QTABLEUNIT = uint64_t; /**< @brief Unit which is intended to containt quantization matrix value.*/
+#include "dct.h"
+#include "endian.h"
+#include "block.h"
+
+using DCTDATAUNIT = float;
+using QTABLEUNIT  = uint64_t; /**< @brief Unit which is intended to containt quantization matrix value.*/
 
 /**
  * @brief Quantization matrix type.
@@ -192,8 +193,9 @@ void copyTable(const QuantTable<DIN> &input, QuantTable<DOUT> &output) {
  */
 template <size_t DIN, size_t DOUT>
 void averageDiagonalTable(const QuantTable<DIN> &input, QuantTable<DOUT> &output) {
-  std::vector<double> diagonals_sum(num_diagonals<DIN>(input.size()));
-  std::vector<size_t> diagonals_cnt(num_diagonals<DIN>(input.size()));
+  const size_t n_diags = num_diagonals(input.size());
+  std::vector<double> diagonals_sum(n_diags);
+  std::vector<size_t> diagonals_cnt(n_diags);
 
   iterate_dimensions<DIN>(input.size(), [&](const std::array<size_t, DIN> &pos) {
     size_t diagonal {};
@@ -211,8 +213,8 @@ void averageDiagonalTable(const QuantTable<DIN> &input, QuantTable<DOUT> &output
       diagonal += pos[i];
     }
 
-    if (diagonal >= num_diagonals<DIN>(input.size())) {
-      diagonal = num_diagonals<DIN>(input.size()) - 1;
+    if (diagonal >= num_diagonals(input.size())) {
+      diagonal = num_diagonals(input.size()) - 1;
     }
 
     output[pos] = std::round(diagonals_sum[diagonal] / diagonals_cnt[diagonal]);
