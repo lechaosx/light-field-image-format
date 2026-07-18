@@ -7,7 +7,7 @@
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
   in {
-    devShells.${system}.default = (pkgs.mkShell.override { stdenv = pkgs.gcc14Stdenv; }) {
+    devShells.${system}.default = (pkgs.mkShell.override { stdenv = pkgs.gcc16Stdenv; }) {
       nativeBuildInputs = [
         pkgs.cmake
         pkgs.ninja

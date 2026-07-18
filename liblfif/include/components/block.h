@@ -8,88 +8,54 @@
 
 #pragma once
 
-#include <cmath>
-#include <numeric>
+#include <algorithm>
 #include <array>
-
-#include "stack_allocator.h"
+#include <functional>
+#include <mdspan>
+#include <numeric>
+#include <vector>
 
 template<typename T, size_t D>
 class DynamicBlock {
 
-  T                     *m_data;
+  std::vector<T>         m_data;
   std::array<size_t, D>  m_size;
 
+  [[nodiscard]] size_t flat_index(const std::array<size_t, D> &pos) const {
+    size_t index {};
+    for (size_t i = 1; i <= D; i++) {
+      index *= m_size[D - i];
+      index += pos[D - i];
+    }
+    return index;
+  }
+
 public:
-  #pragma omp declare simd
-  DynamicBlock(const std::array<size_t, D> &size): m_size{size} {
-    size_t bytes = std::accumulate(size.begin(), size.end(), size_t{1}, std::multiplies<size_t>{}) * sizeof(T);
-    m_data = static_cast<T *>(StackAllocator::allocate(bytes));
-  }
+  DynamicBlock(const std::array<size_t, D> &size)
+    : m_data(std::reduce(size.begin(), size.end(), size_t{1}, std::multiplies{}))
+    , m_size(size) {}
 
-  #pragma omp declare simd
-  ~DynamicBlock() {
-    StackAllocator::free(m_data);
-  }
+  [[nodiscard]] T &operator[](size_t index) { return m_data[index]; }
+  [[nodiscard]] const T &operator[](size_t index) const { return m_data[index]; }
 
-  #pragma omp declare simd
-  [[nodiscard]] T &operator[](size_t index) {
-    return m_data[index];
-  }
+  [[nodiscard]] T &operator[](const std::array<size_t, D> &pos) { return m_data[flat_index(pos)]; }
+  [[nodiscard]] const T &operator[](const std::array<size_t, D> &pos) const { return m_data[flat_index(pos)]; }
 
-  #pragma omp declare simd
-  [[nodiscard]] const T &operator[](size_t index) const {
-    return m_data[index];
-  }
+  [[nodiscard]] const std::array<size_t, D> &size() const { return m_size; }
+  [[nodiscard]] size_t size(size_t i) const { return m_size[i]; }
 
-  #pragma omp declare simd
-  [[nodiscard]] T &operator[](const std::array<size_t, D> &pos) {
-    size_t index = 0;
-
-    for (size_t i = 1; i <= D; i++) {
-      index *= m_size[D - i];
-      index += pos[D - i];
-    }
-
-    return m_data[index];
-  }
-
-  #pragma omp declare simd
-  [[nodiscard]] const T &operator[](const std::array<size_t, D> &pos) const {
-    size_t index = 0;
-
-    for (size_t i = 1; i <= D; i++) {
-      index *= m_size[D - i];
-      index += pos[D - i];
-    }
-
-    return m_data[index];
-  }
-
-  #pragma omp declare simd
-  [[nodiscard]] const std::array<size_t, D> &size() const {
-    return m_size;
-  }
-
-  #pragma omp declare simd
   [[nodiscard]] size_t stride(size_t depth = D) const {
-    return depth ? m_size[depth - 1] * stride(depth - 1) : 1;
+    return std::reduce(m_size.begin(), m_size.begin() + depth, size_t{1}, std::multiplies{});
   }
 
-  #pragma omp declare simd
-  [[nodiscard]] size_t size(size_t i) const {
-    return m_size[i];
-  }
+  void fill(T value) { std::fill(m_data.begin(), m_data.end(), value); }
 
-  #pragma omp declare simd
-  void fill(T value) {
-    size_t num_values = std::accumulate(std::begin(m_size), std::end(m_size), 1, std::multiplies<size_t>());
-    std::fill(m_data, m_data + num_values, value);
+  [[nodiscard]] auto span() {
+    return std::mdspan<T, std::dextents<size_t, D>>(m_data.data(), m_size);
   }
-
-protected:
-  static void *operator new(size_t);
-  static void *operator new[](size_t);
+  [[nodiscard]] auto span() const {
+    return std::mdspan<const T, std::dextents<size_t, D>>(m_data.data(), m_size);
+  }
 };
 
 template<size_t D>

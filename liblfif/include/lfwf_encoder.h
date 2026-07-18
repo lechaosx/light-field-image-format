@@ -24,13 +24,6 @@
 
 template <size_t D>
 struct LFWFEncoder: public LFWF<D> {
-  LFWFEncoder(): LFWF<D>() {
-    StackAllocator::init(2147483648 * 4); //FIXME
-  }
-
-  ~LFWFEncoder() {
-    StackAllocator::cleanup();
-  }
 
   void create(
             std::ostream          &output,

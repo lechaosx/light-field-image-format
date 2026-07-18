@@ -25,13 +25,6 @@
 
 template <size_t D>
 struct LFIFEncoder: public LFIF<D> {
-  LFIFEncoder(): LFIF<D>() {
-    StackAllocator::init(2147483648 * 4); //FIXME
-  }
-
-  ~LFIFEncoder() {
-    StackAllocator::cleanup();
-  }
 
   void create(
             std::ostream          &output,
