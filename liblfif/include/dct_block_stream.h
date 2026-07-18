@@ -57,11 +57,11 @@ public:
     std::vector<bool> nonzero_diags(this->diagonals);
 
     for (size_t diag = 0; diag < this->diagonals; diag++) {
-      diagonalScan(this->block_size, diag, [&](const std::array<size_t, D> &pos) {
+      for (const auto &pos : diagonalScan(this->block_size, diag)) {
         if (block[pos]) {
           nonzero_diags[diag] = true;
         }
-      });
+      }
     }
 
     size_t diags_cnt = 0;
@@ -92,7 +92,7 @@ public:
       int64_t zero_coef_distr = 0;
 
       if (nonzero_diags[diag]) {
-        diagonalScan(this->block_size, diag, [&](std::array<size_t, D> pos) {
+        for (auto pos : diagonalScan(this->block_size, diag)) {
           int32_t coef = block[pos];
 
           size_t nonzero_neighbours_cnt = 0;
@@ -140,7 +140,7 @@ public:
 
             encoder.encodeBitBypass(sign);
           }
-        });
+        }
       }
 
       if ((zero_coef_distr > 0) && (this->threshold > diag)) {
@@ -179,8 +179,8 @@ public:
       int64_t zero_coef_distr = 0;
 
       if (nonzero_diags[diag]) {
-        diagonalScan<D>(this->block_size, diag, [&](std::array<size_t, D> pos) {
-          int32_t coef = 0.f;
+        for (auto pos : diagonalScan(this->block_size, diag)) {
+          int32_t coef = 0;
 
           size_t nonzero_neighbours_cnt = 0;
 
@@ -221,7 +221,7 @@ public:
           }
 
           block[pos] = coef;
-        });
+        }
       }
 
       if ((zero_coef_distr > 0) && (this->threshold > diag)) {
