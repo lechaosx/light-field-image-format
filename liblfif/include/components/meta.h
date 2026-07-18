@@ -8,103 +8,65 @@
 
 #pragma once
 
-
 #include <cstddef>
 
 #include <array>
 
-/**
-* @brief  Function which performs integer exponentiation.
-* @param  base Base of exponentiation.
-* @param  exponent Exponent.
-* @return base to exponent
-*/
 template<class T>
 inline constexpr T constpow(const T base, const unsigned exponent) {
     return (exponent == 0) ? 1 : (base * constpow(base, exponent - 1));
 }
 
-template<size_t D>
-struct iterate_dimensions {
-  template<typename F, typename T>
-  iterate_dimensions(const T &range, F &&callback) {
-    for (size_t i { 0 }; i < range[D - 1]; i++) {
-      auto new_callback = [&](const std::array<size_t, D - 1> &indices) {
+template<size_t D, typename T, typename F>
+void iterate_dimensions(const T &range, F &&callback) {
+  if constexpr (D == 0) {
+    callback(std::array<size_t, 0>{});
+  } else {
+    for (size_t i = 0; i < range[D - 1]; i++) {
+      iterate_dimensions<D - 1>(range, [&](const std::array<size_t, D - 1> &indices) {
         std::array<size_t, D> new_indices {};
-
         new_indices[D - 1] = i;
-        for (size_t j { 0 }; j < D - 1; j++) {
+        for (size_t j = 0; j < D - 1; j++) {
           new_indices[j] = indices[j];
         }
-
         callback(new_indices);
-      };
-
-      iterate_dimensions<D - 1>(range, new_callback);
+      });
     }
   }
-};
+}
 
-template<>
-struct iterate_dimensions<0> {
-  template<typename F, typename T>
-  iterate_dimensions(const T &, F &&callback) {
-    callback({});
-  }
-};
-
-template<size_t D>
-struct block_for {
-  template<typename F, typename T>
-  block_for(const T &start, const T &step, const T &stop, F &&callback) {
-    for (size_t i = start[D - 1]; i < stop[D - 1]; i += step[D - 1]) {
-      auto new_callback = [&](T &indices) {
-        indices[D - 1] = i;
-        callback(indices);
-      };
-
-      block_for<D - 1>(start, step, stop, new_callback);
-    }
-  }
-};
-
-template<>
-struct block_for<0> {
-  template<typename F, typename T>
-  block_for(const T &, const T &, const T &, F &&callback) {
+template<size_t D, typename T, typename F>
+void block_for(const T &start, const T &step, const T &stop, F &&callback) {
+  if constexpr (D == 0) {
     T pos {};
     callback(pos);
-  }
-};
-
-template<size_t BS, size_t D>
-struct iterate_cube {
-  template<typename F>
-  iterate_cube(F &&callback) {
-    for (size_t i { 0 }; i < BS; i++) {
-      auto new_callback = [&](const std::array<size_t, D - 1> &indices) {
-        std::array<size_t, D> new_indices {};
-
-        new_indices[D - 1] = i;
-        for (size_t j { 0 }; j < D - 1; j++) {
-          new_indices[j] = indices[j];
-        }
-
-        callback(new_indices);
-      };
-
-      iterate_cube<BS, D - 1>{new_callback};
+  } else {
+    for (size_t i = start[D - 1]; i < stop[D - 1]; i += step[D - 1]) {
+      block_for<D - 1>(start, step, stop, [&](T &indices) {
+        indices[D - 1] = i;
+        callback(indices);
+      });
     }
   }
-};
+}
 
-template<size_t BS>
-struct iterate_cube<BS, 0> {
-  template<typename F>
-  iterate_cube(F &&callback) {
-    callback({});
+template<size_t BS, size_t D, typename F>
+void iterate_cube(F &&callback) {
+  if constexpr (D == 0) {
+    callback(std::array<size_t, 0>{});
+  } else {
+    for (size_t i = 0; i < BS; i++) {
+      iterate_cube<BS, D - 1>([&](const std::array<size_t, D - 1> &indices) {
+        std::array<size_t, D> new_indices {};
+        new_indices[D - 1] = i;
+        for (size_t j = 0; j < D - 1; j++) {
+          new_indices[j] = indices[j];
+        }
+        callback(new_indices);
+      });
+    }
   }
-};
+}
 
 template<size_t BS, size_t D>
 size_t make_cube_index(const std::array<size_t, D> &pos) {
@@ -120,12 +82,11 @@ size_t make_cube_index(const std::array<size_t, D> &pos) {
 
 template<size_t D>
 size_t get_stride(const size_t BS[D]) {
-  return get_stride<D - 1>(BS) * BS[D - 1];
-}
-
-template<>
-inline size_t get_stride<0>(const size_t *) {
-  return 1;
+  if constexpr (D == 0) {
+    return 1;
+  } else {
+    return get_stride<D - 1>(BS) * BS[D - 1];
+  }
 }
 
 template<size_t D, size_t N>
@@ -145,8 +106,8 @@ size_t make_index(const T &BS, const std::array<size_t, D> &pos) {
   return index;
 }
 
-template <size_t D, typename T>
-size_t num_diagonals(const T &BS) {
+template <size_t D>
+size_t num_diagonals(const std::array<size_t, D> &BS) {
   size_t diagonals_cnt {};
 
   for (size_t i {}; i < D; i++) {

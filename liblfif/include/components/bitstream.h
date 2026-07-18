@@ -56,7 +56,7 @@ public:
    * @param size Number of bits to be read.
    * @return Vector of bits.
    */
-  std::vector<bool> read(const size_t size) {
+  [[nodiscard]] std::vector<bool> read(const size_t size) {
     std::vector<bool> data(size);
 
     for (size_t i = 0; i < size; i++) {
@@ -70,7 +70,7 @@ public:
    * @brief Method which reads one bit from stream.
    * @return One bit from stream.
    */
-  bool readBit() {
+  [[nodiscard]] bool readBit() {
     if (m_index >= 8) {
       m_accumulator = m_stream->get();
       m_index = 0;
@@ -87,7 +87,7 @@ public:
    * @brief Method which checks the stream for eof.
    * @return True if EOF, else false.
    */
-  bool eof() { return (m_index >= 8) && m_stream->eof(); }
+  [[nodiscard]] bool eof() { return (m_index >= 8) && m_stream->eof(); }
 
 private:
   std::istream *m_stream;

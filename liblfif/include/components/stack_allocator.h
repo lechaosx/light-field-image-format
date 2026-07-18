@@ -31,7 +31,7 @@ public:
     ::free(m_base);
   }
 
-  static void *allocate(size_t size) {
+  [[nodiscard]] static void *allocate(size_t size) {
     size_t bytes = (size + alignment - 1) & -alignment;
     assert(m_head + bytes < m_end);
     void *ptr = m_head;

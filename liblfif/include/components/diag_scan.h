@@ -16,10 +16,11 @@
 #include <numeric>
 #include <algorithm>
 
-template <size_t D>
-struct diagonalScanCore {
-  template <typename F>
-  diagonalScanCore(const size_t size[D], size_t pos[D], F &&callback) {
+template <size_t D, typename F>
+void diagonalScanCore(const size_t size[D], size_t pos[D], F &&callback) {
+  if constexpr (D == 1) {
+    callback();
+  } else {
     size_t starting_pos[D];
     std::copy(pos, pos + D, starting_pos);
 
@@ -43,15 +44,7 @@ struct diagonalScanCore {
 
     std::copy(starting_pos, starting_pos + D, pos);
   }
-};
-
-template <>
-struct diagonalScanCore<1> {
-  template <typename F>
-  diagonalScanCore(const size_t[1], size_t[1], F &&callback) {
-    callback();
-  }
-};
+}
 
 template <size_t D, typename F>
 void diagonalScan(const std::array<size_t, D> &size, size_t diag, F &&callback) {

@@ -28,10 +28,10 @@ protected:
   uint16_t m_low;
   uint16_t m_range;
 
-  const uint8_t  BITS    { 10 };
-  const uint16_t ONE     { static_cast<uint16_t>(1 << BITS) };
-  const uint16_t HALF    { static_cast<uint16_t>(1 << (BITS - 1)) };
-  const uint16_t QUARTER { static_cast<uint16_t>(1 << (BITS - 2)) };
+  static constexpr uint8_t  BITS    = 10;
+  static constexpr uint16_t ONE     = static_cast<uint16_t>(1 << BITS);
+  static constexpr uint16_t HALF    = static_cast<uint16_t>(1 << (BITS - 1));
+  static constexpr uint16_t QUARTER = static_cast<uint16_t>(1 << (BITS - 2));
 
   const uint8_t rangeTabLPS[64][4] {
     {128, 176, 208, 240},
