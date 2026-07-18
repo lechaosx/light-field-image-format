@@ -5,12 +5,13 @@
 
 #include "compress.h"
 
-#include <iostream>
-#include <sstream>
+#include <charconv>
+#include <cstring>
+#include <print>
 
 void print_usage(const char *argv0) {
-  std::cerr << "Usage: \n";
-  std::cerr << argv0 << " -i <file-mask> -o <file> -d <distortion> {-p} {-s}\n";
+  std::println(stderr, "Usage:");
+  std::println(stderr, "{} -i <file-mask> -o <file> -d <distortion> {{-p}} {{-s}}", argv0);
 }
 
 bool parse_args(int argc, char *argv[], const char *&input_file_mask, const char *&output_file_name, uint8_t &distortion, bool &predict, bool &shift) {
@@ -41,19 +42,12 @@ bool parse_args(int argc, char *argv[], const char *&input_file_mask, const char
 
       case 'd':
         if (!dist_set) {
-          std::stringstream arg_dist {};
-          arg_dist << optarg;
-
           uint64_t dist {};
-          arg_dist >> dist;
-
-          distortion = dist;
-
-          if (!arg_dist) {
-            continue;
+          auto [ptr, ec] = std::from_chars(optarg, optarg + std::strlen(optarg), dist);
+          if (ec == std::errc{}) {
+            distortion = dist;
+            dist_set = true;
           }
-
-          dist_set = true;
           continue;
         }
         break;

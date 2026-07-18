@@ -11,6 +11,8 @@
 #include "components/bitstream.h"
 #include "components/endian.h"
 
+#include <print>
+
 #include "block_predictor.h"
 #include "dwt_block_stream.h"
 #include "dwt_block_transformer.h"
@@ -94,13 +96,13 @@ struct LFWFEncoder: public LFWF<D> {
 
     block_for<D>({}, this->block_size, aligned_image_size, [&](const std::array<size_t, D> &offset) {
       for (size_t i = 0; i < D; i++) {
-        std::cerr << offset[i] << " ";
+        std::print(stderr, "{} ", offset[i]);
       }
-      std::cerr << "out of ";
-      for (size_t i { 0 }; i < D; i++) {
-        std::cerr << aligned_image_size[i] << " ";
+      std::print(stderr, "out of ");
+      for (size_t i = 0; i < D; i++) {
+        std::print(stderr, "{} ", aligned_image_size[i]);
       }
-      std::cerr << "\n";
+      std::println(stderr);
 
       moveBlock<D>(puller, this->size, offset,
                    [&](const auto &block_pos, const auto &value) {

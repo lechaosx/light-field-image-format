@@ -12,6 +12,8 @@
 #include "components/colorspace.h"
 #include "components/endian.h"
 
+#include <print>
+
 #include "block_predictor.h"
 #include "dwt_block_transformer.h"
 #include "dwt_block_stream.h"
@@ -79,13 +81,13 @@ struct LFWFDecoder: public LFWF<D> {
 
     block_for<D>({}, this->block_size, aligned_image_size, [&](const std::array<size_t, D> &offset) {
       for (size_t i = 0; i < D; i++) {
-        std::cerr << offset[i] << " ";
+        std::print(stderr, "{} ", offset[i]);
       }
-      std::cerr << "out of ";
+      std::print(stderr, "out of ");
       for (size_t i = 0; i < D; i++) {
-        std::cerr << aligned_image_size[i] << " ";
+        std::print(stderr, "{} ", aligned_image_size[i]);
       }
-      std::cerr << "\n";
+      std::println(stderr);
 
       block_decoder_Y.decodeBlock(cabac,  block_Y);
       block_decoder_UV.decodeBlock(cabac, block_U);

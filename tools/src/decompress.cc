@@ -6,12 +6,11 @@
 #include "decompress.h"
 
 #include <getopt.h>
-
-#include <iostream>
+#include <print>
 
 void print_usage(const char *argv0) {
-  std::cerr << "Usage: \n";
-  std::cerr << argv0 << " -i <file> -o <file-mask>\n";
+  std::println(stderr, "Usage:");
+  std::println(stderr, "{} -i <file> -o <file-mask>", argv0);
 }
 
 bool parse_args(int argc, char *argv[], const char *&input_file_name, const char *&output_file_mask) {

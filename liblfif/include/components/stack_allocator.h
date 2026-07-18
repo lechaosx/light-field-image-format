@@ -5,7 +5,7 @@
 #include <cassert>
 
 #include <algorithm>
-#include <iostream>
+#include <print>
 
 class StackAllocator {
   inline static uint8_t *m_base = nullptr;
@@ -27,7 +27,7 @@ public:
   }
 
   static void cleanup() {
-    std::cerr << "Stack allocator peak memory usage: " << m_max_head - m_base << " bytes.\n";
+    std::println(stderr, "Stack allocator peak memory usage: {} bytes.", m_max_head - m_base);
     ::free(m_base);
   }
 
