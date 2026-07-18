@@ -18,8 +18,8 @@ static inline int shift_right_and_round(int32_t a, int32_t b) {
    return (a + (1 << (b - 1))) >> b;
 }
 
-template <size_t D>
-void fdwt(const std::array<size_t, D> &block_size, auto &&block) {
+template <size_t D, LinearRef<int32_t> Block>
+void fdwt(const std::array<size_t, D> &block_size, Block &&block) {
   if constexpr (D == 1) {
     DynamicBlock<int32_t, 1> inputs({block_size[0]});
 
@@ -69,8 +69,8 @@ void fdwt(const std::array<size_t, D> &block_size, auto &&block) {
   }
 }
 
-template <size_t D>
-void idwt(const std::array<size_t, D> &block_size, auto &&block) {
+template <size_t D, LinearRef<int32_t> Block>
+void idwt(const std::array<size_t, D> &block_size, Block &&block) {
   if constexpr (D == 1) {
     DynamicBlock<int32_t, 1> inputs({block_size[0]});
 
