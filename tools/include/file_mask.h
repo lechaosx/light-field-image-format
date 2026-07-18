@@ -8,8 +8,9 @@
 
 #pragma once
 
-#include <vector>
 #include <string>
+#include <string_view>
+#include <vector>
 
 /**
  * @brief Class used to expang file mask into file names.
@@ -20,7 +21,7 @@ public:
    * @brief The constructor which takes file mask with characters '#'.
    * @param input_file_mask The mask which will be expanded.
    */
-  FileMask(const std::string &input_file_mask);
+  FileMask(std::string_view input_file_mask);
 
   /**
    * @brief The overloaded operator for indexing which performs expansion of a mask.
@@ -40,5 +41,5 @@ private:
   std::vector<size_t> m_mask_indexes;
 };
 
-size_t get_mask_names_count(const std::string &mask, char masking_char);
-std::string get_name_from_mask(const std::string &mask, char masking_char, size_t index);
+size_t get_mask_names_count(std::string_view mask, char masking_char);
+std::string get_name_from_mask(std::string_view mask, char masking_char, size_t index);
