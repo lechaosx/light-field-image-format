@@ -21,13 +21,10 @@ class DynamicBlock {
   std::array<size_t, D>  m_size;
 
 public:
-  DynamicBlock(const std::array<size_t, D> &size): DynamicBlock(size.data()) {}
-
   #pragma omp declare simd
-  DynamicBlock(const size_t size[D]) {
-    size_t bytes = std::accumulate(size, size + D, 1, std::multiplies<size_t>()) * sizeof(T);
+  DynamicBlock(const std::array<size_t, D> &size): m_size{size} {
+    size_t bytes = std::accumulate(size.begin(), size.end(), size_t{1}, std::multiplies<size_t>{}) * sizeof(T);
     m_data = static_cast<T *>(StackAllocator::allocate(bytes));
-    std::copy(size, size + D, std::begin(m_size));
   }
 
   #pragma omp declare simd

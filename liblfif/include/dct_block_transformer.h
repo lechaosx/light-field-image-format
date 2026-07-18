@@ -15,7 +15,7 @@ class DCTBlockTransformer {
 
 public:
 
-  DCTBlockTransformer(const std::array<size_t, D> &block_size, uint8_t discarded_bits): dct_coefs(block_size.data()) {
+  DCTBlockTransformer(const std::array<size_t, D> &block_size, uint8_t discarded_bits): dct_coefs(block_size) {
     this->block_size = block_size;
     this->discarded_bits = discarded_bits;
   }

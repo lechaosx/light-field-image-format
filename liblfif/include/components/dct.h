@@ -11,6 +11,7 @@
 #include <cmath>
 #include <numbers>
 #include <array>
+#include <span>
 
 #include "block.h"
 #include "meta.h"
@@ -23,7 +24,7 @@ class DCTCoefs<1> {
   DynamicBlock<float, 2> coefs;
 
 public:
-  DCTCoefs(const size_t size[1]): coefs({size[0], size[0]}) {
+  DCTCoefs(std::span<const size_t, 1> size): coefs({size[0], size[0]}) {
     const auto c1 = std::sqrt(2.f / size[0]);
     const auto c2 = 1.f / std::sqrt(2.f);
     const auto c3 = 1.f / (2.f * size[0]);
@@ -50,11 +51,11 @@ public:
   DCTCoefs<1> current;
   DCTCoefs<D - 1> next;
 
-  DCTCoefs(const size_t size[D]): current(&size[D - 1]), next(size) {}
+  DCTCoefs(std::span<const size_t, D> size): current(size.template last<1>()), next(size.template first<D - 1>()) {}
 };
 
-template <size_t D>
-void fdct(const std::array<size_t, D> &block_size, const DCTCoefs<D> &coefs, auto &&block) {
+template <size_t D, LinearRef<float> Block>
+void fdct(const std::array<size_t, D> &block_size, const DCTCoefs<D> &coefs, Block &&block) {
   if constexpr (D == 1) {
     DynamicBlock<float, 1> inputs({block_size[0]});
 
@@ -88,8 +89,8 @@ void fdct(const std::array<size_t, D> &block_size, const DCTCoefs<D> &coefs, aut
   }
 }
 
-template <size_t D>
-void idct(const std::array<size_t, D> &block_size, const DCTCoefs<D> &coefs, auto &&block) {
+template <size_t D, LinearRef<float> Block>
+void idct(const std::array<size_t, D> &block_size, const DCTCoefs<D> &coefs, Block &&block) {
   if constexpr (D == 1) {
     DynamicBlock<float, 1> inputs({block_size[0]});
 

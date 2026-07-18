@@ -9,20 +9,22 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <vector>
 #include <array>
 #include <numeric>
 #include <algorithm>
 
 #include "block.h"
+#include "meta.h"
 
 template <size_t D, typename F>
-void diagonalScanCore(const size_t size[D], size_t pos[D], F &&callback) {
+void diagonalScanCore(std::span<const size_t, D> size, std::span<size_t, D> pos, F &&callback) {
   if constexpr (D == 1) {
     callback();
   } else {
-    size_t starting_pos[D];
-    std::copy(pos, pos + D, starting_pos);
+    std::array<size_t, D> starting_pos;
+    std::copy(pos.begin(), pos.end(), starting_pos.begin());
 
     auto move = [&]() {
       if (pos[D - 1] + 1 < size[D - 1]) {
@@ -39,14 +41,14 @@ void diagonalScanCore(const size_t size[D], size_t pos[D], F &&callback) {
     };
 
     do {
-      diagonalScanCore<D - 1>(size, pos, callback);
+      diagonalScanCore<D - 1>(size.template first<D - 1>(), pos.template first<D - 1>(), callback);
     } while (move());
 
-    std::copy(starting_pos, starting_pos + D, pos);
+    std::copy(starting_pos.begin(), starting_pos.end(), pos.begin());
   }
 }
 
-template <size_t D, typename F>
+template <size_t D, DimCallback<D> F>
 void diagonalScan(const std::array<size_t, D> &size, size_t diag, F &&callback) {
   std::array<size_t, D> pos {};
 
@@ -60,5 +62,5 @@ void diagonalScan(const std::array<size_t, D> &size, size_t diag, F &&callback) 
     callback(pos);
   };
 
-  diagonalScanCore<D>(size.data(), pos.data(), return_pos);
+  diagonalScanCore(std::span<const size_t, D>{size}, std::span<size_t, D>{pos}, return_pos);
 }
