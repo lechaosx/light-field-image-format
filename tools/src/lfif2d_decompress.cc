@@ -3,18 +3,17 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include "decompress.h"
-#include "plenoppm.h"
+#include <cmath>
+#include <iostream>
+#include <fstream>
+#include <vector>
 
 #include <ppm.h>
 #include <lfif_decoder.h>
 #include <lfwf_decoder.h>
 
-#include <cmath>
-
-#include <iostream>
-#include <fstream>
-#include <vector>
+#include <decompress.h>
+#include <plenoppm.h>
 
 using namespace std;
 

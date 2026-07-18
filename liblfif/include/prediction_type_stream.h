@@ -1,13 +1,13 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+
 #include "components/block.h"
 #include "components/cabac.h"
 #include "components/predict.h"
 
 #include "prediction_type.h"
-
-#include <cstddef>
-#include <cstdint>
 
 template <size_t D>
 struct PredictionTypeStreamState {

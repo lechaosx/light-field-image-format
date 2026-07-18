@@ -3,13 +3,13 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include "components/huffman.h"
-#include "components/bitstream.h"
-#include "components/endian.h"
-
 #include <algorithm>
 #include <numeric>
 #include <fstream>
+
+#include <components/huffman.h>
+#include <components/bitstream.h>
+#include <components/endian.h>
 
 using namespace std;
 

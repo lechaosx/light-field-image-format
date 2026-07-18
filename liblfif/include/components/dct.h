@@ -8,13 +8,12 @@
 
 #pragma once
 
-#include "block.h"
-#include "meta.h"
-
 #include <cmath>
 #include <numbers>
-
 #include <array>
+
+#include "block.h"
+#include "meta.h"
 
 template<size_t D>
 class DCTCoefs;

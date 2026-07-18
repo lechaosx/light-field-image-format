@@ -8,19 +8,18 @@
 
 #pragma once
 
+#include <cstdint>
+#include <print>
+
 #include "components/bitstream.h"
 #include "components/colorspace.h"
 #include "components/endian.h"
-
-#include <print>
 
 #include "block_predictor.h"
 #include "dct_block_stream.h"
 #include "dct_block_transformer.h"
 #include "prediction_type_stream.h"
 #include "lfif.h"
-
-#include <cstdint>
 
 template <size_t D>
 struct LFIFDecoder: public LFIF<D> {

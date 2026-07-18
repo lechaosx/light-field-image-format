@@ -3,11 +3,11 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include "compress.h"
-
 #include <charconv>
 #include <cstring>
 #include <print>
+
+#include <compress.h>
 
 void print_usage(const char *argv0) {
   std::println(stderr, "Usage:");

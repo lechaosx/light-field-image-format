@@ -3,19 +3,18 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include "compress.h"
-#include "plenoppm.h"
-#include "tiler.h"
-
-#include <lfif_encoder.h>
-#include <lfif.h>
-
 #include <cmath>
-
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <sstream>
+
+#include <lfif_encoder.h>
+#include <lfif.h>
+
+#include <compress.h>
+#include <plenoppm.h>
+#include <tiler.h>
 
 int main(int argc, char *argv[]) {
   const char *input_file_mask  {};

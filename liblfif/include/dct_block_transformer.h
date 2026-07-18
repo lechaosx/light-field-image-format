@@ -1,12 +1,11 @@
 #pragma once
 
-#include "components/block.h"
-#include "components/dct.h"
-
 #include <cstdint>
 #include <cstddef>
-
 #include <array>
+
+#include "components/block.h"
+#include "components/dct.h"
 
 template<size_t D>
 class DCTBlockTransformer {

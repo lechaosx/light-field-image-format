@@ -3,10 +3,10 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include "decompress.h"
-
 #include <getopt.h>
 #include <print>
+
+#include <decompress.h>
 
 void print_usage(const char *argv0) {
   std::println(stderr, "Usage:");

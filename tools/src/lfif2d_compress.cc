@@ -3,19 +3,18 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include "compress.h"
-#include "plenoppm.h"
+#include <cmath>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <sstream>
 
 #include <lfif_encoder.h>
 #include <lfwf_encoder.h>
 #include <ppm.h>
 
-#include <cmath>
-
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <sstream>
+#include <compress.h>
+#include <plenoppm.h>
 
 int main(int argc, char *argv[]) {
   const char *input_file_name  {};

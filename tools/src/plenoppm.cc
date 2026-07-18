@@ -3,10 +3,10 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include "plenoppm.h"
-#include "file_mask.h"
-
 #include <iostream>
+
+#include <plenoppm.h>
+#include <file_mask.h>
 
 using namespace std;
 

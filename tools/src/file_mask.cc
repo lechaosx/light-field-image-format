@@ -3,10 +3,10 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include "file_mask.h"
-
 #include <cmath>
 #include <iomanip>
+
+#include <file_mask.h>
 
 FileMask::FileMask(const std::string &input_file_mask): m_filename_mask{input_file_mask}, m_mask_indexes{} {
   for (size_t i = 0; m_filename_mask[i] != '\0'; i++) {

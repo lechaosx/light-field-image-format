@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstdint>
+#include <cstddef>
+#include <array>
+
 #include "components/block.h"
 #include "components/cabac.h"
 #include "components/colorspace.h"
@@ -8,11 +12,6 @@
 #include "components/diag_scan.h"
 
 #include "lfif.h"
-
-#include <cstdint>
-#include <cstddef>
-
-#include <array>
 
 template<size_t D>
 class DCTCompressedBlockStreamState {

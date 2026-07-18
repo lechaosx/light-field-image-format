@@ -1,12 +1,11 @@
 #pragma once
 
-#include "components/block.h"
-#include "components/dwt.h"
-
 #include <cstdint>
 #include <cstddef>
-
 #include <array>
+
+#include "components/block.h"
+#include "components/dwt.h"
 
 template<size_t D>
 class DWTBlockTransformer {

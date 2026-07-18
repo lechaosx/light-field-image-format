@@ -8,12 +8,11 @@
 
 #pragma once
 
-#include "stack_allocator.h"
-
 #include <cmath>
-
 #include <numeric>
 #include <array>
+
+#include "stack_allocator.h"
 
 template<typename T, size_t D>
 class DynamicBlock {

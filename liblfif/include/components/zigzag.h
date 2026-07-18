@@ -8,13 +8,13 @@
 
 #pragma once
 
-#include "block.h"
-
 #include <cstdint>
 #include <vector>
 #include <array>
 #include <numeric>
 #include <algorithm>
+
+#include "block.h"
 
 template <size_t D>
 struct zigzagScanCore {

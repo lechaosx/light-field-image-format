@@ -9,14 +9,14 @@
 #ifndef RUNLENGTH_H
 #define RUNLENGTH_H
 
+#include <cstdint>
+#include <cmath>
+#include <algorithm>
+
 #include "quant_table.h"
 #include "huffman.h"
 #include "cabac.h"
 #include "endian.h"
-
-#include <cstdint>
-#include <cmath>
-#include <algorithm>
 
 using RLAMPUNIT = int64_t;    /**< @brief Unit intended to contain amplitude value in un-length pair.*/
 using HuffmanClass = uint8_t; /**< @brief Unit intended to contain number of bits of amplitude.*/

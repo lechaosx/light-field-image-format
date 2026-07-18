@@ -8,12 +8,12 @@
 
 #pragma once
 
-#include "block.h"
-#include "meta.h"
-
 #include <cstdint>
 #include <cassert>
 #include <cmath>
+
+#include "block.h"
+#include "meta.h"
 
 template <size_t D>
 struct interpolate {

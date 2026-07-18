@@ -9,11 +9,11 @@
 #ifndef TRAVERSAL_TABLE_H
 #define TRAVERSAL_TABLE_H
 
+#include <iosfwd>
+
 #include "quant_table.h"
 #include "zigzag.h"
 #include "endian.h"
-
-#include <iosfwd>
 
 using REFBLOCKUNIT = double; /**< @brief Type intended to be used in reference block.*/
 

@@ -8,21 +8,19 @@
 
 #pragma once
 
+#include <cstdint>
+#include <print>
+#include <sstream>
+#include <map>
+
 #include "components/bitstream.h"
 #include "components/endian.h"
-
-#include <print>
 
 #include "block_predictor.h"
 #include "dwt_block_stream.h"
 #include "dwt_block_transformer.h"
 #include "prediction_type_stream.h"
 #include "lfwf.h"
-
-#include <cstdint>
-
-#include <sstream>
-#include <map>
 
 template <size_t D>
 struct LFWFEncoder: public LFWF<D> {
