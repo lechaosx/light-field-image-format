@@ -6,9 +6,9 @@
 * @brief Module for generating linearization matrices.
 */
 
-#ifndef TRAVERSAL_TABLE_H
-#define TRAVERSAL_TABLE_H
+#pragma once
 
+#include <bit>
 #include <iosfwd>
 
 #include "quant_table.h"
@@ -111,7 +111,7 @@ void constructZigzag(TraversalTable<D> &output) {
 
 template <size_t D>
 void writeTraversalToStream(const TraversalTable<D> &input, std::ostream &stream) {
-  size_t max_bits = ceil(log2(input.stride(D)));
+  size_t max_bits = std::bit_width(input.stride(D) - 1);
 
   if (max_bits <= 8) {
     for (size_t i = 0; i < input.stride(D); i++) {
@@ -140,7 +140,7 @@ template <size_t D>
 TraversalTable<D> readTraversalFromStream(const std::array<size_t, D> &BS, std::istream &stream) {
   TraversalTable<D> table(BS);
 
-  size_t max_bits = ceil(log2(table.stride(D)));
+  size_t max_bits = std::bit_width(table.stride(D) - 1);
 
   if (max_bits <= 8) {
     for (size_t i = 0; i < table.stride(D); i++) {
@@ -165,5 +165,3 @@ TraversalTable<D> readTraversalFromStream(const std::array<size_t, D> &BS, std::
 
   return table;
 }
-
-#endif

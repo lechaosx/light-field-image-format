@@ -14,7 +14,7 @@
 #include "block.h"
 #include "meta.h"
 
-static inline int shift_right_and_round(int32_t a, int32_t b) {
+static constexpr int shift_right_and_round(int32_t a, int32_t b) {
    return (a + (1 << (b - 1))) >> b;
 }
 

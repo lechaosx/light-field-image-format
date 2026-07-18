@@ -6,11 +6,10 @@
 * @brief Module for performing run-length encoding.
 */
 
-#ifndef RUNLENGTH_H
-#define RUNLENGTH_H
+#pragma once
 
+#include <bit>
 #include <cstdint>
-#include <cmath>
 #include <algorithm>
 
 #include "quant_table.h"
@@ -77,22 +76,12 @@ public:
    * @return Minimum number of bits needed to contain the maximum possible amplitude size.
    */
   static size_t classBits(size_t amp_bits) {
-    return ceil(log2(amp_bits + 1));
+    return std::bit_width(amp_bits);
   }
 
   HuffmanClass huffmanClass() const {
-    RLAMPUNIT amp = amplitude;
-    if (amp < 0) {
-      amp = -amp;
-    }
-
-    HuffmanClass huff_class = 0;
-    while (amp) {
-      amp >>= 1;
-      huff_class++;
-    }
-
-    return huff_class;
+    uint64_t abs_amp = amplitude < 0 ? static_cast<uint64_t>(-amplitude) : static_cast<uint64_t>(amplitude);
+    return std::bit_width(abs_amp);
   }
 
   HuffmanSymbol huffmanSymbol(size_t class_bits) const {
@@ -100,5 +89,3 @@ public:
   }
 
 };
-
-#endif

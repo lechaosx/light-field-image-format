@@ -33,7 +33,7 @@ protected:
   static constexpr uint16_t HALF    = static_cast<uint16_t>(1 << (BITS - 1));
   static constexpr uint16_t QUARTER = static_cast<uint16_t>(1 << (BITS - 2));
 
-  const uint8_t rangeTabLPS[64][4] {
+  static constexpr uint8_t rangeTabLPS[64][4] {
     {128, 176, 208, 240},
     {128, 167, 197, 227},
     {128, 158, 187, 216},
@@ -99,7 +99,7 @@ protected:
     {  6,   7,   8,   9},
     {  2,   2,   2,   2}
   };
-  const uint8_t transIdxMPS[64] {
+  static constexpr uint8_t transIdxMPS[64] {
      1,  2,  3,  4,  5,  6,  7,  8,
      9, 10, 11, 12, 13, 14, 15, 16,
     17, 18, 19, 20, 21, 22, 23, 24,
@@ -109,7 +109,7 @@ protected:
     49, 50, 51, 52, 53, 54, 55, 56,
     57, 58, 59, 60, 61, 62, 62, 63
   };
-  const uint8_t transIdxLPS[64] {
+  static constexpr uint8_t transIdxLPS[64] {
      0,  0,  1,  2,  2,  4,  4,  5,
      6,  7,  8,  9,  9, 11, 11, 12,
     13, 13, 15, 15, 16, 16, 18, 18,
