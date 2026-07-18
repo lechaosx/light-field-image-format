@@ -86,7 +86,7 @@ struct LFIFEncoder: public LFIF<D> {
       aligned_image_size[i] = (this->size[i] + this->block_size[i] - 1) / this->block_size[i] * this->block_size[i];
     }
 
-    block_for<D>({}, this->block_size, aligned_image_size, [&](const std::array<size_t, D> &offset) {
+    for (const auto &offset : block_for<D>({}, this->block_size, aligned_image_size)) {
       for (size_t i = 0; i < D; i++) {
         std::print(stderr, "{} ", offset[i]);
       }
@@ -133,7 +133,7 @@ struct LFIFEncoder: public LFIF<D> {
 
         prediction_type_encoder.encodePredictionType(prediction_type, cabac);
       }
-    });
+    }
 
     cabac.terminate();
     bitstream.flush();

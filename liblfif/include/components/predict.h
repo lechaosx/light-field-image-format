@@ -114,7 +114,7 @@ void project_neighbours_to_main_ref(const std::array<size_t, D> &BS, DynamicBloc
     }
   }
 
-  iterate_dimensions<D - 1>(main_ref.size(), [&](const std::array<size_t, D - 1> &pos) {
+  for (const auto &pos : iterate_dimensions<D - 1>(main_ref.size())) {
     std::array<int64_t, D> position {};
 
     position[main_ref_idx] = start_offsets[main_ref_idx];
@@ -158,7 +158,7 @@ void project_neighbours_to_main_ref(const std::array<size_t, D> &BS, DynamicBloc
     }
 
     main_ref[pos] = inputF(position);
-  });
+  }
 }
 
 template <size_t D, typename T>
@@ -183,8 +183,7 @@ void predict_from_main_ref(DynamicBlock<T, D> &output, std::span<const int8_t, D
     offsets[main_ref_idx] = 1;
   }
 
-  iterate_dimensions<D>(output.size(), [&](const std::array<size_t, D> &pos) {
-
+  for (const auto &pos : iterate_dimensions<D>(output.size())) {
     int64_t distance = pos[main_ref_idx] + offsets[main_ref_idx];
 
     std::array<int64_t, D - 1> main_ref_pos {};
@@ -205,7 +204,7 @@ void predict_from_main_ref(DynamicBlock<T, D> &output, std::span<const int8_t, D
     };
 
     interpolate<D - 1>(std::span{main_ref.size()}, inputF, std::span{main_ref_pos}, direction[main_ref_idx], output[pos]);
-  });
+  }
 }
 
 template <size_t D, typename T, typename F>
@@ -261,7 +260,7 @@ T predict_DC(const std::array<size_t, D> &size, F &inputF) {
 
     samples_cnt += get_stride<D - 1>(neighbour_block_size);
 
-    iterate_dimensions<D - 1>(neighbour_block_size, [&](const std::array<size_t, D - 1> &pos) {
+    for (const auto &pos : iterate_dimensions<D - 1>(neighbour_block_size)) {
       std::array<int64_t, D> position {};
 
       for (size_t i { 0 }; i < D - 1; i++) {
@@ -272,7 +271,7 @@ T predict_DC(const std::array<size_t, D> &size, F &inputF) {
       position[neighbour_idx]--;
 
       sum += inputF(position);
-    });
+    }
   }
 
   return sum / samples_cnt;

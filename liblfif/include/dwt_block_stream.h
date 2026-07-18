@@ -6,6 +6,7 @@
 
 #include "components/block.h"
 #include "components/cabac.h"
+#include "components/meta.h"
 
 template<size_t D>
 class DWTCompressedBlockStreamState {
@@ -21,7 +22,7 @@ class DWTBlockStreamEncoder: public DWTCompressedBlockStreamState<D> {
 public:
 
   void encodeBlock(const DynamicBlock<int32_t, D> &block, CABACEncoder &encoder) {
-    iterate_dimensions<D>(block.size(), [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<D>(block.size())) {
       int32_t coef = block[pos];
 
       encoder.encodeBit(this->significant_coef_flag_ctx, coef);
@@ -49,7 +50,7 @@ public:
 
         encoder.encodeBitBypass(sign);
       }
-    });
+    }
   }
 };
 
@@ -59,7 +60,7 @@ class DWTBlockStreamDecoder: public DWTCompressedBlockStreamState<D> {
 public:
 
   void decodeBlock(CABACDecoder &decoder, DynamicBlock<int32_t, D> &block) {
-    iterate_dimensions<D>(block.size(), [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<D>(block.size())) {
       int32_t coef = decoder.decodeBit(this->significant_coef_flag_ctx);
 
       if (coef) {
@@ -79,6 +80,6 @@ public:
       }
 
       block[pos] = coef;
-    });
+    }
   }
 };

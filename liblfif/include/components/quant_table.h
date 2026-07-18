@@ -197,7 +197,7 @@ void averageDiagonalTable(const QuantTable<DIN> &input, QuantTable<DOUT> &output
   std::vector<double> diagonals_sum(n_diags);
   std::vector<size_t> diagonals_cnt(n_diags);
 
-  iterate_dimensions<DIN>(input.size(), [&](const std::array<size_t, DIN> &pos) {
+  for (const auto &pos : iterate_dimensions<DIN>(input.size())) {
     size_t diagonal {};
     for (size_t i = 0; i < DIN; i++) {
       diagonal += pos[i];
@@ -205,9 +205,9 @@ void averageDiagonalTable(const QuantTable<DIN> &input, QuantTable<DOUT> &output
 
     diagonals_sum[diagonal] += input[pos];
     diagonals_cnt[diagonal]++;
-  });
+  }
 
-  iterate_dimensions<DOUT>(output.size(), [&](const std::array<size_t, DOUT> &pos) {
+  for (const auto &pos : iterate_dimensions<DOUT>(output.size())) {
     size_t diagonal {};
     for (size_t i = 0; i < DIN; i++) {
       diagonal += pos[i];
@@ -218,7 +218,7 @@ void averageDiagonalTable(const QuantTable<DIN> &input, QuantTable<DOUT> &output
     }
 
     output[pos] = std::round(diagonals_sum[diagonal] / diagonals_cnt[diagonal]);
-  });
+  }
 }
 
 /**

@@ -112,9 +112,8 @@ std::array<int64_t, 2> find_best_shift_params(F &&inputF, const std::array<size_
     }
 
     uint64_t error {};
-    iterate_dimensions<4>(std::array<size_t, 4> {size[0], size[1], size[2] - 1, size[3]}, [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<4>(std::array<size_t, 4> {size[0], size[1], size[2] - 1, size[3]})) {
       if (rand() < RAND_MAX / sample_rate) {
-
         std::array<uint16_t, 3> v0 = inputF(get_shifted_pos({pos[0], pos[1], pos[2] + 0, pos[3]}, size, shift_param));
         std::array<uint16_t, 3> v1 = inputF(get_shifted_pos({pos[0], pos[1], pos[2] + 1, pos[3]}, size, shift_param));
 
@@ -122,7 +121,7 @@ std::array<int64_t, 2> find_best_shift_params(F &&inputF, const std::array<size_
         error += std::abs(v0[1] - v1[1]);
         error += std::abs(v0[2] - v1[2]);
       }
-    });
+    }
 
     errors[0][shift_param[0]] = error;
 
@@ -136,7 +135,7 @@ std::array<int64_t, 2> find_best_shift_params(F &&inputF, const std::array<size_
     }
 
     uint64_t error {};
-    iterate_dimensions<4>(std::array<size_t, 4> {size[0], size[1], size[2], size[3] - 1}, [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<4>(std::array<size_t, 4> {size[0], size[1], size[2], size[3] - 1})) {
       if (rand() < RAND_MAX / sample_rate) {
         std::array<uint16_t, 3> v0 = inputF(get_shifted_pos({pos[0], pos[1], pos[2], pos[3] + 0}, size, shift_param));
         std::array<uint16_t, 3> v1 = inputF(get_shifted_pos({pos[0], pos[1], pos[2], pos[3] + 1}, size, shift_param));
@@ -145,7 +144,7 @@ std::array<int64_t, 2> find_best_shift_params(F &&inputF, const std::array<size_
         error += std::abs(v0[1] - v1[1]);
         error += std::abs(v0[2] - v1[2]);
       }
-    });
+    }
 
     errors[1][shift_param[1]] = error;
 

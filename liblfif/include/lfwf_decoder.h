@@ -71,7 +71,7 @@ struct LFWFDecoder: public LFWF<D> {
     bitstream.open(input);
     cabac.init(bitstream);
 
-    block_for<D>({}, this->block_size, aligned_image_size, [&](const std::array<size_t, D> &offset) {
+    for (const auto &offset : block_for<D>({}, this->block_size, aligned_image_size)) {
       for (size_t i = 0; i < D; i++) {
         std::print(stderr, "{} ", offset[i]);
       }
@@ -110,7 +110,7 @@ struct LFWFDecoder: public LFWF<D> {
                    }, this->block_size, {},
                    pusher, this->size, offset,
                    this->block_size);
-    });
+    }
 
     cabac.terminate();
   }

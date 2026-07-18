@@ -61,13 +61,13 @@ template <size_t D>
 void constructByRadius(TraversalTable<D> &output) {
   ReferenceBlock<D> dummy(output.size());
 
-  iterate_dimensions<D>(output.size(), [&](const std::array<size_t, D> &pos) {
+  for (const auto &pos : iterate_dimensions<D>(output.size())) {
     for (size_t i {}; i < D; i++) {
       dummy[pos] += pos[i] * pos[i];
     }
 
     dummy[pos] *= -1;
-  });
+  }
 
   constructByReference(dummy, output);
 }
@@ -76,13 +76,13 @@ template <size_t D>
 void constructByDiagonals(TraversalTable<D> &output) {
   ReferenceBlock<D> dummy(output.size());
 
-  iterate_dimensions<D>(output.size(), [&](const std::array<size_t, D> &pos) {
+  for (const auto &pos : iterate_dimensions<D>(output.size())) {
     for (size_t i {}; i < D; i++) {
       dummy[pos] += pos[i];
     }
 
     dummy[pos] *= -1;
-  });
+  }
 
   constructByReference(dummy, output);
 }
@@ -93,13 +93,13 @@ void constructByHyperboloid(TraversalTable<D> &output) {
 
   dummy.fill(1);
 
-  iterate_dimensions<D>(output.size(), [&](const std::array<size_t, D> &pos) {
+  for (const auto &pos : iterate_dimensions<D>(output.size())) {
     for (size_t i {}; i < D; i++) {
       dummy[pos] *= pos[i] + 1;
     }
 
     dummy[pos] *= -1;
-  });
+  }
 
   constructByReference(dummy, output);
 }

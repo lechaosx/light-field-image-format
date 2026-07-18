@@ -90,9 +90,9 @@ public:
     auto prediction_error = [&]() -> auto {
       T error {};
 
-      iterate_dimensions<D>(input_block.size(), [&](const auto &pos) {
+      for (const auto &pos : iterate_dimensions<D>(input_block.size())) {
         error += (input_block[pos] - prediction_block[pos]) * (input_block[pos] - prediction_block[pos]);
-      });
+      }
 
       return error;
     };
@@ -113,7 +113,7 @@ public:
     eval_prediction({1, {}});
     eval_prediction({2, {}});
 
-    iterate_cube<5, D>([&](const std::array<size_t, D> &pos) {
+    for (const auto &pos : iterate_cube<5, D>()) {
       std::array<int8_t, D> direction {};
 
       for (size_t i = 0; i < D; i++) {
@@ -139,11 +139,11 @@ public:
       };
 
       if (!have_positive() || !have_eight()) {
-        return;
+        continue;
       }
 
       eval_prediction({3, direction});
-    });
+    }
 
     return best_prediction_type;
   }
@@ -153,9 +153,9 @@ public:
 
     predict(prediction_block, offset, type);
 
-    iterate_dimensions<D>(block.size(), [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<D>(block.size())) {
       block[pos] -= prediction_block[pos];
-    });
+    }
   }
 
   void backwardPass(DynamicBlock<T, D> &block, const std::array<size_t, D> &offset, PredictionType<D> type) {
@@ -163,9 +163,9 @@ public:
 
     predict(prediction_block, offset, type);
 
-    iterate_dimensions<D>(block.size(), [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<D>(block.size())) {
       block[pos] += prediction_block[pos];
-    });
+    }
 
     moveBlock<D>([&](const auto &pos) { return block[pos]; }, block.size(), {},
                  [&](const auto &pos, const auto &val) { return decoded_image[pos] = val; }, decoded_image.size(), offset,

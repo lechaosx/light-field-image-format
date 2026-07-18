@@ -13,6 +13,7 @@
 #include <array>
 #include <concepts>
 #include <functional>
+#include <generator>
 #include <numeric>
 #include <ranges>
 #include <span>
@@ -22,41 +23,43 @@ inline constexpr T constpow(const T base, const unsigned exponent) {
     return (exponent == 0) ? 1 : (base * constpow(base, exponent - 1));
 }
 
-template <typename F, size_t D>
-concept DimCallback = std::invocable<F, const std::array<size_t, D>&>;
-
 template <typename F, typename T>
 concept LinearRef = requires(F f, size_t i) {
   { f(i) } -> std::same_as<T&>;
 };
 
-template<size_t D, typename T, DimCallback<D> F>
-void iterate_dimensions(const T &range, F &&callback) {
-  [&]<size_t... I>(std::index_sequence<I...>) {
-    for (const auto &tuple : std::views::cartesian_product(
-        std::views::iota(size_t{0}, range[D - 1 - I])...)) {
-      callback(std::array<size_t, D>{ std::get<D - 1 - I>(tuple)... });
-    }
-  }(std::make_index_sequence<D>{});
+template<size_t D, typename T, size_t... I>
+std::generator<const std::array<size_t, D>&> iterate_dimensions_impl(T range, std::index_sequence<I...>) {
+  for (const auto &tuple : std::views::cartesian_product(
+      std::views::iota(size_t{0}, range[D - 1 - I])...)) {
+    co_yield std::array<size_t, D>{ std::get<D - 1 - I>(tuple)... };
+  }
 }
 
-template<size_t D, typename T, typename F>
-void block_for(const T &start, const T &step, const T &stop, F &&callback) {
-  [&]<size_t... I>(std::index_sequence<I...>) {
-    for (const auto &tuple : std::views::cartesian_product(
-        (std::views::iota(start[D - 1 - I], stop[D - 1 - I])
-         | std::views::stride(step[D - 1 - I]))...)) {
-      T pos { static_cast<size_t>(std::get<D - 1 - I>(tuple))... };
-      callback(pos);
-    }
-  }(std::make_index_sequence<D>{});
+template<size_t D, typename T>
+auto iterate_dimensions(const T &range) {
+  return iterate_dimensions_impl<D>(range, std::make_index_sequence<D>{});
 }
 
-template<size_t BS, size_t D, DimCallback<D> F>
-void iterate_cube(F &&callback) {
+template<size_t D, typename T, size_t... I>
+std::generator<const std::array<size_t, D>&> block_for_impl(T start, T step, T stop, std::index_sequence<I...>) {
+  for (const auto &tuple : std::views::cartesian_product(
+      (std::views::iota(start[D - 1 - I], stop[D - 1 - I])
+       | std::views::stride(step[D - 1 - I]))...)) {
+    co_yield std::array<size_t, D>{ static_cast<size_t>(std::get<D - 1 - I>(tuple))... };
+  }
+}
+
+template<size_t D, typename T>
+auto block_for(const T &start, const T &step, const T &stop) {
+  return block_for_impl<D>(start, step, stop, std::make_index_sequence<D>{});
+}
+
+template<size_t BS, size_t D>
+std::generator<const std::array<size_t, D>&> iterate_cube() {
   std::array<size_t, D> sizes {};
   sizes.fill(BS);
-  iterate_dimensions<D>(sizes, std::forward<F>(callback));
+  co_yield std::ranges::elements_of(iterate_dimensions<D>(sizes));
 }
 
 template<size_t BS, size_t D>

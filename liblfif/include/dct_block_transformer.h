@@ -27,15 +27,15 @@ public:
 
     fdct<D>(this->block_size, dct_coefs, proxy);
 
-    iterate_dimensions<D>(this->block_size, [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<D>(this->block_size)) {
       block[pos] = std::round(ldexp(block[pos], -this->discarded_bits)); // QUANTIZATION
-    });
+    }
   }
 
   void inversePass(DynamicBlock<float, D> &block) {
-    iterate_dimensions<D>(this->block_size, [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<D>(this->block_size)) {
       block[pos] = ldexp(block[pos], this->discarded_bits);
-    });
+    }
 
     auto proxy = [&](size_t index) -> auto & {
       return block[index];

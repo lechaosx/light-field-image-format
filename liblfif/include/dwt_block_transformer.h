@@ -24,15 +24,15 @@ public:
 
     fdwt<D>(block.size(), proxy);
 
-    iterate_dimensions<D>(block.size(), [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<D>(block.size())) {
       block[pos] >>= this->discarded_bits; //QUANTIZATION
-    });
+    }
   }
 
   void inversePass(DynamicBlock<int32_t, D> &block) {
-    iterate_dimensions<D>(block.size(), [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<D>(block.size())) {
       block[pos] <<= this->discarded_bits;
-    });
+    }
 
     auto proxy = [&](size_t index) -> auto & {
       return block[index];
