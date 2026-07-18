@@ -8,8 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_options(-Wall -Wextra -pedantic -Wfatal-errors)
-add_compile_options($<$<CONFIG:Debug>:-Og;-g>)
-add_compile_options($<$<CONFIG:Release>:-O3;-march=native;-DNDEBUG;-s>)
+add_compile_options(
+  $<$<CONFIG:Debug>:-Og>
+  $<$<CONFIG:Release>:-march=native>
+)
 
 find_package(OpenMP REQUIRED)
 
