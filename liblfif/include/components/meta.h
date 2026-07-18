@@ -14,6 +14,7 @@
 #include <concepts>
 #include <functional>
 #include <numeric>
+#include <ranges>
 #include <span>
 
 template<class T>
@@ -31,53 +32,31 @@ concept LinearRef = requires(F f, size_t i) {
 
 template<size_t D, typename T, DimCallback<D> F>
 void iterate_dimensions(const T &range, F &&callback) {
-  if constexpr (D == 0) {
-    callback(std::array<size_t, 0>{});
-  } else {
-    for (size_t i = 0; i < range[D - 1]; i++) {
-      iterate_dimensions<D - 1>(range, [&](const std::array<size_t, D - 1> &indices) {
-        std::array<size_t, D> new_indices {};
-        new_indices[D - 1] = i;
-        for (size_t j = 0; j < D - 1; j++) {
-          new_indices[j] = indices[j];
-        }
-        callback(new_indices);
-      });
+  [&]<size_t... I>(std::index_sequence<I...>) {
+    for (const auto &tuple : std::views::cartesian_product(
+        std::views::iota(size_t{0}, range[D - 1 - I])...)) {
+      callback(std::array<size_t, D>{ std::get<D - 1 - I>(tuple)... });
     }
-  }
+  }(std::make_index_sequence<D>{});
 }
 
 template<size_t D, typename T, typename F>
 void block_for(const T &start, const T &step, const T &stop, F &&callback) {
-  if constexpr (D == 0) {
-    T pos {};
-    callback(pos);
-  } else {
-    for (size_t i = start[D - 1]; i < stop[D - 1]; i += step[D - 1]) {
-      block_for<D - 1>(start, step, stop, [&](T &indices) {
-        indices[D - 1] = i;
-        callback(indices);
-      });
+  [&]<size_t... I>(std::index_sequence<I...>) {
+    for (const auto &tuple : std::views::cartesian_product(
+        (std::views::iota(start[D - 1 - I], stop[D - 1 - I])
+         | std::views::stride(step[D - 1 - I]))...)) {
+      T pos { static_cast<size_t>(std::get<D - 1 - I>(tuple))... };
+      callback(pos);
     }
-  }
+  }(std::make_index_sequence<D>{});
 }
 
 template<size_t BS, size_t D, DimCallback<D> F>
 void iterate_cube(F &&callback) {
-  if constexpr (D == 0) {
-    callback(std::array<size_t, 0>{});
-  } else {
-    for (size_t i = 0; i < BS; i++) {
-      iterate_cube<BS, D - 1>([&](const std::array<size_t, D - 1> &indices) {
-        std::array<size_t, D> new_indices {};
-        new_indices[D - 1] = i;
-        for (size_t j = 0; j < D - 1; j++) {
-          new_indices[j] = indices[j];
-        }
-        callback(new_indices);
-      });
-    }
-  }
+  std::array<size_t, D> sizes {};
+  sizes.fill(BS);
+  iterate_dimensions<D>(sizes, std::forward<F>(callback));
 }
 
 template<size_t BS, size_t D>
