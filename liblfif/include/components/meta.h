@@ -15,7 +15,6 @@
 #include <functional>
 #include <generator>
 #include <numeric>
-#include <ranges>
 #include <span>
 
 template<class T>
@@ -28,29 +27,43 @@ concept LinearRef = requires(F f, size_t i) {
   { f(i) } -> std::same_as<T&>;
 };
 
-template<size_t D, typename T>
-auto iterate_dimensions(T range) {
-  return [range]<size_t... I>(std::index_sequence<I...>)
-      -> std::generator<const std::array<size_t, D>&> {
-    for (const auto &tuple : std::views::cartesian_product(
-        std::views::iota(size_t{0}, range[D - 1 - I])...)) {
-      auto [...elems] = tuple;
-      co_yield std::array<size_t, D>{ static_cast<size_t>(elems...[D - 1 - I])... };
+template<size_t D, size_t N>
+std::generator<const std::array<size_t, N>&> iterate_dimensions_core(
+    const std::array<size_t, N> &range, std::array<size_t, N> &pos) {
+  if constexpr (D == 0) {
+    co_yield pos;
+  } else {
+    for (pos[D - 1] = 0; pos[D - 1] < range[D - 1]; pos[D - 1]++) {
+      co_yield std::ranges::elements_of(iterate_dimensions_core<D - 1, N>(range, pos));
     }
-  }(std::make_index_sequence<D>{});
+  }
 }
 
 template<size_t D, typename T>
-auto block_for(T start, T step, T stop) {
-  return [start, step, stop]<size_t... I>(std::index_sequence<I...>)
-      -> std::generator<const std::array<size_t, D>&> {
-    for (const auto &tuple : std::views::cartesian_product(
-        (std::views::iota(start[D - 1 - I], stop[D - 1 - I])
-         | std::views::stride(step[D - 1 - I]))...)) {
-      auto [...elems] = tuple;
-      co_yield std::array<size_t, D>{ static_cast<size_t>(elems...[D - 1 - I])... };
+std::generator<const std::array<size_t, D>&> iterate_dimensions(T range) {
+  std::array<size_t, D> pos {};
+  co_yield std::ranges::elements_of(iterate_dimensions_core<D, D>(range, pos));
+}
+
+template<size_t D, size_t N>
+std::generator<const std::array<size_t, N>&> block_for_core(
+    const std::array<size_t, N> &start,
+    const std::array<size_t, N> &step,
+    const std::array<size_t, N> &stop,
+    std::array<size_t, N> &pos) {
+  if constexpr (D == 0) {
+    co_yield pos;
+  } else {
+    for (pos[D - 1] = start[D - 1]; pos[D - 1] < stop[D - 1]; pos[D - 1] += step[D - 1]) {
+      co_yield std::ranges::elements_of(block_for_core<D - 1, N>(start, step, stop, pos));
     }
-  }(std::make_index_sequence<D>{});
+  }
+}
+
+template<size_t D, typename T>
+std::generator<const std::array<size_t, D>&> block_for(T start, T step, T stop) {
+  std::array<size_t, D> pos {};
+  co_yield std::ranges::elements_of(block_for_core<D, D>(start, step, stop, pos));
 }
 
 template<size_t BS, size_t D>
