@@ -3,7 +3,6 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include <cmath>
 #include <format>
 #include <string_view>
 
@@ -29,7 +28,9 @@ std::string FileMask::operator [](size_t index) const {
 }
 
 size_t FileMask::count() {
-  return pow(10, m_mask_indexes.size());
+  size_t result = 1;
+  for (size_t i = 0; i < m_mask_indexes.size(); i++) result *= 10;
+  return result;
 }
 
 size_t get_mask_names_count(std::string_view mask, char masking_char) {
@@ -41,7 +42,9 @@ size_t get_mask_names_count(std::string_view mask, char masking_char) {
     }
   }
 
-  return pow(10, cnt);
+  size_t result = 1;
+  for (size_t i = 0; i < cnt; i++) result *= 10;
+  return result;
 }
 
 std::string get_name_from_mask(std::string_view mask, char masking_char, size_t index) {

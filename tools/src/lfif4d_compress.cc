@@ -3,14 +3,14 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
+#include <bit>
+#include <charconv>
 #include <cmath>
-#include <iostream>
 #include <fstream>
+#include <print>
 #include <vector>
-#include <sstream>
 
 #include <lfif_encoder.h>
-#include <lfif.h>
 
 #include <compress.h>
 #include <plenoppm.h>
@@ -36,33 +36,32 @@ int main(int argc, char *argv[]) {
   uint32_t max_rgb_value {};
 
   if (mapPPMs(input_file_mask, width, height, max_rgb_value, ppm_data) < 0) {
-    std::cerr << "ERROR: IMAGES PROPERTIES MISMATCH\n";
+    std::println(stderr, "ERROR: IMAGES PROPERTIES MISMATCH");
     return 2;
   }
 
   image_count = ppm_data.size();
   if (!image_count) {
-    std::cerr << "ERROR: NO IMAGES LOADED\n";
+    std::println(stderr, "ERROR: NO IMAGES LOADED");
     return 2;
   }
 
-  size_t  side        = sqrt(image_count);
-  uint8_t color_depth = ceil(log2(max_rgb_value + 1));
+  size_t  side        = std::sqrt(image_count);
+  uint8_t color_depth = std::bit_width(max_rgb_value);
 
   std::array<uint64_t, 4> image_size { width, height, side, side };
   std::array<uint64_t, 4> block_size {};
   if (optind + 4 == argc) {
     for (size_t i { 0 }; i < 4; i++) {
-      std::stringstream ss {};
-      ss << argv[optind++];
+      std::string_view arg { argv[optind] };
       size_t tmp {};
-      ss >> tmp;
-      if (!ss) {
+      auto [ptr, ec] = std::from_chars(arg.data(), arg.data() + arg.size(), tmp);
+      if (ec != std::errc{}) {
         block_size = {side, side, side, side};
         break;
       }
-
       block_size[i] = tmp;
+      optind++;
     }
   }
   else {
@@ -113,14 +112,14 @@ int main(int argc, char *argv[]) {
   }
 
   if (create_directory(output_file_name)) {
-    std::cerr << "ERROR: CANNON OPEN " << output_file_name << " FOR WRITING\n";
+    std::println(stderr, "ERROR: CANNON OPEN {} FOR WRITING", output_file_name);
     return 1;
   }
 
   std::ofstream output_stream {};
   output_stream.open(output_file_name, std::ios::binary);
   if (!output_stream) {
-    std::cerr << "ERROR: CANNON OPEN " << output_file_name << " FOR WRITING\n";
+    std::println(stderr, "ERROR: CANNON OPEN {} FOR WRITING", output_file_name);
     return 1;
   }
 

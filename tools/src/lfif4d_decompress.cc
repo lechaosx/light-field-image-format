@@ -3,19 +3,15 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include <cmath>
-#include <iostream>
 #include <fstream>
+#include <print>
 #include <vector>
 
-#include <lfif.h>
 #include <lfif_decoder.h>
 
 #include <decompress.h>
 #include <plenoppm.h>
 #include <tiler.h>
-
-using namespace std;
 
 int main(int argc, char *argv[]) {
   const char *input_stream_name {};
@@ -24,10 +20,10 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  ifstream input_stream {};
-  input_stream.open(input_stream_name, ios::binary);
+  std::ifstream input_stream {};
+  input_stream.open(input_stream_name, std::ios::binary);
   if (!input_stream) {
-    cerr << "ERROR: CANNON OPEN " << input_stream_name << " FOR READING\n";
+    std::println(stderr, "ERROR: CANNON OPEN {} FOR READING", input_stream_name);
     return 1;
   }
 
@@ -47,8 +43,8 @@ int main(int argc, char *argv[]) {
   LFIFDecoder<4> decoder {};
   decoder.open(input_stream);
 
-  vector<PPM> ppm_data(decoder.size[2] * decoder.size[3]);
-  if (createPPMs(output_file_mask, decoder.size[0], decoder.size[1], std::pow<float>(2, decoder.depth_bits) - 1, ppm_data) < 0) {
+  std::vector<PPM> ppm_data(decoder.size[2] * decoder.size[3]);
+  if (createPPMs(output_file_mask, decoder.size[0], decoder.size[1], (1u << decoder.depth_bits) - 1, ppm_data) < 0) {
     return 3;
   }
 
@@ -68,28 +64,16 @@ int main(int argc, char *argv[]) {
 
   decoder.decodeStream(input_stream, pusher);
 
-  if (std::any_of(std::begin(shift), std::end(shift), [](auto &val) { return val != 0.f; })) {
+  if (std::ranges::any_of(shift, [](auto val) { return val != 0; })) {
     for (size_t y {}; y < decoder.size[3]; y++) {
       for (size_t x {}; x < decoder.size[2]; x++) {
         auto shiftInputF = [&](const std::array<size_t, 2> &pos) {
-          std::array<size_t, 4> whole_image_pos {};
-
-          whole_image_pos[0] = pos[0];
-          whole_image_pos[1] = pos[1];
-          whole_image_pos[2] = x;
-          whole_image_pos[3] = y;
-
+          std::array<size_t, 4> whole_image_pos { pos[0], pos[1], x, y };
           return puller(whole_image_pos);
         };
 
         auto shiftOutputF = [&](const std::array<size_t, 2> &pos, const auto &value) {
-          std::array<size_t, 4> whole_image_pos {};
-
-          whole_image_pos[0] = pos[0];
-          whole_image_pos[1] = pos[1];
-          whole_image_pos[2] = x;
-          whole_image_pos[3] = y;
-
+          std::array<size_t, 4> whole_image_pos { pos[0], pos[1], x, y };
           return pusher(whole_image_pos, value);
         };
 

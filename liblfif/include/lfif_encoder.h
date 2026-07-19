@@ -10,7 +10,6 @@
 
 #include <cstdint>
 #include <print>
-#include <sstream>
 #include <map>
 
 #include "components/bitstream.h"
@@ -21,10 +20,14 @@
 #include "dct_block_stream.h"
 #include "dct_block_transformer.h"
 #include "prediction_type_stream.h"
-#include "lfif.h"
 
 template <size_t D>
-struct LFIFEncoder: public LFIF<D> {
+struct LFIFEncoder {
+  std::array<size_t, D> size;
+  std::array<size_t, D> block_size;
+  uint8_t depth_bits;
+  uint8_t discarded_bits;
+  bool predicted;
 
   void create(
             std::ostream          &output,

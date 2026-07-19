@@ -3,9 +3,8 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include <cmath>
-#include <iostream>
 #include <fstream>
+#include <print>
 #include <vector>
 
 #include <ppm.h>
@@ -15,8 +14,6 @@
 #include <decompress.h>
 #include <plenoppm.h>
 
-using namespace std;
-
 int main(int argc, char *argv[]) {
   const char *input_stream_name {};
   const char *output_file_name  {};
@@ -24,10 +21,10 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  ifstream input_stream {};
-  input_stream.open(input_stream_name, ios::binary);
+  std::ifstream input_stream {};
+  input_stream.open(input_stream_name, std::ios::binary);
   if (!input_stream) {
-    cerr << "ERROR: CANNON OPEN " << input_stream_name << " FOR READING\n";
+    std::println(stderr, "ERROR: CANNON OPEN {} FOR READING", input_stream_name);
     return 1;
   }
 
@@ -43,7 +40,7 @@ int main(int argc, char *argv[]) {
   decoder.open(input_stream);
 
   PPM ppm_image {};
-  if (ppm_image.createPPM(output_file_name, decoder.size[0], decoder.size[1], std::pow<float>(2, decoder.depth_bits) - 1) < 0) {
+  if (ppm_image.createPPM(output_file_name, decoder.size[0], decoder.size[1], (1u << decoder.depth_bits) - 1) < 0) {
     return 3;
   }
 

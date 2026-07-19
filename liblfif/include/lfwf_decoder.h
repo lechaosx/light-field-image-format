@@ -1,5 +1,5 @@
 /**
-* @file lfif_decoder.h
+* @file lfwf_decoder.h
 * @author Drahomír Dlabaja (xdlaba02)
 * @date 12. 5. 2019
 * @copyright 2019 Drahomír Dlabaja
@@ -19,10 +19,14 @@
 #include "dwt_block_transformer.h"
 #include "dwt_block_stream.h"
 #include "prediction_type_stream.h"
-#include "lfwf.h"
 
 template <size_t D>
-struct LFWFDecoder: public LFWF<D> {
+struct LFWFDecoder {
+  std::array<size_t, D> size;
+  std::array<size_t, D> block_size;
+  uint8_t depth_bits;
+  uint8_t discarded_bits;
+  bool predicted;
 
   void open(std::istream &input) {
     this->depth_bits     = readValueFromStream<uint8_t>(input);

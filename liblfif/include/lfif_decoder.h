@@ -19,10 +19,14 @@
 #include "dct_block_stream.h"
 #include "dct_block_transformer.h"
 #include "prediction_type_stream.h"
-#include "lfif.h"
 
 template <size_t D>
-struct LFIFDecoder: public LFIF<D> {
+struct LFIFDecoder {
+  std::array<size_t, D> size;
+  std::array<size_t, D> block_size;
+  uint8_t depth_bits;
+  uint8_t discarded_bits;
+  bool predicted;
 
   void open(std::istream &input) {
     this->depth_bits     = readValueFromStream<uint8_t>(input);

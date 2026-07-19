@@ -3,11 +3,11 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include <cmath>
-#include <iostream>
+#include <bit>
+#include <charconv>
 #include <fstream>
+#include <print>
 #include <vector>
-#include <sstream>
 
 #include <lfif_encoder.h>
 #include <lfwf_encoder.h>
@@ -31,26 +31,25 @@ int main(int argc, char *argv[]) {
   PPM ppm_image {};
 
   if (ppm_image.mmapPPM(input_file_name) < 0) {
-    std::cerr << "ERROR: CANNOT OPEN IMAGE\n";
+    std::println(stderr, "ERROR: CANNOT OPEN IMAGE");
     return 2;
   }
 
-  uint8_t color_depth = ceil(log2(ppm_image.color_depth() + 1));
+  uint8_t color_depth = std::bit_width(ppm_image.color_depth());
 
   std::array<uint64_t, 2> image_size { ppm_image.width(), ppm_image.height() };
   std::array<uint64_t, 2> block_size {8, 8};
   if (optind + 2 == argc) {
     for (size_t i = 0; i < 2; i++) {
-      std::stringstream ss {};
-      ss << argv[optind++];
+      std::string_view arg { argv[optind] };
       size_t tmp {};
-      ss >> tmp;
-      if (!ss) {
+      auto [ptr, ec] = std::from_chars(arg.data(), arg.data() + arg.size(), tmp);
+      if (ec != std::errc{}) {
         block_size = {8, 8};
         break;
       }
-
       block_size[i] = tmp;
+      optind++;
     }
   }
 
@@ -59,14 +58,14 @@ int main(int argc, char *argv[]) {
   };
 
   if (create_directory(output_file_name)) {
-    std::cerr << "ERROR: CANNON OPEN " << output_file_name << " FOR WRITING\n";
+    std::println(stderr, "ERROR: CANNON OPEN {} FOR WRITING", output_file_name);
     return 1;
   }
 
   std::ofstream output_stream {};
   output_stream.open(output_file_name, std::ios::binary);
   if (!output_stream) {
-    std::cerr << "ERROR: CANNON OPEN " << output_file_name << " FOR WRITING\n";
+    std::println(stderr, "ERROR: CANNON OPEN {} FOR WRITING", output_file_name);
     return 1;
   }
 

@@ -9,23 +9,19 @@
 #include "components/meta.h"
 
 template<size_t D>
-class DWTCompressedBlockStreamState {
-protected:
-  CABAC::ContextModel significant_coef_flag_ctx;
-  CABAC::ContextModel coef_greater_one_ctx;
-  CABAC::ContextModel coef_greater_two_ctx;
-  CABAC::ContextModel coef_abs_level_ctx;
-};
+class DWTBlockStreamEncoder {
+  CABAC::ContextModel significant_coef_flag_ctx {};
+  CABAC::ContextModel coef_greater_one_ctx {};
+  CABAC::ContextModel coef_greater_two_ctx {};
+  CABAC::ContextModel coef_abs_level_ctx {};
 
-template<size_t D>
-class DWTBlockStreamEncoder: public DWTCompressedBlockStreamState<D> {
 public:
 
   void encodeBlock(const DynamicBlock<int32_t, D> &block, CABACEncoder &encoder) {
     for (const auto &pos : iterate_dimensions<D>(block.size())) {
       int32_t coef = block[pos];
 
-      encoder.encodeBit(this->significant_coef_flag_ctx, coef);
+      encoder.encodeBit(significant_coef_flag_ctx, coef);
 
       if (coef) {
         bool sign {};
@@ -38,13 +34,13 @@ public:
           coef = -coef;
         }
 
-        encoder.encodeBit(this->coef_greater_one_ctx, coef > 1);
+        encoder.encodeBit(coef_greater_one_ctx, coef > 1);
 
         if (coef > 1) {
-          encoder.encodeBit(this->coef_greater_two_ctx, coef > 2);
+          encoder.encodeBit(coef_greater_two_ctx, coef > 2);
 
           if (coef > 2) {
-            encoder.encodeU(this->coef_abs_level_ctx, coef - 3);
+            encoder.encodeU(coef_abs_level_ctx, coef - 3);
           }
         }
 
@@ -56,21 +52,26 @@ public:
 
 
 template<size_t D>
-class DWTBlockStreamDecoder: public DWTCompressedBlockStreamState<D> {
+class DWTBlockStreamDecoder {
+  CABAC::ContextModel significant_coef_flag_ctx {};
+  CABAC::ContextModel coef_greater_one_ctx {};
+  CABAC::ContextModel coef_greater_two_ctx {};
+  CABAC::ContextModel coef_abs_level_ctx {};
+
 public:
 
   void decodeBlock(CABACDecoder &decoder, DynamicBlock<int32_t, D> &block) {
     for (const auto &pos : iterate_dimensions<D>(block.size())) {
-      int32_t coef = decoder.decodeBit(this->significant_coef_flag_ctx);
+      int32_t coef = decoder.decodeBit(significant_coef_flag_ctx);
 
       if (coef) {
-        coef += decoder.decodeBit(this->coef_greater_one_ctx);
+        coef += decoder.decodeBit(coef_greater_one_ctx);
 
         if (coef > 1) {
-          coef += decoder.decodeBit(this->coef_greater_two_ctx);
+          coef += decoder.decodeBit(coef_greater_two_ctx);
 
           if (coef > 2) {
-            coef += decoder.decodeU(this->coef_abs_level_ctx);
+            coef += decoder.decodeU(coef_abs_level_ctx);
           }
         }
 
