@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <array>
+#include <ranges>
 #include <functional>
 #include <mdspan>
 #include <numeric>
@@ -48,7 +49,7 @@ public:
     return std::reduce(m_size.begin(), m_size.begin() + depth, size_t{1}, std::multiplies{});
   }
 
-  void fill(T value) { std::fill(m_data.begin(), m_data.end(), value); }
+  void fill(T value) { std::ranges::fill(m_data, value); }
 
   [[nodiscard]] auto span() {
     return std::mdspan<T, std::dextents<size_t, D>>(m_data.data(), m_size);

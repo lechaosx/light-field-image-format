@@ -112,7 +112,7 @@ std::map<int64_t, size_t> findBucketTails(const std::map<int64_t, size_t> &bucke
 
 std::vector<int64_t> guessLmsSort(const std::vector<int64_t> &string, const std::map<int64_t, size_t> &bucket_sizes, const std::vector<bool> &typemap) {
   std::vector<int64_t> guessed_suffix_array(string.size() + 1);
-  std::fill(std::begin(guessed_suffix_array), std::end(guessed_suffix_array), -1);
+  std::ranges::fill(guessed_suffix_array, -1);
 
   std::map<int64_t, size_t> bucket_tails = findBucketTails(bucket_sizes);
 
@@ -177,7 +177,7 @@ void induceSortS(const std::vector<int64_t> &string, std::vector<int64_t> &guess
 
 void summariseSuffixArray(const std::vector<int64_t> &string, std::vector<int64_t> &guessed_suffix_array, const std::vector<bool> &typemap, std::vector<int64_t> &summary_string, int64_t &summary_alphabet_size, std::vector<size_t> &summary_suffix_offsets) {
   std::vector<int64_t> lms_names(string.size() + 1);
-  std::fill(std::begin(lms_names), std::end(lms_names), -1);
+  std::ranges::fill(lms_names, -1);
 
   int64_t current_name = 0;
 
@@ -217,7 +217,7 @@ void summariseSuffixArray(const std::vector<int64_t> &string, std::vector<int64_
 
 std::vector<int64_t> accurateLmsSort(const std::vector<int64_t> &string, const std::map<int64_t, size_t> &bucket_sizes, const std::vector<int64_t> &summary_suffix_array, const std::vector<size_t> &summary_suffix_offsets) {
   std::vector<int64_t> suffix_offsets(string.size() + 1);
-  std::fill(std::begin(suffix_offsets), std::end(suffix_offsets), -1);
+  std::ranges::fill(suffix_offsets, -1);
 
   std::map<int64_t, size_t> bucket_tails = findBucketTails(bucket_sizes);
 
@@ -330,7 +330,7 @@ void ibwt(std::vector<int64_t> &string, size_t pidx) {
     F[i] = {string[i], i};
   }
 
-  std::sort(std::begin(F), std::end(F));
+  std::ranges::sort(F);
 
   std::vector<size_t> T(F.size());
   for (size_t i = 0; i < F.size(); i++) {

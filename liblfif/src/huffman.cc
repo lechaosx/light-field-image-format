@@ -4,7 +4,6 @@
 \******************************************************************************/
 
 #include <algorithm>
-#include <functional>
 #include <numeric>
 #include <fstream>
 
@@ -49,7 +48,7 @@ void HuffmanEncoder::generateHuffmanCodelengths(const HuffmanWeights &huffman_we
     A.push_back({pair.second, pair.first});
   }
 
-  std::sort(A.begin(), A.end());
+  std::ranges::sort(A);
 
   // SOURCE: http://hjemmesider.diku.dk/~jyrki/Paper/WADS95.pdf
 
@@ -103,7 +102,7 @@ void HuffmanEncoder::generateHuffmanCodelengths(const HuffmanWeights &huffman_we
     u = 0;
   }
 
-  std::sort(A.begin(), A.end());
+  std::ranges::sort(A);
 
   m_huffman_codelengths = A;
 }
@@ -147,7 +146,7 @@ void HuffmanDecoder::readFromStream(std::istream &stream) {
     m_huffman_counts[i] = readValueFromStream<HuffmanCodelength>(stream);
   }
 
-  size_t symbols_cnt = std::accumulate(m_huffman_counts.begin(), m_huffman_counts.end(), size_t{0}, std::plus<size_t>{});
+  size_t symbols_cnt = std::accumulate(m_huffman_counts.begin(), m_huffman_counts.end(), size_t{0});
   m_huffman_symbols.resize(symbols_cnt);
 
   for (size_t i = 0; i < symbols_cnt; i++) {

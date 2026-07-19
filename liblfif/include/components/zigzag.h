@@ -8,10 +8,9 @@
 
 #pragma once
 
-#include <array>
 #include <algorithm>
+#include <array>
 #include <generator>
-#include <numeric>
 #include <ranges>
 
 #include "block.h"
@@ -47,7 +46,7 @@ template <size_t D>
 std::generator<const std::array<size_t, D>&> zigzagScanStartGen(
     const std::array<size_t, D> &size, std::array<size_t, D> &pos) {
   std::array<size_t, D> rot {};
-  std::iota(rot.begin(), rot.end(), size_t{0});
+  std::ranges::iota(rot, size_t{0});
 
   auto move = [&]() -> bool {
     for (size_t i = 0; i < D; i++) {

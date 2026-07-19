@@ -12,7 +12,6 @@
 #include <cstdint>
 #include <algorithm>
 
-#include "quant_table.h"
 #include "huffman.h"
 #include "cabac.h"
 #include "endian.h"

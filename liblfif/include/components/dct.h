@@ -70,8 +70,8 @@ void fdct(const std::array<size_t, D> &block_size, const DCTCoefs<D> &coefs, Blo
       }
     }
   } else {
-    std::array<size_t, D - 1> subblock_size {};
-    std::copy(std::begin(block_size), std::end(block_size) - 1, std::begin(subblock_size));
+    std::array<size_t, D - 1> subblock_size;
+    std::ranges::copy(std::span{block_size}.template first<D - 1>(), subblock_size.begin());
 
     const auto stride = get_stride<D - 1>(block_size);
 
@@ -105,8 +105,8 @@ void idct(const std::array<size_t, D> &block_size, const DCTCoefs<D> &coefs, Blo
       }
     }
   } else {
-    std::array<size_t, D - 1> subblock_size {};
-    std::copy(std::begin(block_size), std::end(block_size) - 1, std::begin(subblock_size));
+    std::array<size_t, D - 1> subblock_size;
+    std::ranges::copy(std::span{block_size}.template first<D - 1>(), subblock_size.begin());
 
     const auto stride = get_stride<D - 1>(block_size);
 

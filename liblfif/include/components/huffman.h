@@ -82,7 +82,7 @@ public:
   * @param stream Stream from which the symbol will be read.
   * @return Decoded symbol.
   */
-  HuffmanSymbol decodeSymbolFromStream(IBitstream &stream) const;
+  [[nodiscard]] HuffmanSymbol decodeSymbolFromStream(IBitstream &stream) const;
 
 private:
   size_t decodeOneHuffmanSymbolIndex(IBitstream &stream) const;

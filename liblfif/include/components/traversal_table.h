@@ -8,8 +8,10 @@
 
 #pragma once
 
+#include <algorithm>
 #include <bit>
 #include <iosfwd>
+#include <span>
 
 #include "quant_table.h"
 #include "zigzag.h"
@@ -36,9 +38,7 @@ void constructByReference(const ReferenceBlock<D> &reference, TraversalTable<D> 
   }
 
   //do NOT sort DC coefficient, thus +1 at the begining.
-  stable_sort(&srt[0] + 1, &srt[srt.stride(D)], [](auto &left, auto &right) {
-    return left.first > right.first;
-  });
+  std::ranges::stable_sort(std::span{&srt[1], srt.stride(D) - 1}, std::ranges::greater{}, &std::pair<double, size_t>::first);
 
   for (size_t i = 0; i < reference.stride(D); i++) {
     output[srt[i].second] = i;

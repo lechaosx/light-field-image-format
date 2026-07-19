@@ -6,19 +6,16 @@
 * @brief Module for generating quantization matrices.
 */
 
-#ifndef QUANT_TABLE_H
-#define QUANT_TABLE_H
+#pragma once
 
 #include <istream>
 #include <ostream>
 #include <vector>
 
-#include "dct.h"
 #include "endian.h"
 #include "block.h"
 
-using DCTDATAUNIT = float;
-using QTABLEUNIT  = uint64_t; /**< @brief Unit which is intended to containt quantization matrix value.*/
+using QTABLEUNIT = uint64_t; /**< @brief Unit which is intended to containt quantization matrix value.*/
 
 /**
  * @brief Quantization matrix type.
@@ -68,73 +65,6 @@ inline QuantTable<2> baseChroma() {
     output[i] = base_chroma[i];
   }
   return output;
-}
-
-/**
- * @brief Function used to scale quantization matrix to specific size by filling values by the nearests.
- * @param input The matrix to be scaled.
- * @return Scaled matrix.
- */
-template <size_t D>
-constexpr void scaleFillNear(const QuantTable<D> &input, QuantTable<D> &output) {
-  auto inputF = [&](const std::array<size_t, D> &pos) {
-    return input[pos];
-  };
-
-  auto outputF = [&](const std::array<size_t, D> &pos, const auto &value) {
-    output[pos] = value;
-  };
-
-  std::array<size_t, D> pos {};
-  getBlock<D>(output.size().data(), inputF, pos, input.size(), outputF);
-}
-
-/**
- * @brief Function used to scale quantization matrix to specific size by the DCT.
- * @param input The matrix to be scaled.
- * @return Scaled matrix.
- */
-template <size_t D>
-constexpr void scaleByDCT(const QuantTable<D> &input, QuantTable<D> &output) {
-  DynamicBlock<DCTDATAUNIT, D> input_coefs(input.size());
-  DynamicBlock<DCTDATAUNIT, D> output_coefs(output.size());
-
-  auto fInputF = [&](size_t index) -> DCTDATAUNIT {
-    return input[index];
-  };
-
-  auto fOutputF = [&](size_t index) -> DCTDATAUNIT & {
-    return input_coefs[index];
-  };
-
-  fdct<D>(input.size().data(), fInputF, fOutputF);
-
-  auto iInputF = [&](size_t index) -> DCTDATAUNIT {
-    size_t real_index {};
-
-    for (size_t i { 1 }; i <= D; i++) {
-      size_t dim = index % output.stride(D - i + 1) / output.stride(D - i);
-      if (dim >= input.size()[D - i]) {
-        return 0;
-      }
-      else {
-        real_index *= input.size()[D - i];
-        real_index += dim;
-      }
-    }
-
-    return input_coefs[real_index];
-  };
-
-  auto iOutputF = [&](size_t index) -> DCTDATAUNIT & {
-    return output_coefs[index];
-  };
-
-  idct<D>(output.size().data(), iInputF, iOutputF);
-
-  for (size_t i = 0; i < output.stride(D); i++) {
-    output[i] = std::round(output_coefs[i]);
-  }
 }
 
 /**
@@ -260,6 +190,3 @@ QuantTable<D> readQuantFromStream(const std::array<size_t, D> &BS, std::istream 
   }
   return table;
 }
-
-
-#endif
