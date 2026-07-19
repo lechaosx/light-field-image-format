@@ -56,10 +56,8 @@ struct LFWFDecoder {
     IBitstream   bitstream {};
     CABACDecoder cabac     {};
 
-    DWTBlockTransformer<D> block_transformer(this->discarded_bits);
-
-    DWTBlockStreamDecoder<D> block_decoder_Y {};
-    DWTBlockStreamDecoder<D> block_decoder_UV {};
+    DWTBlockStream<D> stream_Y {};
+    DWTBlockStream<D> stream_UV {};
 
     std::array<size_t, D> predictor_size {};
     if (this->predicted) {
@@ -70,9 +68,9 @@ struct LFWFDecoder {
     BlockPredictor<D, int32_t> predictor_U(predictor_size);
     BlockPredictor<D, int32_t> predictor_V(predictor_size);
 
-    PredictionTypeDecoder<D> prediction_type_decoder {};
+    PredictionTypeStream<D> pred_type_stream {};
 
-    bitstream.open(input);
+    ::open(bitstream, input);
     cabac.init(bitstream);
 
     for (const auto &offset : block_for<D>({}, this->block_size, aligned_image_size)) {
@@ -85,16 +83,16 @@ struct LFWFDecoder {
       }
       std::println(stderr);
 
-      block_decoder_Y.decodeBlock(cabac,  block_Y);
-      block_decoder_UV.decodeBlock(cabac, block_U);
-      block_decoder_UV.decodeBlock(cabac, block_V);
+      decode_dwt_block(stream_Y,  block_Y, cabac);
+      decode_dwt_block(stream_UV, block_U, cabac);
+      decode_dwt_block(stream_UV, block_V, cabac);
 
-      block_transformer.inversePass(block_Y);
-      block_transformer.inversePass(block_U);
-      block_transformer.inversePass(block_V);
+      dwt_inverse(block_Y, this->discarded_bits);
+      dwt_inverse(block_U, this->discarded_bits);
+      dwt_inverse(block_V, this->discarded_bits);
 
       if (this->predicted) {
-        auto prediction_type = prediction_type_decoder.decodePredictionType(cabac);
+        auto prediction_type = decode_prediction_type(pred_type_stream, cabac);
 
         predictor_Y.backwardPass(block_Y, offset, prediction_type);
         predictor_U.backwardPass(block_U, offset, prediction_type);

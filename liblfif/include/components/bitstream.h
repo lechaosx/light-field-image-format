@@ -14,43 +14,33 @@
 #include <ostream>
 #include <vector>
 
-class IBitstream {
-  std::istream *m_stream {};
-  uint8_t m_index {};
-  uint8_t m_accumulator {};
-
-public:
-  IBitstream() = default;
-
-  IBitstream(std::istream &stream): m_stream { &stream } { m_index = 8; }
-
-  void open(std::istream &stream) { m_stream = &stream; m_index = 8; }
-
-  [[nodiscard]] std::vector<bool> read(const size_t size) {
-    std::vector<bool> data(size);
-    for (size_t i = 0; i < size; i++) {
-      data[i] = readBit();
-    }
-    return data;
-  }
-
-  [[nodiscard]] bool readBit() {
-    if (m_index >= 8) {
-      m_accumulator = m_stream->get();
-      m_index = 0;
-    }
-    bool data = (m_accumulator >> m_index) & 1;
-    m_index++;
-    return data;
-  }
-
-  [[nodiscard]] bool eof() { return (m_index >= 8) && m_stream->eof(); }
+struct IBitstream {
+  std::istream *stream    {};
+  uint8_t       index     {};
+  uint8_t       accumulator {};
 };
 
+inline void open(IBitstream &bs, std::istream &stream) {
+  bs.stream = &stream;
+  bs.index  = 8;
+}
+
+[[nodiscard]] inline bool readBit(IBitstream &bs) {
+  if (bs.index >= 8) {
+    bs.accumulator = bs.stream->get();
+    bs.index = 0;
+  }
+  return (bs.accumulator >> bs.index++) & 1;
+}
+
+[[nodiscard]] inline bool eof(const IBitstream &bs) {
+  return (bs.index >= 8) && bs.stream->eof();
+}
+
 class OBitstream {
-  std::ostream *m_stream {};
-  uint8_t m_index {};
-  uint8_t m_accumulator {};
+  std::ostream *m_stream     {};
+  uint8_t       m_index      {};
+  uint8_t       m_accumulator {};
 
 public:
   OBitstream() = default;
@@ -67,7 +57,7 @@ public:
     }
   }
 
-  void writeBit(const bool bit) {
+  void writeBit(bool bit) {
     m_accumulator |= bit << m_index;
     m_index++;
     if (m_index >= 8) {

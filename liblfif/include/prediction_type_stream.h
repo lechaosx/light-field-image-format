@@ -10,7 +10,7 @@
 #include "prediction_type.h"
 
 template <size_t D>
-struct PredictionTypeStreamState {
+struct PredictionTypeStream {
   CABAC::ContextModel is_dc_prediction_ctx {};
   CABAC::ContextModel is_planar_prediction_ctx {};
   CABAC::ContextModel is_direction_prediction_ctx {};
@@ -18,62 +18,54 @@ struct PredictionTypeStreamState {
 };
 
 template <size_t D>
-struct PredictionTypeEncoder {
-  PredictionTypeStreamState<D> state {};
+void encode_prediction_type(PredictionTypeStream<D> &s, const PredictionType<D> &type, CABACEncoder &encoder) {
+  encoder.encodeBit(s.is_dc_prediction_ctx, type.type == 1);
 
-  void encodePredictionType(const PredictionType<D> &type, CABACEncoder &encoder) {
-    encoder.encodeBit(state.is_dc_prediction_ctx, type.type == 1);
+  if (type.type != 1) {
+    encoder.encodeBit(s.is_planar_prediction_ctx, type.type == 2);
 
-    if (type.type != 1) {
-      encoder.encodeBit(state.is_planar_prediction_ctx, type.type == 2);
+    if (type.type != 2) {
+      encoder.encodeBit(s.is_direction_prediction_ctx, type.type == 3);
 
-      if (type.type != 2) {
-        encoder.encodeBit(state.is_direction_prediction_ctx, type.type == 3);
+      if (type.type == 3) {
+        for (size_t i = 0; i < D; i++) {
+          encoder.encodeBit(s.directions_prediction_ctx[i][0], type.direction[i]);
 
-        if (type.type == 3) {
-          for (size_t i = 0; i < D; i++) {
-            encoder.encodeBit(state.directions_prediction_ctx[i][0], type.direction[i]);
-
-            if (type.direction[i]) {
-              encoder.encodeBit(state.directions_prediction_ctx[i][1], std::abs(type.direction[i]) == 2);
-              encoder.encodeBit(state.directions_prediction_ctx[i][2], type.direction[i] < 0);
-            }
+          if (type.direction[i]) {
+            encoder.encodeBit(s.directions_prediction_ctx[i][1], std::abs(type.direction[i]) == 2);
+            encoder.encodeBit(s.directions_prediction_ctx[i][2], type.direction[i] < 0);
           }
         }
       }
     }
   }
-};
+}
 
 template <size_t D>
-struct PredictionTypeDecoder {
-  PredictionTypeStreamState<D> state {};
+PredictionType<D> decode_prediction_type(PredictionTypeStream<D> &s, CABACDecoder &decoder) {
+  PredictionType<D> type {};
 
-  PredictionType<D> decodePredictionType(CABACDecoder &decoder) {
-    PredictionType<D> type {};
+  if (decoder.decodeBit(s.is_dc_prediction_ctx)) {
+    type.type = 1;
+  }
+  else if (decoder.decodeBit(s.is_planar_prediction_ctx)) {
+    type.type = 2;
+  }
+  else if (decoder.decodeBit(s.is_direction_prediction_ctx)) {
+    type.type = 3;
 
-    if (decoder.decodeBit(state.is_dc_prediction_ctx)) {
-      type.type = 1;
-    }
-    else if (decoder.decodeBit(state.is_planar_prediction_ctx)) {
-      type.type = 2;
-    }
-    else if (decoder.decodeBit(state.is_direction_prediction_ctx)) {
-      type.type = 3;
+    for (size_t i = 0; i < D; i++) {
+      type.direction[i] = decoder.decodeBit(s.directions_prediction_ctx[i][0]);
 
-      for (size_t i = 0; i < D; i++) {
-        type.direction[i] = decoder.decodeBit(state.directions_prediction_ctx[i][0]);
+      if (type.direction[i] != 0) {
+        type.direction[i] += decoder.decodeBit(s.directions_prediction_ctx[i][1]);
 
-        if (type.direction[i] != 0) {
-          type.direction[i] += decoder.decodeBit(state.directions_prediction_ctx[i][1]);
-
-          if (decoder.decodeBit(state.directions_prediction_ctx[i][2])) {
-            type.direction[i] = -type.direction[i];
-          }
+        if (decoder.decodeBit(s.directions_prediction_ctx[i][2])) {
+          type.direction[i] = -type.direction[i];
         }
       }
     }
-
-    return type;
   }
-};
+
+  return type;
+}

@@ -56,10 +56,10 @@ struct LFIFDecoder {
     IBitstream   bitstream {};
     CABACDecoder cabac     {};
 
-    DCTBlockTransformer<D> block_transformer(this->block_size, this->discarded_bits);
+    DCTCoefs<D> dct_coefs(this->block_size);
 
-    DCTBlockStreamDecoder<D> block_decoder_Y(this->block_size);
-    DCTBlockStreamDecoder<D> block_decoder_UV(this->block_size);
+    DCTBlockStream<D> stream_Y(this->block_size);
+    DCTBlockStream<D> stream_UV(this->block_size);
 
     std::array<size_t, D> predictor_size {};
     if (this->predicted) {
@@ -70,9 +70,9 @@ struct LFIFDecoder {
     BlockPredictor<D, float> predictor_U(predictor_size);
     BlockPredictor<D, float> predictor_V(predictor_size);
 
-    PredictionTypeDecoder<D> prediction_type_decoder {};
+    PredictionTypeStream<D> pred_type_stream {};
 
-    bitstream.open(input);
+    ::open(bitstream, input);
     cabac.init(bitstream);
 
     for (const auto &offset : block_for<D>({}, this->block_size, aligned_image_size)) {
@@ -85,16 +85,16 @@ struct LFIFDecoder {
       }
       std::println(stderr);
 
-      block_decoder_Y.decodeBlock(cabac,  block_Y);
-      block_decoder_UV.decodeBlock(cabac, block_U);
-      block_decoder_UV.decodeBlock(cabac, block_V);
+      decode_dct_block(stream_Y,  block_Y, cabac);
+      decode_dct_block(stream_UV, block_U, cabac);
+      decode_dct_block(stream_UV, block_V, cabac);
 
-      block_transformer.inversePass(block_Y);
-      block_transformer.inversePass(block_U);
-      block_transformer.inversePass(block_V);
+      dct_inverse(block_Y, dct_coefs, this->discarded_bits);
+      dct_inverse(block_U, dct_coefs, this->discarded_bits);
+      dct_inverse(block_V, dct_coefs, this->discarded_bits);
 
       if (this->predicted) {
-        auto prediction_type = prediction_type_decoder.decodePredictionType(cabac);
+        auto prediction_type = decode_prediction_type(pred_type_stream, cabac);
 
         predictor_Y.backwardPass(block_Y, offset, prediction_type);
         predictor_U.backwardPass(block_U, offset, prediction_type);

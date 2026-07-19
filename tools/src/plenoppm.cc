@@ -9,16 +9,16 @@
 #include <file_mask.h>
 
 int mapPPMs(const char *input_file_mask, uint64_t &width, uint64_t &height, uint32_t &color_depth, std::vector<PPM> &data) {
-  FileMask file_name(input_file_mask);
+  FileMask file_name = make_file_mask(input_file_mask);
 
   width       = 0;
   height      = 0;
   color_depth = 0;
 
-  for (size_t image = 0; image < file_name.count(); image++) {
+  for (size_t image = 0; image < file_mask_count(file_name); image++) {
     PPM ppm {};
 
-    if (ppm.mmapPPM(file_name[image].c_str()) < 0) {
+    if (ppm.mmapPPM(file_mask_name(file_name, image).c_str()) < 0) {
       continue;
     }
 
@@ -39,14 +39,15 @@ int mapPPMs(const char *input_file_mask, uint64_t &width, uint64_t &height, uint
 }
 
 int createPPMs(const char *output_file_mask, uint64_t width, uint64_t height, uint32_t color_depth, std::vector<PPM> &data) {
-  FileMask file_name(output_file_mask);
+  FileMask file_name = make_file_mask(output_file_mask);
 
   for (size_t image {}; image < data.size(); image++) {
-    if (create_directory(file_name[image])) {
+    std::string name = file_mask_name(file_name, image);
+    if (create_directory(name)) {
       return -1;
     }
 
-    if (data[image].createPPM(file_name[image].c_str(), width, height, color_depth) < 0) {
+    if (data[image].createPPM(name.c_str(), width, height, color_depth) < 0) {
       return -2;
     }
   }

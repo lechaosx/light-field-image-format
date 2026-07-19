@@ -10,7 +10,6 @@
 
 #include <cstdint>
 #include <print>
-#include <map>
 
 #include "components/bitstream.h"
 #include "components/colorspace.h"
@@ -62,10 +61,10 @@ struct LFIFEncoder {
     DynamicBlock<float, D> block_U(this->block_size);
     DynamicBlock<float, D> block_V(this->block_size);
 
-    DCTBlockTransformer<D> block_transformer(this->block_size, this->discarded_bits);
+    DCTCoefs<D> dct_coefs(this->block_size);
 
-    DCTBlockStreamEncoder<D> block_encoder_Y(this->block_size);
-    DCTBlockStreamEncoder<D> block_encoder_UV(this->block_size);
+    DCTBlockStream<D> stream_Y(this->block_size);
+    DCTBlockStream<D> stream_UV(this->block_size);
 
     std::array<size_t, D> predictor_size {};
     if (this->predicted) {
@@ -76,7 +75,7 @@ struct LFIFEncoder {
     BlockPredictor<D, float> predictor_U(predictor_size);
     BlockPredictor<D, float> predictor_V(predictor_size);
 
-    PredictionTypeEncoder<D> prediction_type_encoder {};
+    PredictionTypeStream<D> pred_type_stream {};
 
     OBitstream   bitstream {};
     CABACEncoder cabac     {};
@@ -107,7 +106,6 @@ struct LFIFEncoder {
                    }, this->block_size, {},
                    this->block_size);
 
-
       PredictionType<D> prediction_type {};
       if (this->predicted) {
         prediction_type = predictor_Y.selectPredictionType(block_Y, offset);
@@ -117,24 +115,24 @@ struct LFIFEncoder {
         predictor_V.forwardPass(block_V, offset, prediction_type);
       }
 
-      block_transformer.forwardPass(block_Y);
-      block_transformer.forwardPass(block_U);
-      block_transformer.forwardPass(block_V);
+      dct_forward(block_Y, dct_coefs, this->discarded_bits);
+      dct_forward(block_U, dct_coefs, this->discarded_bits);
+      dct_forward(block_V, dct_coefs, this->discarded_bits);
 
-      block_encoder_Y.encodeBlock(block_Y, cabac);
-      block_encoder_UV.encodeBlock(block_U, cabac);
-      block_encoder_UV.encodeBlock(block_V, cabac);
+      encode_dct_block(stream_Y,  block_Y, cabac);
+      encode_dct_block(stream_UV, block_U, cabac);
+      encode_dct_block(stream_UV, block_V, cabac);
 
       if (this->predicted) {
-        block_transformer.inversePass(block_Y);
-        block_transformer.inversePass(block_U);
-        block_transformer.inversePass(block_V);
+        dct_inverse(block_Y, dct_coefs, this->discarded_bits);
+        dct_inverse(block_U, dct_coefs, this->discarded_bits);
+        dct_inverse(block_V, dct_coefs, this->discarded_bits);
 
         predictor_Y.backwardPass(block_Y, offset, prediction_type);
         predictor_U.backwardPass(block_U, offset, prediction_type);
         predictor_V.backwardPass(block_V, offset, prediction_type);
 
-        prediction_type_encoder.encodePredictionType(prediction_type, cabac);
+        encode_prediction_type(pred_type_stream, prediction_type, cabac);
       }
     }
 

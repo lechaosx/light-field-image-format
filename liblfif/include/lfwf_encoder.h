@@ -10,7 +10,6 @@
 
 #include <cstdint>
 #include <print>
-#include <map>
 
 #include "components/bitstream.h"
 #include "components/endian.h"
@@ -61,10 +60,8 @@ struct LFWFEncoder {
     DynamicBlock<int32_t, D> block_U(this->block_size);
     DynamicBlock<int32_t, D> block_V(this->block_size);
 
-    DWTBlockTransformer<D> block_transformer(this->discarded_bits);
-
-    DWTBlockStreamEncoder<D> block_encoder_Y {};
-    DWTBlockStreamEncoder<D> block_encoder_UV {};
+    DWTBlockStream<D> stream_Y {};
+    DWTBlockStream<D> stream_UV {};
 
     std::array<size_t, D> predictor_size {};
     if (this->predicted) {
@@ -75,7 +72,7 @@ struct LFWFEncoder {
     BlockPredictor<D, int32_t> predictor_U(predictor_size);
     BlockPredictor<D, int32_t> predictor_V(predictor_size);
 
-    PredictionTypeEncoder<D> prediction_type_encoder {};
+    PredictionTypeStream<D> pred_type_stream {};
 
     OBitstream   bitstream {};
     CABACEncoder cabac     {};
@@ -106,7 +103,6 @@ struct LFWFEncoder {
                    }, this->block_size, {},
                    this->block_size);
 
-
       PredictionType<D> prediction_type {};
       if (this->predicted) {
         prediction_type = predictor_Y.selectPredictionType(block_Y, offset);
@@ -116,24 +112,24 @@ struct LFWFEncoder {
         predictor_V.forwardPass(block_V, offset, prediction_type);
       }
 
-      block_transformer.forwardPass(block_Y);
-      block_transformer.forwardPass(block_U);
-      block_transformer.forwardPass(block_V);
+      dwt_forward(block_Y, this->discarded_bits);
+      dwt_forward(block_U, this->discarded_bits);
+      dwt_forward(block_V, this->discarded_bits);
 
-      block_encoder_Y.encodeBlock(block_Y, cabac);
-      block_encoder_UV.encodeBlock(block_U, cabac);
-      block_encoder_UV.encodeBlock(block_V, cabac);
+      encode_dwt_block(stream_Y,  block_Y, cabac);
+      encode_dwt_block(stream_UV, block_U, cabac);
+      encode_dwt_block(stream_UV, block_V, cabac);
 
       if (this->predicted) {
-        block_transformer.inversePass(block_Y);
-        block_transformer.inversePass(block_U);
-        block_transformer.inversePass(block_V);
+        dwt_inverse(block_Y, this->discarded_bits);
+        dwt_inverse(block_U, this->discarded_bits);
+        dwt_inverse(block_V, this->discarded_bits);
 
         predictor_Y.backwardPass(block_Y, offset, prediction_type);
         predictor_U.backwardPass(block_U, offset, prediction_type);
         predictor_V.backwardPass(block_V, offset, prediction_type);
 
-        prediction_type_encoder.encodePredictionType(prediction_type, cabac);
+        encode_prediction_type(pred_type_stream, prediction_type, cabac);
       }
     }
 

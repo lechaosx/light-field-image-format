@@ -11,35 +11,8 @@
 #include <components/bitstream.h>
 #include <components/endian.h>
 
-void HuffmanEncoder::generateFromWeights(const HuffmanWeights &huffman_weights) {
-  generateHuffmanCodelengths(huffman_weights);
-  generateHuffmanMap();
-}
-
-void HuffmanEncoder::writeToStream(std::ostream &stream) const {
-  HuffmanCodelength max_codelength = m_huffman_codelengths.back().first;
-  writeValueToStream(max_codelength, stream);
-
-  auto it = m_huffman_codelengths.begin();
-  for (size_t i = 0; i <= max_codelength; i++) {
-    HuffmanCodelength leaves = 0;
-    while ((it < m_huffman_codelengths.end()) && (it->first == i)) {
-      leaves++;
-      it++;
-    }
-    writeValueToStream(leaves, stream);
-  }
-
-  for (auto &pair: m_huffman_codelengths) {
-    writeValueToStream(pair.second, stream);
-  }
-}
-
-void HuffmanEncoder::encodeSymbolToStream(HuffmanSymbol symbol, OBitstream &stream) const {
-  stream.write(m_huffman_map.at(symbol));
-}
-
-void HuffmanEncoder::generateHuffmanCodelengths(const HuffmanWeights &huffman_weights) {
+static std::vector<std::pair<HuffmanWeight, HuffmanSymbol>>
+build_codelengths(const HuffmanWeights &huffman_weights) {
   std::vector<std::pair<HuffmanWeight, HuffmanSymbol>> A {};
 
   A.reserve(huffman_weights.size());
@@ -103,20 +76,19 @@ void HuffmanEncoder::generateHuffmanCodelengths(const HuffmanWeights &huffman_we
   }
 
   std::ranges::sort(A);
-
-  m_huffman_codelengths = A;
+  return A;
 }
 
-void HuffmanEncoder::generateHuffmanMap() {
-  std::unordered_map<HuffmanSymbol, HuffmanCodeword> map {};
+static HuffmanMap build_map(const std::vector<std::pair<HuffmanWeight, HuffmanSymbol>> &codelengths) {
+  HuffmanMap map {};
 
   // TODO PROVE ME
 
   size_t  prefix_ones      {};
   int64_t huffman_codeword {};
 
-  for (auto &pair: m_huffman_codelengths) {
-    map[pair.second]; //DO NOT ERASE, this will emplace a codeword of zero length
+  for (auto &pair: codelengths) {
+    map[pair.second];
 
     for (size_t i = 0; i < prefix_ones; i++) {
       map[pair.second].push_back(1);
@@ -135,30 +107,60 @@ void HuffmanEncoder::generateHuffmanMap() {
     }
   }
 
-  m_huffman_map = map;
+  return map;
 }
 
-void HuffmanDecoder::readFromStream(std::istream &stream) {
+HuffmanEncoder huff_build(const HuffmanWeights &weights) {
+  HuffmanEncoder enc {};
+  enc.codelengths = build_codelengths(weights);
+  enc.map         = build_map(enc.codelengths);
+  return enc;
+}
+
+void huff_write(const HuffmanEncoder &enc, std::ostream &stream) {
+  HuffmanCodelength max_codelength = enc.codelengths.back().first;
+  writeValueToStream(max_codelength, stream);
+
+  auto it = enc.codelengths.begin();
+  for (size_t i = 0; i <= max_codelength; i++) {
+    HuffmanCodelength leaves = 0;
+    while ((it < enc.codelengths.end()) && (it->first == i)) {
+      leaves++;
+      it++;
+    }
+    writeValueToStream(leaves, stream);
+  }
+
+  for (auto &pair: enc.codelengths) {
+    writeValueToStream(pair.second, stream);
+  }
+}
+
+HuffmanDecoder huff_read(std::istream &stream) {
+  HuffmanDecoder dec {};
+
   size_t max_codelength = readValueFromStream<HuffmanCodelength>(stream);
-  m_huffman_counts.resize(max_codelength + 1);
+  dec.counts.resize(max_codelength + 1);
 
   for (size_t i = 0; i <= max_codelength; i++) {
-    m_huffman_counts[i] = readValueFromStream<HuffmanCodelength>(stream);
+    dec.counts[i] = readValueFromStream<HuffmanCodelength>(stream);
   }
 
-  size_t symbols_cnt = std::accumulate(m_huffman_counts.begin(), m_huffman_counts.end(), size_t{0});
-  m_huffman_symbols.resize(symbols_cnt);
+  size_t symbols_cnt = std::accumulate(dec.counts.begin(), dec.counts.end(), size_t{0});
+  dec.symbols.resize(symbols_cnt);
 
   for (size_t i = 0; i < symbols_cnt; i++) {
-    m_huffman_symbols[i] = readValueFromStream<HuffmanSymbol>(stream);
+    dec.symbols[i] = readValueFromStream<HuffmanSymbol>(stream);
   }
+
+  return dec;
 }
 
-HuffmanSymbol HuffmanDecoder::decodeSymbolFromStream(IBitstream &stream) const {
-  return m_huffman_symbols[decodeOneHuffmanSymbolIndex(stream)];
+void huff_encode(const HuffmanEncoder &enc, HuffmanSymbol symbol, OBitstream &stream) {
+  stream.write(enc.map.at(symbol));
 }
 
-size_t HuffmanDecoder::decodeOneHuffmanSymbolIndex(IBitstream &stream) const {
+HuffmanSymbol huff_decode(const HuffmanDecoder &dec, IBitstream &stream) {
   int64_t code  = 0;
   int64_t first = 0;
   size_t  index = 0;
@@ -166,11 +168,11 @@ size_t HuffmanDecoder::decodeOneHuffmanSymbolIndex(IBitstream &stream) const {
 
   //i genuinely have no idea why this is working
 
-  for (size_t len = 1; len < m_huffman_counts.size(); len++) {
-    code |= stream.readBit();
-    count = m_huffman_counts[len];
+  for (size_t len = 1; len < dec.counts.size(); len++) {
+    code |= readBit(stream);
+    count = dec.counts[len];
     if (code - count < first) {
-      return index + code - first;
+      return dec.symbols[index + code - first];
     }
     index += count;
     first += count;

@@ -366,7 +366,7 @@ void CABACDecoder::init(IBitstream &stream) {
   m_stream = &stream;
 
   for (size_t i = 0; i < CABAC::BITS; i++) {
-    m_low = (m_low << 1) | m_stream->readBit();
+    m_low = (m_low << 1) | readBit(*m_stream);
   }
 }
 
@@ -395,14 +395,14 @@ bool CABACDecoder::decodeBit(CABAC::ContextModel &context) {
 
   while (m_range < CABAC::QUARTER) {
     m_range <<= 1;
-    m_low = (m_low << 1) | m_stream->readBit();
+    m_low = (m_low << 1) | readBit(*m_stream);
   }
 
   return bit;
 }
 
 bool CABACDecoder::decodeBitBypass() {
-  m_low = (m_low << 1) | m_stream->readBit();
+  m_low = (m_low << 1) | readBit(*m_stream);
 
   if (m_low >= m_range) {
     m_low -= m_range;
