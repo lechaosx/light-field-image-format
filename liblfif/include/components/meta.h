@@ -28,31 +28,29 @@ concept LinearRef = requires(F f, size_t i) {
   { f(i) } -> std::same_as<T&>;
 };
 
-template<size_t D, typename T, size_t... I>
-std::generator<const std::array<size_t, D>&> iterate_dimensions_impl(T range, std::index_sequence<I...>) {
-  for (const auto &tuple : std::views::cartesian_product(
-      std::views::iota(size_t{0}, range[D - 1 - I])...)) {
-    co_yield std::array<size_t, D>{ std::get<D - 1 - I>(tuple)... };
-  }
+template<size_t D, typename T>
+auto iterate_dimensions(T range) {
+  return [range]<size_t... I>(std::index_sequence<I...>)
+      -> std::generator<const std::array<size_t, D>&> {
+    for (const auto &tuple : std::views::cartesian_product(
+        std::views::iota(size_t{0}, range[D - 1 - I])...)) {
+      auto [...elems] = tuple;
+      co_yield std::array<size_t, D>{ static_cast<size_t>(elems...[D - 1 - I])... };
+    }
+  }(std::make_index_sequence<D>{});
 }
 
 template<size_t D, typename T>
-auto iterate_dimensions(const T &range) {
-  return iterate_dimensions_impl<D>(range, std::make_index_sequence<D>{});
-}
-
-template<size_t D, typename T, size_t... I>
-std::generator<const std::array<size_t, D>&> block_for_impl(T start, T step, T stop, std::index_sequence<I...>) {
-  for (const auto &tuple : std::views::cartesian_product(
-      (std::views::iota(start[D - 1 - I], stop[D - 1 - I])
-       | std::views::stride(step[D - 1 - I]))...)) {
-    co_yield std::array<size_t, D>{ static_cast<size_t>(std::get<D - 1 - I>(tuple))... };
-  }
-}
-
-template<size_t D, typename T>
-auto block_for(const T &start, const T &step, const T &stop) {
-  return block_for_impl<D>(start, step, stop, std::make_index_sequence<D>{});
+auto block_for(T start, T step, T stop) {
+  return [start, step, stop]<size_t... I>(std::index_sequence<I...>)
+      -> std::generator<const std::array<size_t, D>&> {
+    for (const auto &tuple : std::views::cartesian_product(
+        (std::views::iota(start[D - 1 - I], stop[D - 1 - I])
+         | std::views::stride(step[D - 1 - I]))...)) {
+      auto [...elems] = tuple;
+      co_yield std::array<size_t, D>{ static_cast<size_t>(elems...[D - 1 - I])... };
+    }
+  }(std::make_index_sequence<D>{});
 }
 
 template<size_t BS, size_t D>
