@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.24)
 
 project(LFIF)
 
@@ -19,5 +19,7 @@ add_subdirectory(liblfif)
 add_subdirectory(libppm)
 add_subdirectory(tools)
 
-add_custom_target(doc COMMAND doxygen ../Doxyfile
-  COMMENT "Generating API documentation with Doxygen")
+include(CTest)
+if(BUILD_TESTING)
+  add_subdirectory(tests)
+endif()
