@@ -2,7 +2,7 @@
 #include <print>
 #include <vector>
 
-#include <lfif_decoder.h>
+#include <lfwf_decoder.h>
 
 #include <decompress.h>
 #include <plenoppm.h>
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
   input_stream >> shift[1];
   input_stream.ignore();
 
-  LFIFDecoder<4> decoder {};
+  LFWFDecoder<4> decoder {};
   decoder.open(input_stream);
 
   std::vector<PPM> ppm_data(decoder.header.size[2] * decoder.header.size[3]);

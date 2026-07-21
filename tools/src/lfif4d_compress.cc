@@ -5,7 +5,7 @@
 #include <print>
 #include <vector>
 
-#include <lfif_encoder.h>
+#include <lfwf_encoder.h>
 
 #include <compress.h>
 #include <plenoppm.h>
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
   output_stream << "LFIF-4D\n";
   output_stream << shift[0] << " " << shift[1] << "\n";
 
-  LFIFEncoder<4> encoder {};
+  LFWFEncoder<4> encoder {};
   encoder.create(output_stream, image_size, block_size, color_depth, distortion, predict);
 
   encoder.encodeStream(puller, output_stream);
