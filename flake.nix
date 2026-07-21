@@ -14,9 +14,9 @@
       nativeBuildInputs = [
         pkgs.cmake
         pkgs.ninja
+        pkgs.conan
         pkgs.llvmPackages_22.clang-tools
         pkgs.gdb
-        pkgs.doxygen
       ];
     };
   };
