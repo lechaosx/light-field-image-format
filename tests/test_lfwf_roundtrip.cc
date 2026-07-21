@@ -3,41 +3,37 @@
 #include <lfwf_encoder.h>
 #include <lfwf_decoder.h>
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
+#include <map>
 #include <sstream>
 #include <string>
-#include <vector>
 
 namespace {
 
-constexpr uint64_t width = 24;
-constexpr uint64_t height = 16;
 constexpr uint8_t depth_bits = 8;
 
-std::array<uint16_t, 3> synthetic_pixel(const std::array<size_t, 2> &pos) {
+std::array<uint16_t, 3> synthetic_2d(const std::array<size_t, 2> &pos) {
   const uint16_t v = static_cast<uint16_t>((pos[0] * 7 + pos[1] * 13) % 256);
   return {v, static_cast<uint16_t>(255 - v), static_cast<uint16_t>(pos[0] % 256)};
 }
 
-std::string compress(const std::array<uint64_t, 2> &image_size,
-                     const std::array<uint64_t, 2> &block_size) {
-  std::stringstream stream;
-  stream << "LFIF-2D\n";
-  LFWFEncoder<2> encoder {};
-  encoder.create(stream, image_size, block_size, depth_bits, /*distortion*/ 0, /*predict*/ false);
-  encoder.encodeStream(synthetic_pixel, stream);
-  return stream.str();
+std::array<uint16_t, 3> synthetic_4d(const std::array<size_t, 4> &pos) {
+  const uint16_t v = static_cast<uint16_t>((pos[0] * 7 + pos[1] * 13 + pos[2] * 29 + pos[3] * 53) % 256);
+  return {v, static_cast<uint16_t>(255 - v), static_cast<uint16_t>((pos[2] + pos[3]) % 256)};
 }
 
 } // namespace
 
-TEST(LfwfRoundTrip, HeaderAndGeometrySurviveEncodeDecode) {
-  const std::array<uint64_t, 2> image_size {width, height};
+TEST(LfwfRoundTrip, ReconstructsEveryPixelExactly2D) {
+  const std::array<uint64_t, 2> image_size {13, 10};
   const std::array<uint64_t, 2> block_size {8, 8};
 
-  std::stringstream stream(compress(image_size, block_size));
+  std::stringstream stream;
+  stream << "LFIF-2D\n";
+  LFWFEncoder<2> encoder {};
+  encoder.create(stream, image_size, block_size, depth_bits, /*distortion*/ 0, /*predict*/ false);
+  encoder.encodeStream(synthetic_2d, stream);
 
   std::string magic;
   stream >> magic;
@@ -46,25 +42,59 @@ TEST(LfwfRoundTrip, HeaderAndGeometrySurviveEncodeDecode) {
   LFWFDecoder<2> decoder {};
   decoder.open(stream);
 
-  std::vector<bool> visited(width * height, false);
-  size_t visited_count = 0;
-  auto pusher = [&](const std::array<size_t, 2> &pos, const std::array<uint16_t, 3> &) {
-    visited[pos[1] * width + pos[0]] = true;
-    visited_count++;
-  };
-  decoder.decodeStream(stream, pusher);
+  std::map<std::array<size_t, 2>, std::array<uint16_t, 3>> decoded;
+  decoder.decodeStream(stream, [&](const std::array<size_t, 2> &pos, const std::array<uint16_t, 3> &rgb) {
+    decoded[pos] = rgb;
+  });
 
   EXPECT_EQ(magic, "LFIF-2D");
-  EXPECT_EQ(decoder.header.size[0], width);
-  EXPECT_EQ(decoder.header.size[1], height);
-  EXPECT_EQ(decoder.header.depth_bits, depth_bits);
-  EXPECT_EQ(visited_count, width * height);
-  EXPECT_EQ(std::count(visited.begin(), visited.end(), true), static_cast<long>(width * height));
+  ASSERT_EQ(decoded.size(), image_size[0] * image_size[1]);
+  for (const auto &[pos, rgb] : decoded) {
+    EXPECT_EQ(rgb, synthetic_2d(pos)) << "at (" << pos[0] << ", " << pos[1] << ")";
+  }
+}
+
+TEST(LfwfRoundTrip, ReconstructsEveryPixelExactly4D) {
+  const std::array<uint64_t, 4> image_size {6, 5, 3, 3};
+  const std::array<uint64_t, 4> block_size {4, 4, 2, 2};
+
+  std::stringstream stream;
+  stream << "LFIF-4D\n";
+  LFWFEncoder<4> encoder {};
+  encoder.create(stream, image_size, block_size, depth_bits, /*distortion*/ 0, /*predict*/ false);
+  encoder.encodeStream(synthetic_4d, stream);
+
+  std::string magic;
+  stream >> magic;
+  stream.ignore();
+
+  LFWFDecoder<4> decoder {};
+  decoder.open(stream);
+
+  std::map<std::array<size_t, 4>, std::array<uint16_t, 3>> decoded;
+  decoder.decodeStream(stream, [&](const std::array<size_t, 4> &pos, const std::array<uint16_t, 3> &rgb) {
+    decoded[pos] = rgb;
+  });
+
+  EXPECT_EQ(magic, "LFIF-4D");
+  ASSERT_EQ(decoded.size(), image_size[0] * image_size[1] * image_size[2] * image_size[3]);
+  for (const auto &[pos, rgb] : decoded) {
+    EXPECT_EQ(rgb, synthetic_4d(pos))
+        << "at (" << pos[0] << ", " << pos[1] << ", " << pos[2] << ", " << pos[3] << ")";
+  }
 }
 
 TEST(LfwfRoundTrip, CompressionIsDeterministic) {
-  const std::array<uint64_t, 2> image_size {width, height};
+  const std::array<uint64_t, 2> image_size {24, 16};
   const std::array<uint64_t, 2> block_size {8, 8};
 
-  EXPECT_EQ(compress(image_size, block_size), compress(image_size, block_size));
+  auto compress = [&] {
+    std::stringstream stream;
+    LFWFEncoder<2> encoder {};
+    encoder.create(stream, image_size, block_size, depth_bits, 0, false);
+    encoder.encodeStream(synthetic_2d, stream);
+    return stream.str();
+  };
+
+  EXPECT_EQ(compress(), compress());
 }
