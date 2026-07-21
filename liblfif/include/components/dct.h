@@ -1,11 +1,3 @@
-/**
-* @file dct.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 12. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Functions which performs FDCT and IDCT.
-*/
-
 #pragma once
 
 #include <cmath>

@@ -1,11 +1,3 @@
-/**
-* @file diag_scan.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 27. 1. 2021
-* @copyright 2021 Drahomír Dlabaja
-* @brief The algorithm for scan by diagonal slices from DC.
-*/
-
 #pragma once
 
 #include <array>

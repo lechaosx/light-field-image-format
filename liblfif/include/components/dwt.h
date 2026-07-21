@@ -1,11 +1,3 @@
-/**
-* @file dwt.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 22. 1. 2021
-* @copyright 2021 Drahomír Dlabaja
-* @brief Functions which performs 5/3 FDWT and IDWT.
-*/
-
 #pragma once
 
 #include <cmath>

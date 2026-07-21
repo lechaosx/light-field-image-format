@@ -1,10 +1,3 @@
-/**
-* @file bwt.cc
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 1. 9. 2020
-* @brief
-*/
-
 #include <vector>
 #include <cstdlib>
 #include <map>

@@ -1,11 +1,3 @@
-/**
-* @file ppm.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 13. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Tiny library for reading and writing ppm files.
-*/
-
 #ifndef PPM_H
 #define PPM_H
 
@@ -19,9 +11,9 @@
 class PPM {
   bool        m_opened;
 
-  uint64_t    m_width;       /**< @brief Image width in pixels.*/
-  uint64_t    m_height;      /**< @brief Image height in pixels.*/
-  uint32_t    m_color_depth; /**< @brief Maximum RGB value of an image.*/
+  uint64_t    m_width;
+  uint64_t    m_height;
+  uint32_t    m_color_depth;
 
   void       *m_file;
   size_t      m_header_offset;

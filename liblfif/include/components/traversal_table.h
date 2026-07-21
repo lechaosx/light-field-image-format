@@ -1,11 +1,3 @@
-/**
-* @file traversal_table.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 13. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Module for generating linearization matrices.
-*/
-
 #pragma once
 
 #include <algorithm>
@@ -17,11 +9,8 @@
 #include "zigzag.h"
 #include "endian.h"
 
-using REFBLOCKUNIT = double; /**< @brief Type intended to be used in reference block.*/
+using REFBLOCKUNIT = double;
 
-/**
- * @brief Reference block type.
- */
 template<size_t D>
 using ReferenceBlock = DynamicBlock<REFBLOCKUNIT, D>;
 

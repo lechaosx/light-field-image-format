@@ -1,11 +1,3 @@
-/**
-* @file predict.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 9. 8. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Prediction stuff.
-*/
-
 #pragma once
 
 #include <cstdint>

@@ -1,8 +1,3 @@
-/**
-* @file ppm_endian.h
-* @author Drahomír Dlabaja (xdlaba02)
-*/
-
 #ifndef PPM_ENDIAN_H
 #define PPM_ENDIAN_H
 

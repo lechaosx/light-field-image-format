@@ -1,11 +1,3 @@
-/**
-* @file meta.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 12. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Compile-time stuff.
-*/
-
 #pragma once
 
 #include <cstddef>

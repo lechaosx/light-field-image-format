@@ -1,10 +1,3 @@
-/**
-* @file tiler.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 5. 2. 2020
-* @copyright 2019 Drahomír Dlabaja
-*/
-
 #pragma once
 
 #include <components/block.h>

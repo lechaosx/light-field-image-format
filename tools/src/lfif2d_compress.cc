@@ -1,8 +1,3 @@
-/******************************************************************************\
-* SOUBOR: lfif4d_compress.cc
-* AUTOR: Drahomir Dlabaja (xdlaba02)
-\******************************************************************************/
-
 #include <bit>
 #include <charconv>
 #include <fstream>
