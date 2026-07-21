@@ -1,8 +1,3 @@
-/******************************************************************************\
-* SOUBOR: huffman.cc
-* AUTOR: Drahomir Dlabaja (xdlaba02)
-\******************************************************************************/
-
 #include <algorithm>
 #include <numeric>
 #include <fstream>
@@ -156,11 +151,11 @@ HuffmanDecoder huff_read(std::istream &stream) {
   return dec;
 }
 
-void huff_encode(const HuffmanEncoder &enc, HuffmanSymbol symbol, OBitstream &stream) {
-  stream.write(enc.map.at(symbol));
+void huff_encode(const HuffmanEncoder &enc, HuffmanSymbol symbol, OBitstream &bitstream, std::ostream &stream) {
+  bitstream.write(stream, enc.map.at(symbol));
 }
 
-HuffmanSymbol huff_decode(const HuffmanDecoder &dec, IBitstream &stream) {
+HuffmanSymbol huff_decode(const HuffmanDecoder &dec, IBitstream &bitstream, std::istream &stream) {
   int64_t code  = 0;
   int64_t first = 0;
   size_t  index = 0;
@@ -169,7 +164,7 @@ HuffmanSymbol huff_decode(const HuffmanDecoder &dec, IBitstream &stream) {
   //i genuinely have no idea why this is working
 
   for (size_t len = 1; len < dec.counts.size(); len++) {
-    code |= readBit(stream);
+    code |= bitstream.readBit(stream);
     count = dec.counts[len];
     if (code - count < first) {
       return dec.symbols[index + code - first];

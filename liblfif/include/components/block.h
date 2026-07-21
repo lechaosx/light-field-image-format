@@ -1,18 +1,9 @@
-/**
-* @file block.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 12. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Functions for block extraction and insertion.
-*/
-
 #pragma once
 
 #include <algorithm>
 #include <array>
 #include <ranges>
 #include <functional>
-#include <mdspan>
 #include <numeric>
 #include <vector>
 
@@ -50,13 +41,6 @@ public:
   }
 
   void fill(T value) { std::ranges::fill(m_data, value); }
-
-  [[nodiscard]] auto span() {
-    return std::mdspan<T, std::dextents<size_t, D>>(m_data.data(), m_size);
-  }
-  [[nodiscard]] auto span() const {
-    return std::mdspan<const T, std::dextents<size_t, D>>(m_data.data(), m_size);
-  }
 };
 
 template<size_t D>

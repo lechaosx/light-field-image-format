@@ -1,8 +1,3 @@
-/******************************************************************************\
-* SOUBOR: lfif4d_decompress.cc
-* AUTOR: Drahomir Dlabaja (xdlaba02)
-\******************************************************************************/
-
 #include <fstream>
 #include <print>
 #include <vector>
@@ -40,12 +35,12 @@ int main(int argc, char *argv[]) {
   decoder.open(input_stream);
 
   PPM ppm_image {};
-  if (ppm_image.createPPM(output_file_name, decoder.size[0], decoder.size[1], (1u << decoder.depth_bits) - 1) < 0) {
+  if (ppm_image.createPPM(output_file_name, decoder.header.size[0], decoder.header.size[1], (1u << decoder.header.depth_bits) - 1) < 0) {
     return 3;
   }
 
   auto pusher = [&](const std::array<size_t, 2> &pos, const std::array<uint16_t, 3> &RGB) {
-    ppm_image.put(pos[1] * decoder.size[0] + pos[0], RGB);
+    ppm_image.put(pos[1] * decoder.header.size[0] + pos[0], RGB);
   };
 
   decoder.decodeStream(input_stream, pusher);

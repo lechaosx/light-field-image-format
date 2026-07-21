@@ -18,7 +18,7 @@ struct PredictionTypeStream {
 };
 
 template <size_t D>
-void encode_prediction_type(PredictionTypeStream<D> &s, const PredictionType<D> &type, CABACEncoder &encoder) {
+void encode_prediction_type(PredictionTypeStream<D> &s, const PredictionType<D> &type, auto &encoder) {
   encoder.encodeBit(s.is_dc_prediction_ctx, type.type == 1);
 
   if (type.type != 1) {
@@ -42,7 +42,7 @@ void encode_prediction_type(PredictionTypeStream<D> &s, const PredictionType<D> 
 }
 
 template <size_t D>
-PredictionType<D> decode_prediction_type(PredictionTypeStream<D> &s, CABACDecoder &decoder) {
+PredictionType<D> decode_prediction_type(PredictionTypeStream<D> &s, auto &decoder) {
   PredictionType<D> type {};
 
   if (decoder.decodeBit(s.is_dc_prediction_ctx)) {

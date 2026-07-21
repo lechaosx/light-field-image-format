@@ -1,26 +1,15 @@
-/**
-* @file cabac.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 11. 7. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Context-Adaptive Binary Arithmetic Coding.
-*/
-
 #pragma once
 
-#include "bitstream.h"
+#include <cstddef>
+#include <cstdint>
+#include <utility>
 
-/**
-* @brief Base CABAC state class.
-*/
+// Shared CABAC constants and the per-decision context model.
 struct CABAC {
 
-  /**
-  * @brief Structure which contains probabilitis of one binary decision.
-  */
   struct ContextModel {
-    uint8_t m_state : 6;  /**< @brief State of the CABAC context model.*/
-    uint8_t m_mps   : 1;  /**< @brief Most probable symbol (0|1).*/
+    uint8_t m_state : 6;
+    uint8_t m_mps   : 1;  // most probable symbol
   };
 
   static constexpr uint8_t  BITS    = 10;
@@ -116,346 +105,255 @@ struct CABAC {
   };
 };
 
+// Arithmetic encoder. Emits coded bits to a caller-provided sink (a callable
+// taking a bool); it never touches a stream itself.
+template <typename Sink>
 class CABACEncoder {
+  uint16_t m_low         {};
+  uint16_t m_range       { CABAC::HALF - 2 };
+  size_t   m_outstanding {};
+  Sink     m_sink;
+
+  void putCabacBit(bool bit) {
+    m_sink(bit);
+    while (m_outstanding) {
+      m_sink(!bit);
+      m_outstanding--;
+    }
+  }
+
+  void renormalize() {
+    while (m_range < CABAC::QUARTER) {
+      if (m_low >= CABAC::HALF) {
+        putCabacBit(1);
+        m_low -= CABAC::HALF;
+      }
+      else if (m_low < CABAC::QUARTER) {
+        putCabacBit(0);
+      }
+      else {
+        m_outstanding++;
+        m_low -= CABAC::QUARTER;
+      }
+
+      m_low   <<= 1;
+      m_range <<= 1;
+    }
+  }
+
 public:
+  explicit CABACEncoder(Sink sink): m_sink(std::move(sink)) {}
 
-  /**
-  * @brief Function which initializes the encoder.
-  * @param stream Bitstream to which the data will be written.
-  */
-  inline void init(OBitstream &stream);
+  void encodeBit(CABAC::ContextModel &context, bool bit) {
+    uint8_t rLPS = CABAC::rangeTabLPS[context.m_state][(m_range >> 6) & 3];
+    m_range -= rLPS;
 
-  /**
-  * @brief Function changes stream for the encoder.
-  * @param stream Bitstream to which the data will be written.
-  */
-  inline void setStream(OBitstream &stream);
+    if (bit != context.m_mps) {
+      m_low  += m_range;
+      m_range = rLPS;
 
-  /**
-  * @brief Function which encodes one bit.
-  * @param context Context specifiing probabilities of binary decision.
-  * @param bit Value that is encoded.
-  */
-  inline void encodeBit(CABAC::ContextModel &context, bool bit);
+      if (context.m_state == 0) {
+        context.m_mps = !context.m_mps;
+      }
 
-  /**
-  * @brief Function which encodes one bit with 50/50 probability.
-  * @param bit Value that is encoded.
-  */
-  inline void encodeBitBypass(bool bit);
-
-  /**
-  * @brief Function which terminates the encoding.
-  */
-  inline void terminate();
-
-  inline void encodeU(CABAC::ContextModel &context, uint64_t value);
-  inline void encodeEG(uint64_t k, CABAC::ContextModel &context, uint64_t value);
-  inline void encodeEGBypass(uint64_t k, uint64_t value);
-  inline void encodeUEG0(uint64_t u_bits, CABAC::ContextModel &context, uint64_t value);
-  inline void encodeRG(uint64_t &k, CABAC::ContextModel &context, uint64_t value);
-
-private:
-  uint16_t    m_low  {};
-  uint16_t    m_range {};
-  OBitstream *m_stream;
-  size_t      m_outstanding;
-
-  inline void renormalize();
-  inline void putCabacBit(bool bit);
-};
-
-class CABACDecoder {
-public:
-  /**
-  * @brief Function which initializes the encoder.
-  * @param stream Bitstream from which the data will be read.
-  */
-  inline void init(IBitstream &stream);
-
-  /**
-  * @brief Function which decodes one bit.
-  * @param context Context specifiing probabilities of binary decision.
-  * @return Decoded binary value.
-  */
-  inline bool decodeBit(CABAC::ContextModel &context);
-
-  /**
-  * @brief Function which decodes one bit which was encoded with 50/50 probability.
-  * @return Decoded binary value.
-  */
-  inline bool decodeBitBypass();
-
-  /**
-  * @brief Function which terminates the decoding.
-  */
-  inline void terminate();
-
-  inline uint64_t decodeU(CABAC::ContextModel &context);
-  inline uint64_t decodeUEG0(uint64_t u_bits, CABAC::ContextModel &context);
-  inline uint64_t decodeEG(uint64_t k);
-
-private:
-  uint16_t    m_low  {};
-  uint16_t    m_range {};
-  IBitstream *m_stream;
-};
-
-void CABACEncoder::init(OBitstream &stream) {
-  m_low         = 0;
-  m_range       = CABAC::HALF - 2;
-  m_outstanding = 0;
-  m_stream      = &stream;
-}
-
-void CABACEncoder::setStream(OBitstream &stream) {
-  m_stream      = &stream;
-}
-
-void CABACEncoder::encodeBit(CABAC::ContextModel &context, bool bit) {
-  uint8_t rLPS {};
-
-  rLPS = CABAC::rangeTabLPS[context.m_state][(m_range >> 6) & 3];
-  m_range -= rLPS;
-
-  if (bit != context.m_mps) {
-    m_low  += m_range;
-    m_range = rLPS;
-
-    if (context.m_state == 0) {
-      context.m_mps = !context.m_mps;
+      context.m_state = CABAC::transIdxLPS[context.m_state];
+    }
+    else {
+      context.m_state = CABAC::transIdxMPS[context.m_state];
     }
 
-    context.m_state = CABAC::transIdxLPS[context.m_state];
-  }
-  else {
-    context.m_state = CABAC::transIdxMPS[context.m_state];
+    renormalize();
   }
 
-  renormalize();
-}
+  void encodeBitBypass(bool bit) {
+    m_low <<= 1;
 
-void CABACEncoder::encodeBitBypass(bool bit) {
-  m_low <<= 1;
+    if (bit == true) {
+      m_low += m_range;
+    }
 
-  if (bit == true) {
-    m_low += m_range;
-  }
-
-  if (m_low >= CABAC::ONE) {
-    putCabacBit(1);
-    m_low -= CABAC::ONE;
-  }
-  else if (m_low < CABAC::HALF) {
-    putCabacBit(0);
-  }
-  else {
-    m_outstanding++;
-    m_low -= CABAC::HALF;
-  }
-}
-
-void CABACEncoder::terminate() {
-  m_low += 2;
-  m_range = 2;
-
-  renormalize();
-
-  putCabacBit(0);
-  putCabacBit(0);
-
-  m_stream->flush();
-
-  m_stream = nullptr;
-}
-
-void CABACEncoder::renormalize() {
-  while (m_range < CABAC::QUARTER) {
-    if (m_low >= CABAC::HALF) {
+    if (m_low >= CABAC::ONE) {
       putCabacBit(1);
-      m_low -= CABAC::HALF;
+      m_low -= CABAC::ONE;
     }
-    else if (m_low < CABAC::QUARTER) {
+    else if (m_low < CABAC::HALF) {
       putCabacBit(0);
     }
     else {
       m_outstanding++;
-      m_low -= CABAC::QUARTER;
+      m_low -= CABAC::HALF;
     }
-
-    m_low   <<= 1;
-    m_range <<= 1;
-  }
-}
-
-void CABACEncoder::putCabacBit(bool bit) {
-  m_stream->writeBit(bit);
-
-  while (m_outstanding) {
-    m_stream->writeBit(!bit);
-    m_outstanding--;
-  }
-}
-
-void CABACEncoder::encodeU(CABAC::ContextModel &context, uint64_t value) {
-  for (size_t i = 0; i < value; i++) {
-    encodeBit(context, 1);
-  }
-  encodeBit(context, 0);
-}
-
-void CABACEncoder::encodeEG(uint64_t k, CABAC::ContextModel &context, uint64_t value) {
-  while (value >= (uint64_t { 1 } << k)) {
-    encodeBit(context, 1);
-    value -= uint64_t { 1 } << k;
-    k++;
   }
 
-  encodeBit(context, 0);
+  void terminate() {
+    m_low += 2;
+    m_range = 2;
 
-  while (k--) {
-    encodeBitBypass((value >> k) & 1);
-  }
-}
+    renormalize();
 
-void CABACEncoder::encodeEGBypass(uint64_t k, uint64_t value) {
-  while (value >= (uint64_t { 1 } << k)) {
-    encodeBitBypass(1);
-    value -= uint64_t { 1 } << k;
-    k++;
+    putCabacBit(0);
+    putCabacBit(0);
   }
 
-  encodeBitBypass(0);
-
-  while (k--) {
-    encodeBitBypass((value >> k) & 1);
-  }
-}
-
-void CABACEncoder::encodeUEG0(uint64_t u_bits, CABAC::ContextModel &context, uint64_t value) {
-  for (size_t i = 0; i < (value < u_bits ? value : u_bits); i++) {
-    encodeBit(context, 1);
-  }
-
-  if (value < u_bits) {
+  void encodeU(CABAC::ContextModel &context, uint64_t value) {
+    for (size_t i = 0; i < value; i++) {
+      encodeBit(context, 1);
+    }
     encodeBit(context, 0);
   }
-  else {
-    encodeEGBypass(0, value - u_bits);
-  }
-}
 
-void CABACEncoder::encodeRG(uint64_t &k, CABAC::ContextModel &context, uint64_t value) {
-  for (size_t i = 0; i < (value >> k); i++) {
-    encodeBit(context, 1);
-  }
-  encodeBit(context, 0);
-
-  for (size_t i = 1; i <= k; i++) {
-    encodeBitBypass((value >> (k - i)) & 1);
-  }
-
-  if ((value > (uint64_t { 3 } << k)) && k < 4) {
-    k++;
-  }
-}
-
-void CABACDecoder::init(IBitstream &stream) {
-  m_low    = 0;
-  m_range  = CABAC::HALF - 2;
-  m_stream = &stream;
-
-  for (size_t i = 0; i < CABAC::BITS; i++) {
-    m_low = (m_low << 1) | readBit(*m_stream);
-  }
-}
-
-bool CABACDecoder::decodeBit(CABAC::ContextModel &context) {
-  bool    bit  {};
-  uint8_t rLPS {};
-
-  rLPS     = CABAC::rangeTabLPS[context.m_state][(m_range >> 6) & 3];
-  m_range -= rLPS;
-
-  if (m_low < m_range) {
-    bit             = context.m_mps;
-    context.m_state = CABAC::transIdxMPS[context.m_state];
-  }
-  else {
-    m_low  -= m_range;
-    m_range = rLPS;
-    bit     = !context.m_mps;
-
-    if (context.m_state == 0) {
-      context.m_mps = !context.m_mps;
+  void encodeEG(uint64_t k, CABAC::ContextModel &context, uint64_t value) {
+    while (value >= (uint64_t { 1 } << k)) {
+      encodeBit(context, 1);
+      value -= uint64_t { 1 } << k;
+      k++;
     }
 
-    context.m_state = CABAC::transIdxLPS[context.m_state];
+    encodeBit(context, 0);
+
+    while (k--) {
+      encodeBitBypass((value >> k) & 1);
+    }
   }
 
-  while (m_range < CABAC::QUARTER) {
-    m_range <<= 1;
-    m_low = (m_low << 1) | readBit(*m_stream);
+  void encodeEGBypass(uint64_t k, uint64_t value) {
+    while (value >= (uint64_t { 1 } << k)) {
+      encodeBitBypass(1);
+      value -= uint64_t { 1 } << k;
+      k++;
+    }
+
+    encodeBitBypass(0);
+
+    while (k--) {
+      encodeBitBypass((value >> k) & 1);
+    }
   }
 
-  return bit;
-}
+  void encodeUEG0(uint64_t u_bits, CABAC::ContextModel &context, uint64_t value) {
+    for (size_t i = 0; i < (value < u_bits ? value : u_bits); i++) {
+      encodeBit(context, 1);
+    }
 
-bool CABACDecoder::decodeBitBypass() {
-  m_low = (m_low << 1) | readBit(*m_stream);
-
-  if (m_low >= m_range) {
-    m_low -= m_range;
-    return 1;
-  }
-  else {
-    return 0;
-  }
-}
-
-void CABACDecoder::terminate() {
-  m_stream = nullptr;
-}
-
-uint64_t CABACDecoder::decodeU(CABAC::ContextModel &context) {
-  uint64_t value { 0 };
-  while (decodeBit(context)) {
-    value++;
-  }
-  return value;
-}
-
-uint64_t CABACDecoder::decodeUEG0(uint64_t u_bits, CABAC::ContextModel &context) {
-  uint64_t value { 0 };
-  bool bit       {};
-
-  bit = decodeBit(context);
-  while (bit && (value < (u_bits - 1))) {
-    value++;
-    bit = decodeBit(context);
+    if (value < u_bits) {
+      encodeBit(context, 0);
+    }
+    else {
+      encodeEGBypass(0, value - u_bits);
+    }
   }
 
-  if (bit) {
-    value += decodeEG(0) + 1;
+  void encodeRG(uint64_t &k, CABAC::ContextModel &context, uint64_t value) {
+    for (size_t i = 0; i < (value >> k); i++) {
+      encodeBit(context, 1);
+    }
+    encodeBit(context, 0);
+
+    for (size_t i = 1; i <= k; i++) {
+      encodeBitBypass((value >> (k - i)) & 1);
+    }
+
+    if ((value > (uint64_t { 3 } << k)) && k < 4) {
+      k++;
+    }
+  }
+};
+
+// Arithmetic decoder. Pulls coded bits from a caller-provided source (a
+// callable returning a bool); it never touches a stream itself.
+template <typename Source>
+class CABACDecoder {
+  uint16_t m_low   {};
+  uint16_t m_range { CABAC::HALF - 2 };
+  Source   m_source;
+
+public:
+  explicit CABACDecoder(Source source): m_source(std::move(source)) {
+    for (size_t i = 0; i < CABAC::BITS; i++) {
+      m_low = (m_low << 1) | m_source();
+    }
   }
 
-  return value;
-}
+  bool decodeBit(CABAC::ContextModel &context) {
+    uint8_t rLPS = CABAC::rangeTabLPS[context.m_state][(m_range >> 6) & 3];
+    m_range -= rLPS;
 
-uint64_t CABACDecoder::decodeEG(uint64_t k) {
-  uint64_t value      { 0 };
-  uint64_t bin_symbol { 0 };
+    bool bit {};
+    if (m_low < m_range) {
+      bit             = context.m_mps;
+      context.m_state = CABAC::transIdxMPS[context.m_state];
+    }
+    else {
+      m_low  -= m_range;
+      m_range = rLPS;
+      bit     = !context.m_mps;
 
-  for (bool bit = decodeBitBypass(); bit; bit = decodeBitBypass()) {
-    value += uint64_t { 1 } << k;
-    k++;
+      if (context.m_state == 0) {
+        context.m_mps = !context.m_mps;
+      }
+
+      context.m_state = CABAC::transIdxLPS[context.m_state];
+    }
+
+    while (m_range < CABAC::QUARTER) {
+      m_range <<= 1;
+      m_low = (m_low << 1) | m_source();
+    }
+
+    return bit;
   }
 
-  while (k--) {
-    bin_symbol |= uint64_t { decodeBitBypass() } << k;
-  };
+  bool decodeBitBypass() {
+    m_low = (m_low << 1) | m_source();
 
-  value += bin_symbol;
+    if (m_low >= m_range) {
+      m_low -= m_range;
+      return 1;
+    }
+    else {
+      return 0;
+    }
+  }
 
-  return value;
-}
+  uint64_t decodeU(CABAC::ContextModel &context) {
+    uint64_t value { 0 };
+    while (decodeBit(context)) {
+      value++;
+    }
+    return value;
+  }
+
+  uint64_t decodeUEG0(uint64_t u_bits, CABAC::ContextModel &context) {
+    uint64_t value { 0 };
+
+    bool bit = decodeBit(context);
+    while (bit && (value < (u_bits - 1))) {
+      value++;
+      bit = decodeBit(context);
+    }
+
+    if (bit) {
+      value += decodeEG(0) + 1;
+    }
+
+    return value;
+  }
+
+  uint64_t decodeEG(uint64_t k) {
+    uint64_t value      { 0 };
+    uint64_t bin_symbol { 0 };
+
+    for (bool bit = decodeBitBypass(); bit; bit = decodeBitBypass()) {
+      value += uint64_t { 1 } << k;
+      k++;
+    }
+
+    while (k--) {
+      bin_symbol |= uint64_t { decodeBitBypass() } << k;
+    }
+
+    value += bin_symbol;
+
+    return value;
+  }
+};

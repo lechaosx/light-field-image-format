@@ -1,11 +1,3 @@
-/**
-* @file bitstream.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 12. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Stream wrapper classes for streaming bits.
-*/
-
 #pragma once
 
 #include <cstdint>
@@ -14,60 +6,48 @@
 #include <ostream>
 #include <vector>
 
-struct IBitstream {
-  std::istream *stream    {};
-  uint8_t       index     {};
-  uint8_t       accumulator {};
-};
-
-inline void open(IBitstream &bs, std::istream &stream) {
-  bs.stream = &stream;
-  bs.index  = 8;
-}
-
-[[nodiscard]] inline bool readBit(IBitstream &bs) {
-  if (bs.index >= 8) {
-    bs.accumulator = bs.stream->get();
-    bs.index = 0;
-  }
-  return (bs.accumulator >> bs.index++) & 1;
-}
-
-[[nodiscard]] inline bool eof(const IBitstream &bs) {
-  return (bs.index >= 8) && bs.stream->eof();
-}
-
-class OBitstream {
-  std::ostream *m_stream     {};
-  uint8_t       m_index      {};
-  uint8_t       m_accumulator {};
+// Sub-byte bit packing state. The stream is passed to each method rather than
+// stored, so a bitstream is just the in-flight byte plus a bit index.
+class IBitstream {
+  uint8_t m_index       {8}; // 8 forces a fresh byte read on the first bit
+  uint8_t m_accumulator {};
 
 public:
-  OBitstream() = default;
-
-  OBitstream(std::ostream &stream): m_stream { &stream } {}
-
-  ~OBitstream() { flush(); }
-
-  void open(std::ostream &stream) { m_stream = &stream; }
-
-  void write(const std::vector<bool> &data) {
-    for (auto &&bit: data) {
-      writeBit(bit);
+  [[nodiscard]] bool readBit(std::istream &stream) {
+    if (m_index >= 8) {
+      m_accumulator = stream.get();
+      m_index = 0;
     }
+    return (m_accumulator >> m_index++) & 1;
   }
 
-  void writeBit(bool bit) {
+  [[nodiscard]] bool eof(std::istream &stream) const {
+    return (m_index >= 8) && stream.eof();
+  }
+};
+
+class OBitstream {
+  uint8_t m_index       {};
+  uint8_t m_accumulator {};
+
+public:
+  void writeBit(std::ostream &stream, bool bit) {
     m_accumulator |= bit << m_index;
     m_index++;
     if (m_index >= 8) {
-      flush();
+      flush(stream);
     }
   }
 
-  void flush() {
+  void write(std::ostream &stream, const std::vector<bool> &data) {
+    for (const bool bit: data) {
+      writeBit(stream, bit);
+    }
+  }
+
+  void flush(std::ostream &stream) {
     if (m_index > 0) {
-      m_stream->put(m_accumulator);
+      stream.put(m_accumulator);
       m_index = 0;
       m_accumulator = 0;
     }

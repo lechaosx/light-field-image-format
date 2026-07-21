@@ -1,11 +1,3 @@
-/**
-* @file runlength.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 13. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Module for performing run-length encoding.
-*/
-
 #pragma once
 
 #include <bit>
@@ -50,5 +42,5 @@ inline void rl_add_to_weights(const RunLengthPair &p, HuffmanWeights &weights, s
   weights[rl_huffman_symbol(p, class_bits)]++;
 }
 
-void rl_encode(const RunLengthPair &p, const HuffmanEncoder &encoder, OBitstream &stream, size_t class_bits);
-void rl_decode(RunLengthPair &p, const HuffmanDecoder &decoder, IBitstream &stream, size_t class_bits);
+void rl_encode(const RunLengthPair &p, const HuffmanEncoder &encoder, OBitstream &bitstream, std::ostream &stream, size_t class_bits);
+void rl_decode(RunLengthPair &p, const HuffmanDecoder &decoder, IBitstream &bitstream, std::istream &stream, size_t class_bits);

@@ -17,7 +17,7 @@ struct DWTBlockStream {
 };
 
 template<size_t D>
-void encode_dwt_block(DWTBlockStream<D> &s, const DynamicBlock<int32_t, D> &block, CABACEncoder &encoder) {
+void encode_dwt_block(DWTBlockStream<D> &s, const DynamicBlock<int32_t, D> &block, auto &encoder) {
   for (const auto &pos : iterate_dimensions<D>(block.size())) {
     int32_t coef = block[pos];
 
@@ -43,7 +43,7 @@ void encode_dwt_block(DWTBlockStream<D> &s, const DynamicBlock<int32_t, D> &bloc
 }
 
 template<size_t D>
-void decode_dwt_block(DWTBlockStream<D> &s, DynamicBlock<int32_t, D> &block, CABACDecoder &decoder) {
+void decode_dwt_block(DWTBlockStream<D> &s, DynamicBlock<int32_t, D> &block, auto &decoder) {
   for (const auto &pos : iterate_dimensions<D>(block.size())) {
     int32_t coef = decoder.decodeBit(s.significant_coef_flag_ctx);
 

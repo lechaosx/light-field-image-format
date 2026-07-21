@@ -40,7 +40,7 @@ struct DCTBlockStream {
 };
 
 template<size_t D>
-void encode_dct_block(DCTBlockStream<D> &s, const DynamicBlock<float, D> &block, CABACEncoder &encoder) {
+void encode_dct_block(DCTBlockStream<D> &s, const DynamicBlock<float, D> &block, auto &encoder) {
   std::vector<bool> nonzero_diags(s.diagonals);
 
   for (size_t diag = 0; diag < s.diagonals; diag++) {
@@ -133,7 +133,7 @@ void encode_dct_block(DCTBlockStream<D> &s, const DynamicBlock<float, D> &block,
 }
 
 template<size_t D>
-void decode_dct_block(DCTBlockStream<D> &s, DynamicBlock<float, D> &block, CABACDecoder &decoder) {
+void decode_dct_block(DCTBlockStream<D> &s, DynamicBlock<float, D> &block, auto &decoder) {
   block.fill(0.f);
   std::vector<bool> nonzero_diags(s.diagonals);
 

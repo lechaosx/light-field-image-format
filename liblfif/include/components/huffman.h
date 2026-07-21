@@ -1,11 +1,3 @@
-/**
-* @file huffman.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 12. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Functions for Huffman encoding and decoding.
-*/
-
 #pragma once
 
 class IBitstream;
@@ -38,5 +30,5 @@ HuffmanEncoder huff_build(const HuffmanWeights &weights);
 void           huff_write(const HuffmanEncoder &enc, std::ostream &stream);
 HuffmanDecoder huff_read(std::istream &stream);
 
-void                    huff_encode(const HuffmanEncoder &enc, HuffmanSymbol symbol, OBitstream &stream);
-[[nodiscard]] HuffmanSymbol huff_decode(const HuffmanDecoder &dec, IBitstream &stream);
+void                    huff_encode(const HuffmanEncoder &enc, HuffmanSymbol symbol, OBitstream &bitstream, std::ostream &stream);
+[[nodiscard]] HuffmanSymbol huff_decode(const HuffmanDecoder &dec, IBitstream &bitstream, std::istream &stream);

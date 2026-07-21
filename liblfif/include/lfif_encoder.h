@@ -1,11 +1,3 @@
-/**
-* @file lfif_encoder.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 12. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Functions for encoding an image.
-*/
-
 #pragma once
 
 #include <cstdint>
@@ -13,7 +5,7 @@
 
 #include "components/bitstream.h"
 #include "components/colorspace.h"
-#include "components/endian.h"
+#include "components/lfif_header.h"
 
 #include "block_predictor.h"
 #include "dct_block_stream.h"
@@ -22,11 +14,7 @@
 
 template <size_t D>
 struct LFIFEncoder {
-  std::array<size_t, D> size;
-  std::array<size_t, D> block_size;
-  uint8_t depth_bits;
-  uint8_t discarded_bits;
-  bool predicted;
+  LFIFHeader<D> header;
 
   void create(
             std::ostream          &output,
@@ -36,39 +24,24 @@ struct LFIFEncoder {
             uint8_t                discarded_bits,
             bool                   predicted) {
 
-    this->size = size;
-    this->block_size = block_size;
-    this->depth_bits = depth_bits;
-    this->discarded_bits = discarded_bits;
-    this->predicted = predicted;
-
-    writeValueToStream<uint8_t>(depth_bits, output);
-    writeValueToStream<uint8_t>(discarded_bits, output);
-    writeValueToStream<bool>(predicted, output);
-
-    for (size_t i = 0; i < D; i++) {
-      writeValueToStream<uint64_t>(size[i], output);
-    }
-
-    for (size_t i = 0; i < D; i++) {
-      writeValueToStream<uint64_t>(block_size[i], output);
-    }
+    header = { size, block_size, depth_bits, discarded_bits, predicted };
+    header.write(output);
   }
 
   template <typename F>
   void encodeStream(F &&puller, std::ostream &output) {
-    DynamicBlock<float, D> block_Y(this->block_size);
-    DynamicBlock<float, D> block_U(this->block_size);
-    DynamicBlock<float, D> block_V(this->block_size);
+    DynamicBlock<float, D> block_Y(this->header.block_size);
+    DynamicBlock<float, D> block_U(this->header.block_size);
+    DynamicBlock<float, D> block_V(this->header.block_size);
 
-    DCTCoefs<D> dct_coefs(this->block_size);
+    DCTCoefs<D> dct_coefs(this->header.block_size);
 
-    DCTBlockStream<D> stream_Y(this->block_size);
-    DCTBlockStream<D> stream_UV(this->block_size);
+    DCTBlockStream<D> stream_Y(this->header.block_size);
+    DCTBlockStream<D> stream_UV(this->header.block_size);
 
     std::array<size_t, D> predictor_size {};
-    if (this->predicted) {
-      predictor_size = this->size;
+    if (this->header.predicted) {
+      predictor_size = this->header.size;
     }
 
     BlockPredictor<D, float> predictor_Y(predictor_size);
@@ -78,17 +51,14 @@ struct LFIFEncoder {
     PredictionTypeStream<D> pred_type_stream {};
 
     OBitstream   bitstream {};
-    CABACEncoder cabac     {};
-
-    bitstream.open(output);
-    cabac.init(bitstream);
+    CABACEncoder cabac { [&](bool bit) { bitstream.writeBit(output, bit); } };
 
     std::array<size_t, D> aligned_image_size {};
     for (size_t i = 0; i < D; i++) {
-      aligned_image_size[i] = (this->size[i] + this->block_size[i] - 1) / this->block_size[i] * this->block_size[i];
+      aligned_image_size[i] = (this->header.size[i] + this->header.block_size[i] - 1) / this->header.block_size[i] * this->header.block_size[i];
     }
 
-    for (const auto &offset : block_for<D>({}, this->block_size, aligned_image_size)) {
+    for (const auto &offset : block_for<D>({}, this->header.block_size, aligned_image_size)) {
       for (size_t i = 0; i < D; i++) {
         std::print(stderr, "{} ", offset[i]);
       }
@@ -98,16 +68,16 @@ struct LFIFEncoder {
       }
       std::println(stderr);
 
-      moveBlock<D>(puller, this->size, offset,
+      moveBlock<D>(puller, this->header.size, offset,
                    [&](const auto &block_pos, const auto &value) {
-                     block_Y[block_pos] = YCbCr::RGBToY(value[0], value[1], value[2]) - pow(2, this->depth_bits - 1);
+                     block_Y[block_pos] = YCbCr::RGBToY(value[0], value[1], value[2]) - pow(2, this->header.depth_bits - 1);
                      block_U[block_pos] = YCbCr::RGBToCb(value[0], value[1], value[2]);
                      block_V[block_pos] = YCbCr::RGBToCr(value[0], value[1], value[2]);
-                   }, this->block_size, {},
-                   this->block_size);
+                   }, this->header.block_size, {},
+                   this->header.block_size);
 
       PredictionType<D> prediction_type {};
-      if (this->predicted) {
+      if (this->header.predicted) {
         prediction_type = predictor_Y.selectPredictionType(block_Y, offset);
 
         predictor_Y.forwardPass(block_Y, offset, prediction_type);
@@ -115,18 +85,18 @@ struct LFIFEncoder {
         predictor_V.forwardPass(block_V, offset, prediction_type);
       }
 
-      dct_forward(block_Y, dct_coefs, this->discarded_bits);
-      dct_forward(block_U, dct_coefs, this->discarded_bits);
-      dct_forward(block_V, dct_coefs, this->discarded_bits);
+      dct_forward(block_Y, dct_coefs, this->header.discarded_bits);
+      dct_forward(block_U, dct_coefs, this->header.discarded_bits);
+      dct_forward(block_V, dct_coefs, this->header.discarded_bits);
 
       encode_dct_block(stream_Y,  block_Y, cabac);
       encode_dct_block(stream_UV, block_U, cabac);
       encode_dct_block(stream_UV, block_V, cabac);
 
-      if (this->predicted) {
-        dct_inverse(block_Y, dct_coefs, this->discarded_bits);
-        dct_inverse(block_U, dct_coefs, this->discarded_bits);
-        dct_inverse(block_V, dct_coefs, this->discarded_bits);
+      if (this->header.predicted) {
+        dct_inverse(block_Y, dct_coefs, this->header.discarded_bits);
+        dct_inverse(block_U, dct_coefs, this->header.discarded_bits);
+        dct_inverse(block_V, dct_coefs, this->header.discarded_bits);
 
         predictor_Y.backwardPass(block_Y, offset, prediction_type);
         predictor_U.backwardPass(block_U, offset, prediction_type);
@@ -137,6 +107,6 @@ struct LFIFEncoder {
     }
 
     cabac.terminate();
-    bitstream.flush();
+    bitstream.flush(output);
   }
 };

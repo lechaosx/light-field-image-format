@@ -1,8 +1,3 @@
-/******************************************************************************\
-* SOUBOR: lfif4d_decompress.cc
-* AUTOR: Drahomir Dlabaja (xdlaba02)
-\******************************************************************************/
-
 #include <fstream>
 #include <print>
 #include <vector>
@@ -43,21 +38,21 @@ int main(int argc, char *argv[]) {
   LFIFDecoder<4> decoder {};
   decoder.open(input_stream);
 
-  std::vector<PPM> ppm_data(decoder.size[2] * decoder.size[3]);
-  if (createPPMs(output_file_mask, decoder.size[0], decoder.size[1], (1u << decoder.depth_bits) - 1, ppm_data) < 0) {
+  std::vector<PPM> ppm_data(decoder.header.size[2] * decoder.header.size[3]);
+  if (createPPMs(output_file_mask, decoder.header.size[0], decoder.header.size[1], (1u << decoder.header.depth_bits) - 1, ppm_data) < 0) {
     return 3;
   }
 
   auto puller = [&](const std::array<size_t, 4> &pos) -> std::array<uint16_t, 3> {
-    size_t img_index = pos[1] * decoder.size[0] + pos[0];
-    size_t img       = pos[3] * decoder.size[2] + pos[2];
+    size_t img_index = pos[1] * decoder.header.size[0] + pos[0];
+    size_t img       = pos[3] * decoder.header.size[2] + pos[2];
 
     return ppm_data[img].get(img_index);
   };
 
   auto pusher = [&](const std::array<size_t, 4> &pos, const std::array<uint16_t, 3> &RGB) {
-    size_t img_index = pos[1] * decoder.size[0] + pos[0];
-    size_t img       = pos[3] * decoder.size[2] + pos[2];
+    size_t img_index = pos[1] * decoder.header.size[0] + pos[0];
+    size_t img       = pos[3] * decoder.header.size[2] + pos[2];
 
     ppm_data[img].put(img_index, RGB);
   };
@@ -65,8 +60,8 @@ int main(int argc, char *argv[]) {
   decoder.decodeStream(input_stream, pusher);
 
   if (std::ranges::any_of(shift, [](auto val) { return val != 0; })) {
-    for (size_t y {}; y < decoder.size[3]; y++) {
-      for (size_t x {}; x < decoder.size[2]; x++) {
+    for (size_t y {}; y < decoder.header.size[3]; y++) {
+      for (size_t x {}; x < decoder.header.size[2]; x++) {
         auto shiftInputF = [&](const std::array<size_t, 2> &pos) {
           std::array<size_t, 4> whole_image_pos { pos[0], pos[1], x, y };
           return puller(whole_image_pos);
@@ -77,7 +72,7 @@ int main(int argc, char *argv[]) {
           return pusher(whole_image_pos, value);
         };
 
-        shift_image(shiftInputF, shiftOutputF, {decoder.size[0], decoder.size[1]}, get_shift_coef({x, y}, {decoder.size[2], decoder.size[3]}, shift));
+        shift_image(shiftInputF, shiftOutputF, {decoder.header.size[0], decoder.header.size[1]}, get_shift_coef({x, y}, {decoder.header.size[2], decoder.header.size[3]}, shift));
       }
     }
   }
