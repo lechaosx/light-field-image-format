@@ -12,6 +12,7 @@
 #include "components/endian.h"
 
 #include "block_predictor.h"
+#include "codec_parameters.h"
 #include "dwt_block_stream.h"
 #include "dwt_block_transformer.h"
 #include "prediction_type_stream.h"
@@ -32,6 +33,8 @@ struct LFWFEncoder: public LFWF<D> {
             uint8_t                depth_bits,
             uint8_t                discarded_bits,
             bool                   predicted) {
+
+    validateCodecParameters(size, block_size, depth_bits);
 
     this->size = size;
     this->block_size = block_size;

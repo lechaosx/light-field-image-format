@@ -13,6 +13,7 @@
 #include "components/endian.h"
 
 #include "block_predictor.h"
+#include "codec_parameters.h"
 #include "dwt_block_transformer.h"
 #include "dwt_block_stream.h"
 #include "prediction_type_stream.h"
@@ -36,6 +37,8 @@ struct LFWFDecoder: public LFWF<D> {
     for (size_t i = 0; i < D; i++) {
       this->block_size[i] = readValueFromStream<uint64_t>(input);
     }
+
+    validateCodecParameters(this->size, this->block_size, this->depth_bits);
   }
 
   template<typename F>
