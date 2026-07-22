@@ -9,6 +9,7 @@ add_executable(
   test_codec_parameters.cc
   test_dct.cc
   test_dwt.cc
+  test_format.cc
   test_huffman.cc
   test_lfif_roundtrip.cc
   test_lfwf_roundtrip.cc

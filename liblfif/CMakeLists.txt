@@ -2,6 +2,7 @@ add_library(
   lfif
   STATIC
   src/bwt.cc
+  src/format.cc
   src/huffman.cc
   src/runlength.cc
 )
