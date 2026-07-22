@@ -21,7 +21,6 @@
 
 #include <cstdint>
 
-#include <iostream>
 #include <sstream>
 #include <map>
 
@@ -90,15 +89,6 @@ struct LFIFEncoder: public LFIF<D> {
     }
 
     block_for<D>({}, this->block_size, aligned_image_size, [&](const std::array<size_t, D> &offset) {
-      for (size_t i = 0; i < D; i++) {
-        std::cerr << offset[i] << " ";
-      }
-      std::cerr << "out of ";
-      for (size_t i { 0 }; i < D; i++) {
-        std::cerr << aligned_image_size[i] << " ";
-      }
-      std::cerr << "\n";
-
       moveBlock<D>(puller, this->size, offset,
                    [&](const auto &block_pos, const auto &value) {
                      block_Y[block_pos] = YCbCr::RGBToY(value[0], value[1], value[2]) - pow(2, this->depth_bits - 1);

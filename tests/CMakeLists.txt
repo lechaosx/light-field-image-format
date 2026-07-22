@@ -24,6 +24,10 @@ target_link_libraries(
   lfif_unit_tests
   PRIVATE lfif ppm GTest::gtest GTest::gtest_main lfif_project_options
 )
+target_compile_definitions(
+  lfif_unit_tests
+  PRIVATE LFIF_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+)
 
 include(GoogleTest)
 gtest_discover_tests(lfif_unit_tests)
@@ -89,6 +93,36 @@ add_test(
     ${CMAKE_CURRENT_BINARY_DIR}/omni-dct.ppm
 )
 set_tests_properties(OmniCli.DctDecompress PROPERTIES DEPENDS OmniCli.DctCompress)
+
+add_test(
+  NAME OmniCli.FourDimensionalCompress
+  COMMAND
+    $<TARGET_FILE:lfif_cli>
+    compress
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/grid-##.ppm"
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-4d.lfif
+    --shape 2x2
+)
+add_test(
+  NAME OmniCli.FourDimensionalInspect
+  COMMAND $<TARGET_FILE:lfif_cli> inspect ${CMAKE_CURRENT_BINARY_DIR}/omni-4d.lfif
+)
+set_tests_properties(
+  OmniCli.FourDimensionalInspect
+  PROPERTIES DEPENDS OmniCli.FourDimensionalCompress PASS_REGULAR_EXPRESSION "dimensions: 4"
+)
+add_test(
+  NAME OmniCli.FourDimensionalDecompress
+  COMMAND
+    $<TARGET_FILE:lfif_cli>
+    decompress
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-4d.lfif
+    "${CMAKE_CURRENT_BINARY_DIR}/omni-4d-##.ppm"
+)
+set_tests_properties(
+  OmniCli.FourDimensionalDecompress
+  PROPERTIES DEPENDS OmniCli.FourDimensionalCompress
+)
 
 if(LFIF_BUILD_EXTRAS)
   add_executable(create_extra_test_ppm create_extra_test_ppm.cc)

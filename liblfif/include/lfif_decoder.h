@@ -21,8 +21,6 @@
 
 #include <cstdint>
 
-#include <iostream>
-
 template <size_t D>
 struct LFIFDecoder: public LFIF<D> {
   void open(std::istream &input) {
@@ -75,15 +73,6 @@ struct LFIFDecoder: public LFIF<D> {
     cabac.init(bitstream);
 
     block_for<D>({}, this->block_size, aligned_image_size, [&](const std::array<size_t, D> &offset) {
-      for (size_t i = 0; i < D; i++) {
-        std::cerr << offset[i] << " ";
-      }
-      std::cerr << "out of ";
-      for (size_t i = 0; i < D; i++) {
-        std::cerr << aligned_image_size[i] << " ";
-      }
-      std::cerr << "\n";
-
       block_decoder_Y.decodeBlock(cabac,  block_Y);
       block_decoder_UV.decodeBlock(cabac, block_U);
       block_decoder_UV.decodeBlock(cabac, block_V);

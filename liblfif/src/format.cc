@@ -138,10 +138,18 @@ std::vector<uint8_t> serializeHeader(const Header &header) {
 }
 
 Header parseHeader(std::istream &input) {
-  for (const uint8_t expected : magic) {
-    if (read(input, 1) != expected) {
-      throw std::runtime_error("invalid LFIF magic");
-    }
+  std::array<uint8_t, magic.size()> signature {};
+  for (uint8_t &byte : signature) {
+    byte = read(input, 1);
+  }
+  if (signature[0] == 'L' && signature[1] == 'F' && signature[2] == 'I'
+      && signature[3] == 'F' && signature[4] == '-'
+      && (signature[5] == '2' || signature[5] == '4')
+      && signature[6] == 'D' && signature[7] == '\n') {
+    throw std::runtime_error("unsupported legacy LFIF format");
+  }
+  if (signature != magic) {
+    throw std::runtime_error("invalid LFIF magic");
   }
 
   const uint8_t major_version = read(input, 1);

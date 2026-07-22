@@ -3,6 +3,7 @@
 #include <lfif/format.h>
 
 #include <cstdint>
+#include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -95,6 +96,22 @@ TEST(Format, RejectsMalformedAndUnsupportedHeaders) {
   truncated.resize(31);
   auto truncated_stream = streamFor(truncated);
   EXPECT_THROW(lfif::parseHeader(truncated_stream), std::runtime_error);
+}
+
+TEST(Format, RejectsLegacyContainerHeadersExplicitly) {
+  for (const std::string name : {
+           "legacy-lfif-2d-header.lfif",
+           "legacy-lfif-4d-header.lfif",
+       }) {
+    std::ifstream input(std::string(LFIF_TEST_FIXTURE_DIR) + "/" + name, std::ios::binary);
+    ASSERT_TRUE(input);
+    try {
+      static_cast<void>(lfif::parseHeader(input));
+      FAIL() << "legacy header was accepted: " << name;
+    } catch (const std::runtime_error &error) {
+      EXPECT_STREQ(error.what(), "unsupported legacy LFIF format");
+    }
+  }
 }
 
 TEST(Format, SkipsExtensionsFromNewerMinorVersions) {

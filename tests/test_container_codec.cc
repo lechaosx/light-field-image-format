@@ -3,6 +3,7 @@
 #include <lfif/codec.h>
 
 #include <cstdint>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -67,6 +68,19 @@ TEST(ContainerCodec, RoundTripsWaveletImagesAcrossSupportedDimensions) {
 TEST(ContainerCodec, RoundTripsExplicitDctVariant) {
   const std::vector<lfif::Pixel> constant(16, {80, 120, 160});
   expectRoundTrip(header({2, 2, 2, 2}, {2, 2, 2, 2}, lfif::Transform::dct), constant);
+}
+
+TEST(ContainerCodec, DoesNotWriteProgressToStandardError) {
+  std::ostringstream diagnostics;
+  std::streambuf *original = std::cerr.rdbuf(diagnostics.rdbuf());
+
+  expectRoundTrip(header({2, 2}, {1, 1}), pixels(4));
+  expectRoundTrip(
+      header({2, 2, 2, 2}, {2, 2, 2, 2}, lfif::Transform::dct),
+      std::vector<lfif::Pixel>(16, {80, 120, 160}));
+
+  std::cerr.rdbuf(original);
+  EXPECT_TRUE(diagnostics.str().empty()) << diagnostics.str();
 }
 
 TEST(ContainerCodec, RejectsPixelCountMismatchBeforeWriting) {

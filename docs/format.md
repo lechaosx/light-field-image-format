@@ -67,3 +67,15 @@ The current reference codec implementation encodes and decodes dimensions 2
 through 4. The dimension field and container validation are not tied to that
 implementation limit, so a later codec can extend the supported range without a
 container-version change.
+
+## Legacy files
+
+Version 1 does not read the earlier `LFIF-2D\n` and `LFIF-4D\n` containers.
+Readers recognize those prefixes and reject them as unsupported legacy LFIF
+rather than interpreting them as a malformed version 1 header. The old 2D file
+used the wavelet implementation named LFWF internally, but its on-disk prefix
+was still `LFIF-2D`; there was no separate versioned LFWF container.
+
+Use the software at the `v1.0.0` or `v2.0.0` tag to decode those files before
+converting their PPM output to this format. New encoders always write the
+versioned eight-byte magic documented above.
