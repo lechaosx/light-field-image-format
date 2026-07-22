@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -43,6 +44,25 @@ TEST(Mtf, HandlesEmptyRepeatedAndGrowingDictionaries) {
   expectRoundTrip({}, [] { return updateBase; });
   expectRoundTrip({5, 5, 5, 5}, [] { return updateBase; });
   expectRoundTrip({0, 300, 1, 299, 300, 0}, [] { return updateBase; });
+}
+
+TEST(Mtf, RejectsNegativeSymbolsAndIndexes) {
+  std::vector<uint64_t> encode_dictionary;
+  std::vector<int64_t> symbols {-1};
+  EXPECT_THROW(moveToFront(encode_dictionary, symbols, updateBase), std::invalid_argument);
+
+  std::vector<uint64_t> decode_dictionary;
+  std::vector<int64_t> indexes {-1};
+  EXPECT_THROW(moveFromFront(decode_dictionary, indexes, updateBase), std::invalid_argument);
+}
+
+TEST(Mtf, RejectsDictionaryMissingAnEncodedSymbol) {
+  std::vector<uint64_t> dictionary {10};
+  std::vector<int64_t> symbols {0};
+  auto leave_dictionary_unchanged = [](std::vector<uint64_t> &, size_t) {};
+  EXPECT_THROW(
+      moveToFront(dictionary, symbols, leave_dictionary_unchanged),
+      std::invalid_argument);
 }
 
 TEST(Mtf, RoundTripsEveryPreservedUpdateVariant) {

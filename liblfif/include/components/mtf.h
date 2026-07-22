@@ -13,22 +13,33 @@
 #include <cmath>
 #include <iterator>
 #include <map>
+#include <stdexcept>
 #include <vector>
 
 template<typename F>
 void moveToFront(std::vector<uint64_t> &dictionary, std::vector<int64_t> &data, F &&update) {
   for (size_t i = 0; i < data.size(); i++) {
-    if (data[i] >= dictionary.size()) {
+    if (data[i] < 0) {
+      throw std::invalid_argument("MTF symbols must be nonnegative");
+    }
+    const uint64_t symbol = static_cast<uint64_t>(data[i]);
+    if (symbol >= dictionary.size()) {
+      if (symbol >= dictionary.max_size()) {
+        throw std::length_error("MTF dictionary is too large");
+      }
       size_t dict_end = dictionary.size();
 
-      dictionary.resize(data[i] + 1);
+      dictionary.resize(static_cast<size_t>(symbol) + 1);
 
       for (size_t i = dict_end; i < dictionary.size(); i++) {
         dictionary[i] = i;
       }
     }
 
-    auto it = std::find(std::begin(dictionary), std::end(dictionary), data[i]);
+    auto it = std::find(std::begin(dictionary), std::end(dictionary), symbol);
+    if (it == std::end(dictionary)) {
+      throw std::invalid_argument("MTF dictionary does not contain symbol");
+    }
 
     size_t k = std::distance(std::begin(dictionary), it);
 
@@ -41,12 +52,18 @@ void moveToFront(std::vector<uint64_t> &dictionary, std::vector<int64_t> &data, 
 template<typename F>
 void moveFromFront(std::vector<uint64_t> &dictionary, std::vector<int64_t> &data, F &&update) {
   for (size_t i {}; i < data.size(); i++) {
-    uint64_t k = data[i];
+    if (data[i] < 0) {
+      throw std::invalid_argument("MTF indexes must be nonnegative");
+    }
+    uint64_t k = static_cast<uint64_t>(data[i]);
 
     if (k >= dictionary.size()) {
+      if (k >= dictionary.max_size()) {
+        throw std::length_error("MTF dictionary is too large");
+      }
       size_t dict_end = dictionary.size();
 
-      dictionary.resize(k + 1);
+      dictionary.resize(static_cast<size_t>(k) + 1);
 
       for (size_t i = dict_end; i < dictionary.size(); i++) {
         dictionary[i] = i;
