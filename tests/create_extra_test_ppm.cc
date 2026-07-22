@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <fstream>
 #include <string>
 #include <string_view>
 
@@ -37,6 +38,34 @@ int main(int argc, char *argv[]) {
       }
     }
     return 0;
+  }
+  if (argc == 4 && std::string_view(argv[1]) == "--check-grid") {
+    size_t count = std::stoul(argv[3]);
+    for (size_t image = 0; image < count; ++image) {
+      std::string index = std::to_string(image);
+      if (index.size() < 2) {
+        index.insert(index.begin(), 2 - index.size(), '0');
+      }
+      PPM ppm;
+      const std::string path = std::string(argv[2]) + index + ".ppm";
+      if (ppm.mmapPPM(path.c_str()) < 0) {
+        return 1;
+      }
+    }
+    return 0;
+  }
+  if (argc == 3 && std::string_view(argv[1]) == "--truncated-xvc-size") {
+    std::ofstream output(argv[2], std::ios::binary);
+    output.write("xvc", 3);
+    output.close();
+    return output ? 0 : 1;
+  }
+  if (argc == 3 && std::string_view(argv[1]) == "--malformed-xvc") {
+    std::ofstream output(argv[2], std::ios::binary);
+    const std::array<char, 5> bytes {1, 0, 0, 0, static_cast<char>(0xff)};
+    output.write(bytes.data(), bytes.size());
+    output.close();
+    return output ? 0 : 1;
   }
   if (argc != 2) {
     return 1;

@@ -235,6 +235,100 @@ if(LFIF_BUILD_EXTRAS)
   set_tests_properties(ExtraSmoke.XvcOutput PROPERTIES DEPENDS ExtraSmoke.XvcDecompress)
 
   add_test(
+    NAME ExtraXvc.MultiCompress
+    COMMAND
+      $<TARGET_FILE:xvc_compress>
+      -i "${CMAKE_CURRENT_BINARY_DIR}/mask-input-##.ppm"
+      -o ${CMAKE_CURRENT_BINARY_DIR}/multi.xvc
+      -q 20
+  )
+  set_tests_properties(
+    ExtraXvc.MultiCompress
+    PROPERTIES FIXTURES_REQUIRED ExtraMaskInput FIXTURES_SETUP ExtraXvcStream
+  )
+  add_test(
+    NAME ExtraXvc.MultiDecompress
+    COMMAND
+      $<TARGET_FILE:xvc_decompress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/multi.xvc
+      -o "${CMAKE_CURRENT_BINARY_DIR}/xvc-multi-##.ppm"
+  )
+  set_tests_properties(
+    ExtraXvc.MultiDecompress
+    PROPERTIES FIXTURES_REQUIRED ExtraXvcStream FIXTURES_SETUP ExtraXvcOutput
+  )
+  add_test(
+    NAME ExtraXvc.MultiOutput
+    COMMAND
+      $<TARGET_FILE:create_extra_test_ppm>
+      --check-grid ${CMAKE_CURRENT_BINARY_DIR}/xvc-multi- 16
+  )
+  set_tests_properties(ExtraXvc.MultiOutput PROPERTIES FIXTURES_REQUIRED ExtraXvcOutput)
+
+  add_test(
+    NAME ExtraXvc.CreateTruncatedSize
+    COMMAND
+      $<TARGET_FILE:create_extra_test_ppm>
+      --truncated-xvc-size ${CMAKE_CURRENT_BINARY_DIR}/truncated-size.xvc
+  )
+  set_tests_properties(
+    ExtraXvc.CreateTruncatedSize
+    PROPERTIES FIXTURES_SETUP ExtraXvcTruncatedSize
+  )
+  add_test(
+    NAME ExtraXvc.CreateMalformedInput
+    COMMAND
+      $<TARGET_FILE:create_extra_test_ppm>
+      --malformed-xvc ${CMAKE_CURRENT_BINARY_DIR}/malformed.xvc
+  )
+  set_tests_properties(
+    ExtraXvc.CreateMalformedInput
+    PROPERTIES FIXTURES_SETUP ExtraXvcMalformedInput
+  )
+  add_test(
+    NAME ExtraXvc.RejectsEmptyInput
+    COMMAND
+      $<TARGET_FILE:xvc_decompress>
+      -i /dev/null
+      -o "${CMAKE_CURRENT_BINARY_DIR}/empty-xvc-#.ppm"
+  )
+  set_tests_properties(ExtraXvc.RejectsEmptyInput PROPERTIES WILL_FAIL TRUE)
+  add_test(
+    NAME ExtraXvc.RejectsTruncatedNalSize
+    COMMAND
+      $<TARGET_FILE:xvc_decompress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/truncated-size.xvc
+      -o "${CMAKE_CURRENT_BINARY_DIR}/truncated-xvc-#.ppm"
+  )
+  set_tests_properties(
+    ExtraXvc.RejectsTruncatedNalSize
+    PROPERTIES FIXTURES_REQUIRED ExtraXvcTruncatedSize WILL_FAIL TRUE
+  )
+  add_test(
+    NAME ExtraXvc.RejectsMalformedNal
+    COMMAND
+      $<TARGET_FILE:xvc_decompress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/malformed.xvc
+      -o "${CMAKE_CURRENT_BINARY_DIR}/malformed-xvc-#.ppm"
+  )
+  set_tests_properties(
+    ExtraXvc.RejectsMalformedNal
+    PROPERTIES FIXTURES_REQUIRED ExtraXvcMalformedInput WILL_FAIL TRUE
+  )
+  add_test(
+    NAME ExtraXvc.RejectsOutputWriteFailure
+    COMMAND
+      $<TARGET_FILE:xvc_compress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o /dev/full
+      -q 20
+  )
+  set_tests_properties(
+    ExtraXvc.RejectsOutputWriteFailure
+    PROPERTIES FIXTURES_REQUIRED ExtraSmokeInput WILL_FAIL TRUE
+  )
+
+  add_test(
     NAME ExtraMask.CreateInput
     COMMAND
       $<TARGET_FILE:create_extra_test_ppm>

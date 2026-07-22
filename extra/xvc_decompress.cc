@@ -61,40 +61,40 @@ void print_usage(char *argv0) {
 }
 
 template <typename F>
-void decode(const xvc_decoder_api *xvc_api, xvc_decoder *decoder, vector<uint8_t> &nal, F &&callback) {
+bool outputPictures(const xvc_decoder_api *xvc_api, xvc_decoder *decoder, F &&callback) {
   xvc_decoded_picture decoded_pic {};
 
-  xvc_dec_return_code ret = xvc_api->decoder_decode_nal(decoder, nal.data(), nal.size(), 0);
-
-  if (ret == XVC_DEC_BITSTREAM_VERSION_LOWER_THAN_SUPPORTED_BY_DECODER) {
-    cerr << xvc_api->xvc_dec_get_error_text(ret) << endl;
-    exit(XVC_DEC_BITSTREAM_VERSION_LOWER_THAN_SUPPORTED_BY_DECODER);
-  } else if (ret == XVC_DEC_BITSTREAM_VERSION_HIGHER_THAN_DECODER) {
-    cerr << xvc_api->xvc_dec_get_error_text(ret) << endl;
-    exit(XVC_DEC_BITSTREAM_VERSION_HIGHER_THAN_DECODER);
-  } else if (ret == XVC_DEC_BITSTREAM_BITDEPTH_TOO_HIGH) {
-    cerr << xvc_api->xvc_dec_get_error_text(ret) << endl;
-    exit(XVC_DEC_BITSTREAM_BITDEPTH_TOO_HIGH);
-  }
-
-  if (xvc_api->decoder_get_picture(decoder, &decoded_pic) == XVC_DEC_OK) {
+  while (true) {
+    const xvc_dec_return_code ret = xvc_api->decoder_get_picture(decoder, &decoded_pic);
+    if (ret == XVC_DEC_NO_DECODED_PIC) {
+      return true;
+    }
+    if (ret != XVC_DEC_OK) {
+      cerr << "xvc output failed: " << xvc_api->xvc_dec_get_error_text(ret) << endl;
+      return false;
+    }
     callback(decoded_pic);
   }
 }
 
 template <typename F>
-void flush(const xvc_decoder_api *xvc_api, xvc_decoder *decoder, F &&callback) {
-  xvc_decoded_picture decoded_pic {};
-
-  xvc_dec_return_code ret = xvc_api->decoder_flush(decoder);
+bool decode(const xvc_decoder_api *xvc_api, xvc_decoder *decoder, vector<uint8_t> &nal, F &&callback) {
+  const xvc_dec_return_code ret = xvc_api->decoder_decode_nal(decoder, nal.data(), nal.size(), 0);
   if (ret != XVC_DEC_OK) {
-    cerr << "Unexpected return code after flush " << ret << endl;
-    exit(ret);
+    cerr << "xvc decode failed: " << xvc_api->xvc_dec_get_error_text(ret) << endl;
+    return false;
   }
+  return outputPictures(xvc_api, decoder, callback);
+}
 
-  if (xvc_api->decoder_get_picture(decoder, &decoded_pic) == XVC_DEC_OK) {
-    callback(decoded_pic);
+template <typename F>
+bool flush(const xvc_decoder_api *xvc_api, xvc_decoder *decoder, F &&callback) {
+  const xvc_dec_return_code ret = xvc_api->decoder_flush(decoder);
+  if (ret != XVC_DEC_OK) {
+    cerr << "xvc flush failed: " << xvc_api->xvc_dec_get_error_text(ret) << endl;
+    return false;
   }
+  return outputPictures(xvc_api, decoder, callback);
 }
 
 int main(int argc, char *argv[]) {
@@ -151,11 +151,18 @@ int main(int argc, char *argv[]) {
   }
 
   decoder = xvc_api->decoder_create(params);
+  if (!decoder) {
+    cerr << "xvc decoder creation failed" << endl;
+    xvc_api->parameters_destroy(params);
+    return 1;
+  }
 
-  input.open(input_file_name);
+  input.open(input_file_name, std::ios::binary);
   if (!input) {
     cerr << "Could not open " << input_file_name << " for reading\n";
-    exit(1);
+    xvc_api->decoder_destroy(decoder);
+    xvc_api->parameters_destroy(params);
+    return 1;
   }
 
   size_t view_counter = 0;
@@ -212,32 +219,54 @@ int main(int argc, char *argv[]) {
     sws_freeContext(out_convert_ctx);
   };
 
-  while (true) {
+  bool decoded = true;
+  while (decoded) {
     size_t size    {};
     uint8_t nal_size[4] {};
 
     input.read(reinterpret_cast<char *>(nal_size), 4);
-    if (input.gcount() < 4) {
+    if (input.gcount() == 0 && input.eof()) {
+      break;
+    }
+    if (input.gcount() != 4) {
+      cerr << "Unable to read nal size." << endl;
+      decoded = false;
       break;
     }
 
-    size = nal_size[0] | (nal_size[1] << 8) | (nal_size[2] << 16) | (nal_size[3] << 24);
+    size = static_cast<uint32_t>(nal_size[0]) |
+      (static_cast<uint32_t>(nal_size[1]) << 8) |
+      (static_cast<uint32_t>(nal_size[2]) << 16) |
+      (static_cast<uint32_t>(nal_size[3]) << 24);
+    if (size == 0) {
+      cerr << "Invalid zero-length nal." << endl;
+      decoded = false;
+      break;
+    }
 
     nal_buffer.resize(size);
     input.read(reinterpret_cast<char *>(nal_buffer.data()), size);
 
-    if (static_cast<uint32_t>(input.gcount()) < size) {
+    if (static_cast<size_t>(input.gcount()) != size) {
       cerr << "Unable to read nal." << endl;
-      exit(1);
+      decoded = false;
+      break;
     }
 
-    decode(xvc_api, decoder, nal_buffer, saveFrame);
+    decoded = decode(xvc_api, decoder, nal_buffer, saveFrame);
   }
 
-  flush(xvc_api, decoder, saveFrame);
+  if (decoded) {
+    decoded = flush(xvc_api, decoder, saveFrame);
+  }
 
   xvc_api->decoder_destroy(decoder);
   xvc_api->parameters_destroy(params);
 
-  return 0;
+  if (decoded && view_counter == 0) {
+    cerr << "xvc stream contained no pictures" << endl;
+    decoded = false;
+  }
+
+  return decoded ? 0 : 1;
 }

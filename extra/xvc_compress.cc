@@ -182,6 +182,9 @@ int main(int argc, char *argv[]) {
   }
 
   auto saveNal = [&](xvc_enc_nal_unit &nal) {
+    if (!output) {
+      return;
+    }
     char nal_size[4] {};
 
     nal_size[0] = (nal.size >>  0) & 0xFF;
@@ -217,10 +220,21 @@ int main(int argc, char *argv[]) {
       encoded = false;
       break;
     }
+    if (!output) {
+      encoded = false;
+      break;
+    }
   }
 
   if (encoded) {
     encoded = flush(xvc_api, encoder, saveNal);
+  }
+
+  output.flush();
+  output.close();
+  if (!output) {
+    cerr << "Could not write " << output_file_name << endl;
+    encoded = false;
   }
 
   sws_freeContext(in_convert_ctx);
