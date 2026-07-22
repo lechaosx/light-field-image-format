@@ -267,6 +267,55 @@ if(LFIF_BUILD_EXTRAS)
       WILL_FAIL TRUE
   )
 
+  add_test(
+    NAME ExtraArgs.Av1RejectsDescendingBitrates
+    COMMAND
+      $<TARGET_FILE:av1bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-av1.txt
+      -f 2 -l 1
+  )
+  add_test(
+    NAME ExtraArgs.X265RejectsDescendingBitrates
+    COMMAND
+      $<TARGET_FILE:x265bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-x265.txt
+      -f 2 -l 1
+  )
+  add_test(
+    NAME ExtraArgs.MozBenchRejectsDescendingQualities
+    COMMAND
+      $<TARGET_FILE:mozbench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-mozjpeg.txt
+      -f 80 -l 70
+  )
+  add_test(
+    NAME ExtraArgs.OpenJpegRejectsDescendingPsnr
+    COMMAND
+      $<TARGET_FILE:openjpegbench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-openjpeg.txt
+      -f 50 -l 40
+  )
+  add_test(
+    NAME ExtraArgs.XvcRejectsDescendingQp
+    COMMAND
+      $<TARGET_FILE:xvcbench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-xvc.txt
+      -f 40 -l 20
+  )
+  set_tests_properties(
+    ExtraArgs.Av1RejectsDescendingBitrates
+    ExtraArgs.X265RejectsDescendingBitrates
+    ExtraArgs.MozBenchRejectsDescendingQualities
+    ExtraArgs.OpenJpegRejectsDescendingPsnr
+    ExtraArgs.XvcRejectsDescendingQp
+    PROPERTIES FIXTURES_REQUIRED ExtraSmokeInput WILL_FAIL TRUE
+  )
+
   set_tests_properties(
     ExtraSmoke.Av1Bench
     ExtraSmoke.MozBench

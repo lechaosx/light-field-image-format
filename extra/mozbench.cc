@@ -144,6 +144,10 @@ int main(int argc, char *argv[]) {
     }
     q_last = tmp;
   }
+  if (q_first > q_last) {
+    cerr << "Qualities must be ordered from first to last" << endl;
+    return 1;
+  }
 
   if (loadPPMGrid(input_file_mask, width, height, color_depth, image_count, rgb_data) < 0) {
     return 2;

@@ -158,19 +158,27 @@ int main(int argc, char *argv[]) {
   }
 
   psnr_step = 1.0;
-
-  if (param_psnr_step) {
-    psnr_step = atof(param_psnr_step);
-  }
-
   psnr_first = 20.f;
-  if (param_psnr_first) {
-    psnr_first = atof(param_psnr_first);
-  }
-
   psnr_last = 50.f;
-  if (param_psnr_last) {
-    psnr_last = atof(param_psnr_last);
+  try {
+    if (param_psnr_step) {
+      psnr_step = std::stof(param_psnr_step);
+    }
+    if (param_psnr_first) {
+      psnr_first = std::stof(param_psnr_first);
+    }
+    if (param_psnr_last) {
+      psnr_last = std::stof(param_psnr_last);
+    }
+  } catch (const std::exception &) {
+    cerr << "PSNR values must be numbers" << endl;
+    return 1;
+  }
+  if (!std::isfinite(psnr_step) || !std::isfinite(psnr_first) || !std::isfinite(psnr_last)
+      || psnr_step <= 0 || psnr_first <= 0 || psnr_first > psnr_last
+      || psnr_first + psnr_step == psnr_first) {
+    cerr << "PSNR values must be positive, increasing and ordered from first to last" << endl;
+    return 1;
   }
 
   if (loadPPMGrid(input_file_mask, width, height, color_depth, image_count, rgb_data) < 0) {
@@ -217,7 +225,7 @@ int main(int argc, char *argv[]) {
   size_t image_pixels = width * height * image_count;
   TemporaryFile temporary_file;
 
-  for (size_t param_psnr = psnr_first; param_psnr <= psnr_last; param_psnr += psnr_step) {
+  for (float param_psnr = psnr_first; param_psnr <= psnr_last; param_psnr += psnr_step) {
     cerr << "PSNR: " << param_psnr << "\n";
 
     double mse = 0;

@@ -18,6 +18,7 @@ extern "C" {
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <stdexcept>
 
 using std::abs;
 using std::cerr;
@@ -159,13 +160,21 @@ int main(int argc, char *argv[]) {
   }
 
   f_b = 0.1;
-  if (first_bitrate) {
-    f_b = stod(first_bitrate);
-  }
-
   l_b = 15;
-  if (last_bitrate) {
-    l_b = stod(last_bitrate);
+  try {
+    if (first_bitrate) {
+      f_b = stod(first_bitrate);
+    }
+    if (last_bitrate) {
+      l_b = stod(last_bitrate);
+    }
+  } catch (const std::exception &) {
+    cerr << "Bitrates must be numbers" << endl;
+    return 1;
+  }
+  if (!std::isfinite(f_b) || !std::isfinite(l_b) || f_b <= 0 || f_b > l_b) {
+    cerr << "Bitrates must be positive and ordered from first to last" << endl;
+    return 1;
   }
 
   if (loadPPMGrid(input_file_mask, width, height, color_depth, image_count, rgb_data) < 0) {
