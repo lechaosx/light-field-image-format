@@ -24,3 +24,12 @@ target_link_libraries(
 
 include(GoogleTest)
 gtest_discover_tests(lfif_unit_tests)
+
+add_test(
+  NAME ToolIo.CreatesOutputDirectoriesWithApostrophes
+  COMMAND
+    $<TARGET_FILE:lfif4d_compress>
+    -i ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/one-pixel.ppm
+    -o "${CMAKE_CURRENT_BINARY_DIR}/directory'with-apostrophe/output.lfif"
+    -d 0
+)

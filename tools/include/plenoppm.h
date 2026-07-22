@@ -11,16 +11,18 @@
 #include <ppm.h>
 
 #include <cstdint>
+#include <filesystem>
 #include <vector>
-#include <string>
 
 inline int create_directory(const char *file_name) {
-  size_t last_slash_pos = std::string(file_name).find_last_of('/');
-  if (last_slash_pos != std::string::npos) {
-    std::string command = "mkdir -p '" + std::string(file_name).substr(0, last_slash_pos) + "'";
-    return system(command.c_str());
+  const std::filesystem::path parent = std::filesystem::path(file_name).parent_path();
+  if (parent.empty()) {
+    return 0;
   }
-  return 0;
+
+  std::error_code error;
+  std::filesystem::create_directories(parent, error);
+  return error ? -1 : 0;
 }
 
 int mapPPMs(const char *input_file_mask, uint64_t &width, uint64_t &height, uint32_t &color_depth, std::vector<PPM> &data);
