@@ -16,6 +16,7 @@ add_executable(
   test_lfwf_roundtrip.cc
   test_mtf.cc
   test_ppm.cc
+  test_prediction.cc
   test_runlength.cc
   test_traversal_table.cc
   test_zigzag.cc
@@ -31,6 +32,29 @@ target_compile_definitions(
 
 include(GoogleTest)
 gtest_discover_tests(lfif_unit_tests)
+
+add_executable(create_test_lfif create_test_lfif.cc)
+target_link_libraries(create_test_lfif PRIVATE lfif lfif_project_options)
+
+add_executable(compare_test_ppm compare_test_ppm.cc)
+target_link_libraries(compare_test_ppm PRIVATE ppm lfif_project_options)
+
+add_test(
+  NAME OmniCli.CreateMissingPayload
+  COMMAND $<TARGET_FILE:create_test_lfif> ${CMAKE_CURRENT_BINARY_DIR}/missing-payload.lfif
+)
+set_tests_properties(
+  OmniCli.CreateMissingPayload
+  PROPERTIES FIXTURES_SETUP OmniCliMissingPayload
+)
+add_test(
+  NAME OmniCli.RejectsMissingPayload
+  COMMAND $<TARGET_FILE:lfif_cli> inspect ${CMAKE_CURRENT_BINARY_DIR}/missing-payload.lfif
+)
+set_tests_properties(
+  OmniCli.RejectsMissingPayload
+  PROPERTIES FIXTURES_REQUIRED OmniCliMissingPayload WILL_FAIL TRUE
+)
 
 add_test(
   NAME OmniCli.CreatesOutputDirectoriesWithApostrophes
@@ -114,6 +138,17 @@ add_test(
     ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.ppm
 )
 set_tests_properties(OmniCli.WaveletDecompress PROPERTIES DEPENDS OmniCli.WaveletCompress)
+add_test(
+  NAME OmniCli.WaveletOutputMatchesInput
+  COMMAND
+    $<TARGET_FILE:compare_test_ppm>
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/one-pixel.ppm
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.ppm
+)
+set_tests_properties(
+  OmniCli.WaveletOutputMatchesInput
+  PROPERTIES DEPENDS OmniCli.WaveletDecompress
+)
 
 add_test(
   NAME OmniCli.DctCompress
@@ -141,6 +176,15 @@ add_test(
     ${CMAKE_CURRENT_BINARY_DIR}/omni-dct.ppm
 )
 set_tests_properties(OmniCli.DctDecompress PROPERTIES DEPENDS OmniCli.DctCompress)
+add_test(
+  NAME OmniCli.DctOutputMatchesInput
+  COMMAND
+    $<TARGET_FILE:compare_test_ppm>
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/one-pixel.ppm
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-dct.ppm
+    --within-one
+)
+set_tests_properties(OmniCli.DctOutputMatchesInput PROPERTIES DEPENDS OmniCli.DctDecompress)
 
 add_test(
   NAME OmniCli.FourDimensionalCompress
@@ -170,6 +214,41 @@ add_test(
 set_tests_properties(
   OmniCli.FourDimensionalDecompress
   PROPERTIES DEPENDS OmniCli.FourDimensionalCompress
+)
+add_test(
+  NAME OmniCli.FourDimensionalOutput00MatchesInput
+  COMMAND
+    $<TARGET_FILE:compare_test_ppm>
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/grid-00.ppm
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-4d-00.ppm
+)
+add_test(
+  NAME OmniCli.FourDimensionalOutput01MatchesInput
+  COMMAND
+    $<TARGET_FILE:compare_test_ppm>
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/grid-01.ppm
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-4d-01.ppm
+)
+add_test(
+  NAME OmniCli.FourDimensionalOutput02MatchesInput
+  COMMAND
+    $<TARGET_FILE:compare_test_ppm>
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/grid-02.ppm
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-4d-02.ppm
+)
+add_test(
+  NAME OmniCli.FourDimensionalOutput03MatchesInput
+  COMMAND
+    $<TARGET_FILE:compare_test_ppm>
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/grid-03.ppm
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-4d-03.ppm
+)
+set_tests_properties(
+  OmniCli.FourDimensionalOutput00MatchesInput
+  OmniCli.FourDimensionalOutput01MatchesInput
+  OmniCli.FourDimensionalOutput02MatchesInput
+  OmniCli.FourDimensionalOutput03MatchesInput
+  PROPERTIES DEPENDS OmniCli.FourDimensionalDecompress
 )
 
 if(LFIF_BUILD_EXTRAS)
@@ -334,6 +413,16 @@ if(LFIF_BUILD_EXTRAS)
     PROPERTIES FIXTURES_SETUP ExtraXvcMalformedInput
   )
   add_test(
+    NAME ExtraXvc.CreateOversizedNal
+    COMMAND
+      $<TARGET_FILE:create_extra_test_ppm>
+      --oversized-xvc-nal ${CMAKE_CURRENT_BINARY_DIR}/oversized-nal.xvc
+  )
+  set_tests_properties(
+    ExtraXvc.CreateOversizedNal
+    PROPERTIES FIXTURES_SETUP ExtraXvcOversizedNal
+  )
+  add_test(
     NAME ExtraXvc.RejectsEmptyInput
     COMMAND
       $<TARGET_FILE:xvc_decompress>
@@ -364,6 +453,17 @@ if(LFIF_BUILD_EXTRAS)
     PROPERTIES FIXTURES_REQUIRED ExtraXvcMalformedInput WILL_FAIL TRUE
   )
   add_test(
+    NAME ExtraXvc.RejectsOversizedNalBeforeAllocation
+    COMMAND
+      $<TARGET_FILE:xvc_decompress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/oversized-nal.xvc
+      -o "${CMAKE_CURRENT_BINARY_DIR}/oversized-xvc-#.ppm"
+  )
+  set_tests_properties(
+    ExtraXvc.RejectsOversizedNalBeforeAllocation
+    PROPERTIES FIXTURES_REQUIRED ExtraXvcOversizedNal WILL_FAIL TRUE
+  )
+  add_test(
     NAME ExtraXvc.RejectsOutputWriteFailure
     COMMAND
       $<TARGET_FILE:xvc_compress>
@@ -373,6 +473,18 @@ if(LFIF_BUILD_EXTRAS)
   )
   set_tests_properties(
     ExtraXvc.RejectsOutputWriteFailure
+    PROPERTIES FIXTURES_REQUIRED ExtraSmokeInput WILL_FAIL TRUE
+  )
+  add_test(
+    NAME ExtraHevc.RejectsOutputWriteFailure
+    COMMAND
+      $<TARGET_FILE:hevc_compress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o /dev/full
+      -b 1000
+  )
+  set_tests_properties(
+    ExtraHevc.RejectsOutputWriteFailure
     PROPERTIES FIXTURES_REQUIRED ExtraSmokeInput WILL_FAIL TRUE
   )
 

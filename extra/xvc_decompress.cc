@@ -15,7 +15,10 @@ extern "C" {
 }
 
 #include <getopt.h>
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <new>
 
 #include <iostream>
 
@@ -244,12 +247,26 @@ int main(int argc, char *argv[]) {
       break;
     }
 
-    nal_buffer.resize(size);
-    input.read(reinterpret_cast<char *>(nal_buffer.data()), size);
-
-    if (static_cast<size_t>(input.gcount()) != size) {
-      cerr << "Unable to read nal." << endl;
+    nal_buffer.clear();
+    std::array<uint8_t, 64 * 1024> buffer;
+    size_t remaining = size;
+    try {
+      while (remaining != 0) {
+        const size_t chunk = std::min(remaining, buffer.size());
+        input.read(reinterpret_cast<char *>(buffer.data()), chunk);
+        if (static_cast<size_t>(input.gcount()) != chunk) {
+          cerr << "Unable to read nal." << endl;
+          decoded = false;
+          break;
+        }
+        nal_buffer.insert(nal_buffer.end(), buffer.begin(), buffer.begin() + chunk);
+        remaining -= chunk;
+      }
+    } catch (const std::bad_alloc &) {
+      cerr << "nal is too large for memory" << endl;
       decoded = false;
+    }
+    if (!decoded) {
       break;
     }
 

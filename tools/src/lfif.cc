@@ -282,6 +282,13 @@ int inspect(const std::string &input_name) {
     throw std::runtime_error("cannot read input: " + input_name);
   }
   const lfif::Header header = lfif::parseHeader(input);
+  const std::streampos payload_position = input.tellg();
+  input.seekg(0, std::ios::end);
+  const std::streampos end_position = input.tellg();
+  if (payload_position < 0 || end_position < payload_position
+      || static_cast<uint64_t>(end_position - payload_position) < header.payload_size) {
+    throw std::runtime_error("truncated LFIF payload");
+  }
   std::cout << "dimensions: " << header.extents.size() << '\n';
   std::cout << "extents: ";
   printExtents(header.extents);

@@ -6,6 +6,7 @@
 
 #include "prediction_type.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 

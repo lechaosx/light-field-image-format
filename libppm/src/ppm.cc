@@ -283,6 +283,14 @@ int PPM::mmapPPM(const char *file_name) {
   }
 
   m_opened = true;
+  const size_t pixel_count = pixel_data_size / ((m_color_depth > 255 ? 2U : 1U) * 3U);
+  for (size_t pixel = 0; pixel < pixel_count; ++pixel) {
+    const auto samples = get(pixel);
+    if (samples[0] > m_color_depth || samples[1] > m_color_depth || samples[2] > m_color_depth) {
+      release();
+      return -6;
+    }
+  }
 
   return 0;
 }

@@ -142,7 +142,13 @@ int main(int argc, char *argv[]) {
     return 2;
   }
 
-  rgb_data.resize(width * height * 3);
+  size_t rgb_size {};
+  if (!rgbDataSize(width, height, 1, rgb_size)) {
+    cerr << "Input image is too large" << endl;
+    return 2;
+  }
+  const size_t pixels_per_image = rgb_size / 3;
+  rgb_data.resize(rgb_size);
 
   pkt = av_packet_alloc();
   if (!pkt) {
@@ -227,11 +233,15 @@ int main(int argc, char *argv[]) {
   }
 
   auto savePkt = [&](AVPacket *pkt) {
+    if (!output) {
+      return;
+    }
     output.write(reinterpret_cast<const char *>(pkt->data), pkt->size);
   };
 
+  bool encoded = true;
   for (size_t image = 0; image < images.size(); ++image) {
-    for (size_t pixel = 0; pixel < width * height; ++pixel) {
+    for (size_t pixel = 0; pixel < pixels_per_image; ++pixel) {
       const auto rgb = images[image].get(pixel);
       rgb_data[pixel * 3 + 0] = rgb[0];
       rgb_data[pixel * 3 + 1] = rgb[1];
@@ -250,9 +260,22 @@ int main(int argc, char *argv[]) {
     in_frame->pts = image;
 
     encode(in_context, in_frame, pkt, savePkt);
+    if (!output) {
+      encoded = false;
+      break;
+    }
   }
 
-  encode(in_context, nullptr, pkt, savePkt);
+  if (encoded) {
+    encode(in_context, nullptr, pkt, savePkt);
+  }
+
+  output.flush();
+  output.close();
+  if (!output) {
+    cerr << "Could not write " << output_file_name << endl;
+    encoded = false;
+  }
 
   sws_freeContext(in_convert_ctx);
   avcodec_free_context(&in_context);
@@ -260,5 +283,5 @@ int main(int argc, char *argv[]) {
   av_frame_free(&rgb_frame);
   av_packet_free(&pkt);
 
-  return 0;
+  return encoded ? 0 : 1;
 }

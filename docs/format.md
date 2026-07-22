@@ -44,6 +44,19 @@ The defined identifiers are:
 | Entropy codec | 1 | CABAC |
 | Color space | 1 | RGB |
 
+## Payload profile
+
+The payload is one opaque codec bitstream selected by the transform and entropy
+identifiers. It has no nested magic, dimensions or legacy LFIF/LFWF header; all
+codec parameters come from the container header. A container parser can locate,
+validate, skip or extract the payload without implementing the codec. The
+container major version also versions this payload profile. Changing its binary
+syntax incompatibly therefore requires a new container major version.
+
+The arithmetic codec is currently defined by the reference implementation and
+is not presented as an external standardized codec. Independent container
+parsers need only treat exactly `payload_size` bytes as the payload.
+
 Version 1 supports three unsigned RGB channels with sample depths from 1 to 16
 bits. Dimension and block counts match, every extent is nonzero, and all extent
 products and block alignment calculations fit the implementation's `size_t`.

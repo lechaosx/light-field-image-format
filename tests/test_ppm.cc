@@ -29,7 +29,8 @@ public:
   }
 
   ~TemporaryFile() {
-    std::filesystem::remove(path_);
+    std::error_code error;
+    std::filesystem::remove(path_, error);
   }
 
   const std::string &path() const {
@@ -73,6 +74,12 @@ TEST(Ppm, CreatesAndMoveAssignsSixteenBitPixels) {
 
 TEST(Ppm, RejectsTruncatedPixelData) {
   TemporaryFile file("P6\n2 1\n255\n\x01\x02\x03");
+  PPM ppm;
+  EXPECT_LT(ppm.mmapPPM(file.path().c_str()), 0);
+}
+
+TEST(Ppm, RejectsSamplesAboveColorDepth) {
+  TemporaryFile file("P6\n1 1\n1\nRGB");
   PPM ppm;
   EXPECT_LT(ppm.mmapPPM(file.path().c_str()), 0);
 }

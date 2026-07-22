@@ -67,6 +67,18 @@ int main(int argc, char *argv[]) {
     output.close();
     return output ? 0 : 1;
   }
+  if (argc == 3 && std::string_view(argv[1]) == "--oversized-xvc-nal") {
+    std::ofstream output(argv[2], std::ios::binary);
+    const std::array<char, 4> bytes {
+        static_cast<char>(0xff),
+        static_cast<char>(0xff),
+        static_cast<char>(0xff),
+        static_cast<char>(0xff),
+    };
+    output.write(bytes.data(), bytes.size());
+    output.close();
+    return output ? 0 : 1;
+  }
   if (argc != 2) {
     return 1;
   }

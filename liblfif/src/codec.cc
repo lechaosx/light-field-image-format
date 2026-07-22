@@ -5,11 +5,13 @@
 #include <lfwf_decoder.h>
 #include <lfwf_encoder.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <ios>
 #include <istream>
 #include <limits>
+#include <new>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -146,14 +148,29 @@ DecodedImage readImage(std::istream &input) {
     throw std::runtime_error("LFIF payload is too large");
   }
 
-  std::string encoded_payload(static_cast<size_t>(header.payload_size), '\0');
-  input.read(encoded_payload.data(), static_cast<std::streamsize>(encoded_payload.size()));
-  if (input.gcount() != static_cast<std::streamsize>(encoded_payload.size())) {
-    throw std::runtime_error("truncated LFIF payload");
+  std::string encoded_payload;
+  std::array<char, 64 * 1024> buffer;
+  uint64_t remaining = header.payload_size;
+  try {
+    while (remaining != 0) {
+      const size_t chunk = static_cast<size_t>(std::min<uint64_t>(remaining, buffer.size()));
+      input.read(buffer.data(), static_cast<std::streamsize>(chunk));
+      if (input.gcount() != static_cast<std::streamsize>(chunk)) {
+        throw std::runtime_error("truncated LFIF payload");
+      }
+      encoded_payload.append(buffer.data(), chunk);
+      remaining -= chunk;
+    }
+  } catch (const std::bad_alloc &) {
+    throw std::runtime_error("LFIF payload is too large for memory");
   }
 
   std::istringstream payload(encoded_payload, std::ios::binary);
-  return {header, decodePayload(header, payload)};
+  try {
+    return {header, decodePayload(header, payload)};
+  } catch (const std::bad_alloc &) {
+    throw std::runtime_error("LFIF image is too large for memory");
+  }
 }
 
 }

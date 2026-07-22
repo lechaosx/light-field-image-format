@@ -57,6 +57,23 @@ void expectRoundTrip(const lfif::Header &metadata, const std::vector<lfif::Pixel
   EXPECT_EQ(decoded.pixels, expected);
 }
 
+void expectApproximateRoundTrip(
+    const lfif::Header &metadata,
+    const std::vector<lfif::Pixel> &expected,
+    uint16_t tolerance) {
+  std::stringstream stream;
+  const lfif::Header written = lfif::writeImage(stream, metadata, expected);
+  const lfif::DecodedImage decoded = lfif::readImage(stream);
+
+  EXPECT_EQ(decoded.header, written);
+  ASSERT_EQ(decoded.pixels.size(), expected.size());
+  for (size_t pixel = 0; pixel < expected.size(); ++pixel) {
+    for (size_t channel = 0; channel < expected[pixel].size(); ++channel) {
+      EXPECT_NEAR(decoded.pixels[pixel][channel], expected[pixel][channel], tolerance);
+    }
+  }
+}
+
 }
 
 TEST(ContainerCodec, RoundTripsWaveletImagesAcrossSupportedDimensions) {
@@ -130,19 +147,43 @@ TEST(ContainerCodec, RoundTripsExplicitDctVariant) {
 }
 
 TEST(ContainerCodec, ReconstructsNonconstantDctSamplesWithinOneLevel) {
-  const auto metadata = header({4, 4}, {4, 4}, lfif::Transform::dct);
-  const std::vector<lfif::Pixel> original = pixels(16);
-  std::stringstream stream;
-  const lfif::Header written = lfif::writeImage(stream, metadata, original);
-  const lfif::DecodedImage decoded = lfif::readImage(stream);
+  expectApproximateRoundTrip(header({4, 4}, {4, 4}, lfif::Transform::dct), pixels(16), 1);
+}
 
-  EXPECT_EQ(decoded.header, written);
-  ASSERT_EQ(decoded.pixels.size(), original.size());
-  for (size_t pixel = 0; pixel < original.size(); ++pixel) {
-    for (size_t channel = 0; channel < original[pixel].size(); ++channel) {
-      EXPECT_NEAR(decoded.pixels[pixel][channel], original[pixel][channel], 1);
-    }
-  }
+TEST(ContainerCodec, ReconstructsNonalignedThreeDimensionalDctSamplesWithinOneLevel) {
+  expectApproximateRoundTrip(
+      header({3, 2, 2}, {2, 2, 2}, lfif::Transform::dct), pixels(12), 1);
+}
+
+TEST(ContainerCodec, ReconstructsPredictedNonalignedFourDimensionalDctSamplesWithinTwoLevels) {
+  auto metadata = header({3, 2, 2, 2}, {2, 2, 2, 2}, lfif::Transform::dct);
+  metadata.prediction = true;
+  expectApproximateRoundTrip(metadata, pixels(24), 2);
+}
+
+TEST(ContainerCodec, ReconstructsSixteenBitDctSamplesWithinOneLevel) {
+  auto metadata = header({2, 2}, {2, 2}, lfif::Transform::dct);
+  metadata.sample_depth = 16;
+  const std::vector<lfif::Pixel> original {
+      {0, 65535, 12345},
+      {65535, 0, 54321},
+      {10000, 30000, 50000},
+      {50000, 30000, 10000},
+  };
+  expectApproximateRoundTrip(metadata, original, 1);
+}
+
+TEST(ContainerCodec, WritesDeterministicCompleteDctContainers) {
+  auto metadata = header({3, 2, 2}, {2, 2, 2}, lfif::Transform::dct);
+  metadata.prediction = true;
+  const auto samples = pixels(12);
+  const auto encode = [&] {
+    std::stringstream stream;
+    lfif::writeImage(stream, metadata, samples);
+    return stream.str();
+  };
+
+  EXPECT_EQ(encode(), encode());
 }
 
 TEST(ContainerCodec, DoesNotWriteProgressToStandardError) {
@@ -178,4 +219,18 @@ TEST(ContainerCodec, RejectsTruncatedPayload) {
 
   std::stringstream input(encoded);
   EXPECT_THROW(lfif::readImage(input), std::runtime_error);
+}
+
+TEST(ContainerCodec, RejectsMissingLargePayloadBeforeAllocatingItsDeclaredSize) {
+  auto metadata = header({1, 1}, {1, 1});
+  metadata.payload_size = uint64_t {1} << 32;
+  const std::vector<uint8_t> encoded = lfif::serializeHeader(metadata);
+  std::stringstream input(std::string(encoded.begin(), encoded.end()));
+
+  try {
+    static_cast<void>(lfif::readImage(input));
+    FAIL() << "missing payload was accepted";
+  } catch (const std::runtime_error &error) {
+    EXPECT_STREQ(error.what(), "truncated LFIF payload");
+  }
 }
