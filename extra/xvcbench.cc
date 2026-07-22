@@ -11,14 +11,18 @@
 #include <cmath>
 
 #include <iostream>
+
+using std::cerr;
+using std::endl;
+using std::ofstream;
+using std::stringstream;
+using std::vector;
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <sstream>
 #include <cassert>
 #include <bitset>
-
-using namespace std;
 
 void print_usage(char *argv0) {
   cerr << "Usage: " << endl;
@@ -176,7 +180,7 @@ int main(int argc, char *argv[]) {
 
     if (rec_pic_buffer.size > 0) {
       for (size_t i = 0; i < image_pixels * 3; i++) {
-        cerr << bitset<8>(rgb_data[rec_ite]) << " " << bitset<8>(rec_pic_buffer.pic[i]) << "\n";
+        cerr << std::bitset<8>(rgb_data[rec_ite]) << " " << std::bitset<8>(rec_pic_buffer.pic[i]) << "\n";
         double tmp = rgb_data[rec_ite] - rec_pic_buffer.pic[i];
         mse += tmp * tmp;
         rec_ite++;

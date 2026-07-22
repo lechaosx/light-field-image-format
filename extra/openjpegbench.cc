@@ -17,7 +17,11 @@
 
 #include <openjpeg.h>
 
-using namespace std;
+using std::cerr;
+using std::endl;
+using std::ifstream;
+using std::ofstream;
+using std::vector;
 
 void print_usage(char *argv0) {
   cerr << "Usage: " << endl;

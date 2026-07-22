@@ -9,7 +9,8 @@
 #include <cmath>
 #include <iostream>
 
-using namespace std;
+using std::cerr;
+using std::endl;
 
 int mapPPMs(const char *input_file_mask, uint64_t &width, uint64_t &height, uint32_t &color_depth, std::vector<PPM> &data) {
   FileMask file_name(input_file_mask);

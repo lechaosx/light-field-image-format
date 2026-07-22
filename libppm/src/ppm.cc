@@ -19,7 +19,7 @@
 
 #include <sys/mman.h>
 
-using namespace std;
+using std::string;
 
 namespace {
 

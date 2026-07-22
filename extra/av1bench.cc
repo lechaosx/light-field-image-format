@@ -18,7 +18,13 @@ extern "C" {
 #include <functional>
 #include <iostream>
 
-using namespace std;
+using std::abs;
+using std::cerr;
+using std::endl;
+using std::function;
+using std::ofstream;
+using std::stod;
+using std::vector;
 
 void print_usage(char *argv0) {
   cerr << "Usage: " << endl;

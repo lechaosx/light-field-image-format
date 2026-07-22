@@ -11,7 +11,14 @@
 #include <numeric>
 #include <fstream>
 
-using namespace std;
+using std::istream;
+using std::ostream;
+using std::pair;
+using std::plus;
+using std::sort;
+using std::unordered_map;
+using std::vector;
+using std::accumulate;
 
 void HuffmanEncoder::generateFromWeights(const HuffmanWeights &huffman_weights) {
   generateHuffmanCodelengths(huffman_weights);

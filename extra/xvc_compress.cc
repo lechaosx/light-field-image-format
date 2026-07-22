@@ -15,14 +15,19 @@ extern "C" {
 #include <cmath>
 
 #include <iostream>
+
+using std::cerr;
+using std::endl;
+using std::ios;
+using std::ofstream;
+using std::stringstream;
+using std::vector;
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <sstream>
 #include <cassert>
 #include <bitset>
-
-using namespace std;
 
 void print_usage(char *argv0) {
   cerr << "Usage: " << endl;

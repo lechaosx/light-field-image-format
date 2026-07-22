@@ -20,7 +20,10 @@ extern "C" {
 #include <functional>
 #include <iostream>
 
-using namespace std;
+using std::cerr;
+using std::endl;
+using std::ifstream;
+using std::ios;
 
 void print_usage(char *argv0) {
   cerr << "Usage: " << endl;

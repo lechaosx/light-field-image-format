@@ -11,12 +11,15 @@
 #include <cmath>
 
 #include <iostream>
+
+using std::cerr;
+using std::endl;
+using std::ofstream;
+using std::vector;
 #include <fstream>
 #include <vector>
 
 #include <jpeglib.h>
-
-using namespace std;
 
 void print_usage(char *argv0) {
   cerr << "Usage: " << endl;

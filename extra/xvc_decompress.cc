@@ -18,14 +18,18 @@ extern "C" {
 #include <cmath>
 
 #include <iostream>
+
+using std::cerr;
+using std::endl;
+using std::ifstream;
+using std::string;
+using std::vector;
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <sstream>
 #include <cassert>
 #include <bitset>
-
-using namespace std;
 
 template <typename T>
 inline T endianSwap(T data) {
