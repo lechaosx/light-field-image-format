@@ -9,13 +9,14 @@ add_executable(
   test_dwt.cc
   test_huffman.cc
   test_mtf.cc
+  test_ppm.cc
   test_runlength.cc
   test_traversal_table.cc
   test_zigzag.cc
 )
 target_link_libraries(
   lfif_unit_tests
-  PRIVATE lfif GTest::gtest GTest::gtest_main lfif_project_options
+  PRIVATE lfif ppm GTest::gtest GTest::gtest_main lfif_project_options
 )
 
 include(GoogleTest)

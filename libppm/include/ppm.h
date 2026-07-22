@@ -17,23 +17,26 @@
 #include "ppm_endian.h"
 
 class PPM {
-  bool        m_opened;
+  bool        m_opened {};
 
-  uint64_t    m_width;       /**< @brief Image width in pixels.*/
-  uint64_t    m_height;      /**< @brief Image height in pixels.*/
-  uint32_t    m_color_depth; /**< @brief Maximum RGB value of an image.*/
+  uint64_t    m_width {};       /**< @brief Image width in pixels.*/
+  uint64_t    m_height {};      /**< @brief Image height in pixels.*/
+  uint32_t    m_color_depth {}; /**< @brief Maximum RGB value of an image.*/
 
-  void       *m_file;
-  size_t      m_header_offset;
+  void       *m_file {};
+  size_t      m_map_size {};
+  size_t      m_header_offset {};
 
   int parseHeader(FILE *ppm);
+  void release();
 
 public:
   PPM()                       = default;
   PPM(const PPM &)            = delete;
   PPM &operator=(const PPM &) = delete;
 
-  PPM(PPM &&);
+  PPM(PPM &&) noexcept;
+  PPM &operator=(PPM &&) noexcept;
   ~PPM();
 
   int createPPM(const char *file_name, uint64_t width, uint64_t height, uint32_t color_depth);
