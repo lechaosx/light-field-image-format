@@ -67,10 +67,30 @@
             ];
             doCheck = true;
           };
+          full = pkgs.stdenv.mkDerivation {
+            pname = "lfif-full";
+            version = "2.0.0";
+            src = self;
+
+            nativeBuildInputs = [ pkgs.cmake pkgs.ninja pkgs.pkg-config ];
+            buildInputs = [
+              pkgs.gtest
+              pkgs.ffmpeg
+              pkgs.openjpeg
+              pkgs.mozjpeg
+              pkgs.xvc
+            ];
+            MOZJPEG_ROOT = "${pkgs.mozjpeg}";
+            cmakeFlags = [
+              "-DBUILD_TESTING=ON"
+              "-DLFIF_BUILD_EXTRAS=ON"
+            ];
+            doCheck = true;
+          };
         });
 
       checks = forAllSystems (system: {
-        inherit (self.packages.${system}) default xvc;
+        inherit (self.packages.${system}) default full xvc;
       });
 
       devShells = forAllSystems (system:

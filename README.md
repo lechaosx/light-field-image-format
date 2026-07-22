@@ -16,7 +16,7 @@ The ``full`` preset also builds and tests the codec comparison tools:
     cmake --build --preset full
     ctest --preset full
 
-The Nix flake builds the main package with ``nix build`` and provides all dependencies, including xvc from its upstream repository.
+The Nix flake builds the main package with ``nix build``; ``nix build .#full`` also builds and tests all comparison tools. It provides their dependencies directly: xvc is built from its pinned upstream repository, and ``mozbench`` links Mozilla mozjpeg.
 
 ## Usage
 The tools are able to compress a light field image which exists as a set of ppm images representing individual views.
