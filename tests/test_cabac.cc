@@ -75,3 +75,26 @@ TEST(Cabac, RoundTripsBypassBits) {
   }
   EXPECT_EQ(bypassRoundTrip(bits), bits);
 }
+
+TEST(Cabac, RoundTripsLargeUnaryValues) {
+  const std::vector<uint64_t> expected {0, 1, 2, 255, 65535, 131071};
+  std::stringstream stream;
+  OBitstream output(stream);
+  CABACEncoder encoder;
+  encoder.init(output);
+  CABAC::ContextModel encode_context {};
+  for (const uint64_t value : expected) {
+    encoder.encodeU(encode_context, value);
+  }
+  encoder.terminate();
+
+  IBitstream input(stream);
+  CABACDecoder decoder;
+  decoder.init(input);
+  CABAC::ContextModel decode_context {};
+  std::vector<uint64_t> decoded;
+  for (size_t i = 0; i < expected.size(); ++i) {
+    decoded.push_back(decoder.decodeU(decode_context));
+  }
+  EXPECT_EQ(decoded, expected);
+}

@@ -265,6 +265,11 @@ void CABACEncoder::terminate() {
   putCabacBit(0);
   putCabacBit(0);
 
+  // The decoder maintains BITS bits of lookahead while decoding the final symbols.
+  for (size_t i = 0; i < BITS; i++) {
+    m_stream->writeBit(0);
+  }
+
   m_stream->flush();
 
   m_stream = nullptr;

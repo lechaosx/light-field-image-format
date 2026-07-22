@@ -1,9 +1,12 @@
 #include <gtest/gtest.h>
 
+#include <components/bitstream.h>
 #include <components/dwt.h>
+#include <dwt_block_stream.h>
 
 #include <array>
 #include <cstdint>
+#include <sstream>
 #include <vector>
 
 TEST(Dwt, RoundTripsOddLengthSignal) {
@@ -34,5 +37,33 @@ TEST(Dwt, RoundTripsTwoDimensionalSignal) {
     idwt<2>(size, sample);
 
     EXPECT_EQ(values, expected);
+  }
+}
+
+TEST(DwtBlockStream, RoundTripsLargeSignedCoefficients) {
+  const std::array<size_t, 2> size {3, 3};
+  DynamicBlock<int32_t, 2> expected(size);
+  const std::array<int32_t, 9> coefficients {0, 1, -1, 2, -2, 65535, -65535, 131071, -131071};
+  for (size_t i = 0; i < coefficients.size(); ++i) {
+    expected[i] = coefficients[i];
+  }
+
+  std::stringstream stream;
+  OBitstream output(stream);
+  CABACEncoder encoder;
+  encoder.init(output);
+  DWTBlockStreamEncoder<2> block_encoder {};
+  block_encoder.encodeBlock(expected, encoder);
+  encoder.terminate();
+
+  IBitstream input(stream);
+  CABACDecoder decoder;
+  decoder.init(input);
+  DynamicBlock<int32_t, 2> decoded(size);
+  DWTBlockStreamDecoder<2> block_decoder {};
+  block_decoder.decodeBlock(decoder, decoded);
+
+  for (size_t i = 0; i < coefficients.size(); ++i) {
+    EXPECT_EQ(decoded[i], expected[i]);
   }
 }

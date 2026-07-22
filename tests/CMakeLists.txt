@@ -9,6 +9,8 @@ add_executable(
   test_dct.cc
   test_dwt.cc
   test_huffman.cc
+  test_lfif_roundtrip.cc
+  test_lfwf_roundtrip.cc
   test_mtf.cc
   test_ppm.cc
   test_runlength.cc
