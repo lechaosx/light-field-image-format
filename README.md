@@ -3,43 +3,45 @@ Light Field Image Format (LFIF) is an implementation of a lossy light field imag
 Evaluation of this encoder was performed in the paper [1]. The method is described in the paper [2].
 
 ## Compile
-The project depends on ``GCC`` with C++ 20 implemented. The compilation is organized with the ``cmake`` and ``make`` tool.
-The preparation is fairly straightforward:
+The project uses C++20, CMake and Nix. Enter the reproducible development environment and build the release preset with:
 
-    mkdir build
-    cd build
-    cmake -DCMAKE_BUILD_TYPE=Release ..
+    nix develop
+    cmake --preset release
+    cmake --build --preset release
+    ctest --preset release
 
-The library and tools can be then compiled with
+The ``full`` preset also builds and tests the codec comparison tools:
 
-    make
+    cmake --preset full
+    cmake --build --preset full
+    ctest --preset full
 
-The project can be cleaned with
-
-    make clean
-
-The documentation can be generated with ``Doxygen`` tool using the command
-
-    make doc
+The Nix flake builds the main package with ``nix build`` and provides all dependencies, including xvc from its upstream repository.
 
 ## Usage
 The tools are able to compress a light field image which exists as a set of ppm images representing individual views.
 The image files must be sorted in row or column order and the view indices must be part of file names.
 To compress a light field image, use the compression tool like this:
 
-    ./tools/lfif4d_compress -i path/to/##/input/###.ppm -o path/to/output.lfif -q <quality> [-p] [-s] -- [<x> <y> ...]
+    ./build/cmake/release/tools/lfif compress path/to/input.ppm path/to/output.lfif
 
-The ``#`` characters can be anywhere in the path and are expanded with sequential numbers. This means that a path ``##/file#.ppm`` will be expanded to files ``00/file0.ppm``, ``00/file1.ppm``, ..., ``99/file9.ppm``. The properties of all the images must be the same. The images must together resemble a square of views.
-The ``<quality>`` parameters specify a compression quality. The tools consume any floating-point number from 1.0 to 100.0. The higher the number, the better the visual quality, but worse compression ratio.
-The ``-p`` switch will turn on the intra prediction. This will take some extra time to compute.
-The ``-s`` switch will try to find a disparity of the views and compensate for it. This often leads to better compression ratios and it is recommended.
-At the end of the switches and parameters, the compression block size can be specified with *d* positive integer numbers, where *d* is the dimensionality of the compression. By default, the block size will be a *d*-dimensional cube with a side equal to the square root of view count.
+For a four-dimensional light field with a 15 by 15 view grid, specify the two view dimensions:
 
-The decompression tool can decompress images compressed with corresponding compression tools. The tools will output the individual views as a set of ppm files with names specified by a mask. To decompress a light filed image, use decompression tools like this:
+    ./build/cmake/release/tools/lfif compress 'path/to/input-###.ppm' path/to/output.lfif --shape 15x15 --block 8x8x4x4
 
-    ./tools/lfif4d_decompress -i path/to/input.lfif -o path/to/##/output/###.ppm
+The ``#`` characters are replaced with zero-padded sequential view numbers. The number of input images must match the product of ``--shape``, and all PPM properties must match. Omitting ``--shape`` compresses one two-dimensional PPM. One view dimension produces a three-dimensional image and two view dimensions produce a four-dimensional image.
 
-The ``#`` characters will be expanded in a similar way as with compression tools.
+Wavelet compression is the default. Use ``--transform dct`` to select DCT explicitly, ``--discarded-bits N`` for lossy transform-bit removal and ``--predict`` to enable intra prediction. If ``--block`` is omitted, each block extent is the smaller of 8 and the corresponding image extent.
+
+The decompression command writes one PPM for a two-dimensional image, or expands a mask for the higher-dimensional view axes:
+
+    ./build/cmake/release/tools/lfif decompress path/to/input.lfif 'path/to/output-###.ppm'
+
+Container metadata can be inspected without decoding the payload:
+
+    ./build/cmake/release/tools/lfif inspect path/to/input.lfif
+
+The versioned binary container is documented in [docs/format.md](docs/format.md).
 
 ## License
 See [LICENSE](https://github.com/xdlaba02/light-field-image-format/blob/master/LICENSE) for license and copyright information.
