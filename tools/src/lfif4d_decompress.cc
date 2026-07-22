@@ -1,10 +1,15 @@
+#include <algorithm>
+#include <array>
+#include <cstdint>
 #include <fstream>
 #include <print>
+#include <string>
 #include <vector>
 
 #include <lfwf_decoder.h>
 
 #include <decompress.h>
+#include <file_format.h>
 #include <plenoppm.h>
 #include <tiler.h>
 
@@ -26,8 +31,9 @@ int main(int argc, char *argv[]) {
   input_stream >> magic_number;
   input_stream.ignore();
 
-  if (magic_number != std::string("LFIF-4D")) {
-    throw std::runtime_error("Magic number does not match!");
+  if (!file_format::is_wavelet_4d(magic_number)) {
+    std::println(stderr, "ERROR: UNSUPPORTED 4D FORMAT {}", magic_number);
+    return 2;
   }
 
   std::array<int64_t, 2> shift {};

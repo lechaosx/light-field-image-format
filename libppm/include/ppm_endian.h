@@ -1,7 +1,9 @@
-#ifndef PPM_ENDIAN_H
-#define PPM_ENDIAN_H
+#pragma once
 
 #include <algorithm>
+#include <cstdint>
+
+#include <endian.h>
 
 template <typename T>
 class BigEndian {
@@ -54,5 +56,3 @@ class LittleEndian {
 
 private:
 };
-
-#endif

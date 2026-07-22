@@ -1,5 +1,8 @@
 #pragma once
 
+#include <algorithm>
+#include <array>
+#include <cmath>
 #include <istream>
 #include <ostream>
 #include <vector>

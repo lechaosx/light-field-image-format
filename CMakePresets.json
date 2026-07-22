@@ -8,6 +8,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
+        "BUILD_TESTING": true,
         "CMAKE_PROJECT_TOP_LEVEL_INCLUDES": "${sourceDir}/cmake/conan_provider.cmake"
       }
     },
@@ -29,6 +30,11 @@
     { "name": "debug", "configurePreset": "debug" }
   ],
   "testPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "output": { "outputOnFailure": true }
+    },
     {
       "name": "release",
       "configurePreset": "release",

@@ -31,6 +31,8 @@ class OBitstream {
   uint8_t m_accumulator {};
 
 public:
+  // Flushing is explicit: ostream operations may throw, so the destructor
+  // intentionally performs no I/O.
   void writeBit(std::ostream &stream, bool bit) {
     m_accumulator |= bit << m_index;
     m_index++;

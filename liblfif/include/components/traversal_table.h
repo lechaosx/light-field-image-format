@@ -8,6 +8,7 @@
 #include "quant_table.h"
 #include "zigzag.h"
 #include "endian.h"
+#include "meta.h"
 
 using REFBLOCKUNIT = double;
 

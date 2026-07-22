@@ -23,7 +23,7 @@ public:
 
     for (size_t u = 0; u < size[0]; u++) {
       for (size_t x = 0; x < size[0]; x++) {
-        coefs[{x, u}] = std::cos(((2 * x + 1) * u * std::numbers::pi_v<float>) * c3) * c1;
+        coefs[{x, u}] = std::cos(((2 * x + 1) * u * std::numbers::pi) * c3) * c1;
       }
     }
 

@@ -1,8 +1,8 @@
-#ifndef PPM_H
-#define PPM_H
+#pragma once
 
 #include <array>
 
+#include <cstddef>
 #include <cstdio>
 #include <cstdint>
 
@@ -84,5 +84,3 @@ public:
     return m_color_depth;
   }
 };
-
-#endif

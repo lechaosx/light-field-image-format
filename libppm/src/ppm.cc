@@ -1,5 +1,6 @@
-#include "ppm.h"
+#include <ppm.h>
 
+#include <cctype>
 #include <string>
 
 #include <sys/types.h>
@@ -8,8 +9,6 @@
 #include <unistd.h>
 
 #include <sys/mman.h>
-
-using namespace std;
 
 enum PPMHeaderParserState {
   STATE_INIT,
@@ -35,9 +34,9 @@ void skipUntilEol(FILE *input) {
 }
 
 int PPM::parseHeader(FILE *ppm) {
-  string str_width  {};
-  string str_height {};
-  string str_depth  {};
+  std::string str_width  {};
+  std::string str_height {};
+  std::string str_depth  {};
 
   PPMHeaderParserState state = STATE_INIT;
 
@@ -174,17 +173,17 @@ int PPM::parseHeader(FILE *ppm) {
       case STATE_END:
       ungetc(c, ppm);
 
-      int64_t signed_width = stoi(str_width);
+      int64_t signed_width = std::stoi(str_width);
       if (signed_width <= 0) {
         return -1;
       }
 
-      int64_t signed_height = stoi(str_height);
+      int64_t signed_height = std::stoi(str_height);
       if (signed_height <= 0) {
         return -1;
       }
 
-      int64_t signed_depth = stoi(str_depth);
+      int64_t signed_depth = std::stoi(str_depth);
       if (signed_depth > 65535 || signed_depth <= 0) {
         return -1;
       }

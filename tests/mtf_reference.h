@@ -14,7 +14,7 @@
 template<typename F>
 void moveToFront(std::vector<uint64_t> &dictionary, std::vector<int64_t> &data, F &&update) {
   for (size_t i = 0; i < data.size(); i++) {
-    if (data[i] >= dictionary.size()) {
+    if (static_cast<uint64_t>(data[i]) >= dictionary.size()) {
       size_t dict_end = dictionary.size();
 
       dictionary.resize(data[i] + 1);

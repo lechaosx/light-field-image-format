@@ -3,6 +3,7 @@
 #include <components/bitstream.h>
 
 #include <sstream>
+#include <string>
 #include <vector>
 
 namespace {
@@ -37,4 +38,26 @@ TEST(Bitstream, RoundTripsAcrossManyByteBoundaries) {
     bits.push_back((i * 7 + 3) % 5 < 2);
   }
   EXPECT_EQ(roundtrip(bits), bits);
+}
+
+TEST(Bitstream, PacksBitsLeastSignificantFirst) {
+  std::ostringstream buffer;
+  OBitstream out {};
+  for (const bool bit : {true, false, true, true, false}) {
+    out.writeBit(buffer, bit);
+  }
+
+  EXPECT_TRUE(buffer.str().empty());
+  out.flush(buffer);
+  EXPECT_EQ(buffer.str(), std::string(1, static_cast<char>(0x0d)));
+}
+
+TEST(Bitstream, RequiresExplicitFlushForPartialByte) {
+  std::ostringstream buffer;
+  {
+    OBitstream out {};
+    out.writeBit(buffer, true);
+  }
+
+  EXPECT_TRUE(buffer.str().empty());
 }

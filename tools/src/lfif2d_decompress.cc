@@ -1,12 +1,11 @@
 #include <fstream>
 #include <print>
-#include <vector>
 
 #include <ppm.h>
-#include <lfif_decoder.h>
 #include <lfwf_decoder.h>
 
 #include <decompress.h>
+#include <file_format.h>
 #include <plenoppm.h>
 
 int main(int argc, char *argv[]) {
@@ -27,8 +26,9 @@ int main(int argc, char *argv[]) {
   input_stream >> magic_number;
   input_stream.ignore();
 
-  if (magic_number != std::string("LFIF-2D")) {
-    throw std::runtime_error("Magic number does not match!");
+  if (!file_format::is_wavelet_2d(magic_number)) {
+    std::println(stderr, "ERROR: UNSUPPORTED 2D FORMAT {}", magic_number);
+    return 2;
   }
 
   LFWFDecoder<2> decoder {};

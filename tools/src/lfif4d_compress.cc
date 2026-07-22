@@ -8,6 +8,7 @@
 #include <lfwf_encoder.h>
 
 #include <compress.h>
+#include <file_format.h>
 #include <plenoppm.h>
 #include <tiler.h>
 
@@ -118,7 +119,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  output_stream << "LFIF-4D\n";
+  output_stream << file_format::wavelet_4d_magic << '\n';
   output_stream << shift[0] << " " << shift[1] << "\n";
 
   LFWFEncoder<4> encoder {};

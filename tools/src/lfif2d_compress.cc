@@ -2,13 +2,12 @@
 #include <charconv>
 #include <fstream>
 #include <print>
-#include <vector>
 
-#include <lfif_encoder.h>
 #include <lfwf_encoder.h>
 #include <ppm.h>
 
 #include <compress.h>
+#include <file_format.h>
 #include <plenoppm.h>
 
 int main(int argc, char *argv[]) {
@@ -64,7 +63,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  output_stream << "LFIF-2D\n";
+  output_stream << file_format::wavelet_2d_magic << '\n';
 
   LFWFEncoder<2> encoder {};
   encoder.create(output_stream, image_size, block_size, color_depth, distortion, predict);
