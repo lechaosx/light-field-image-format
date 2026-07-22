@@ -64,6 +64,15 @@ add_test(
     /dev/full
 )
 set_tests_properties(OmniCli.RejectsOutputWriteFailure PROPERTIES WILL_FAIL TRUE)
+add_test(
+  NAME OmniCli.RejectsNonBitDepthMaxval
+  COMMAND
+    $<TARGET_FILE:lfif_cli>
+    compress
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/non-bit-depth-maxval.ppm
+    ${CMAKE_CURRENT_BINARY_DIR}/invalid-maxval.lfif
+)
+set_tests_properties(OmniCli.RejectsNonBitDepthMaxval PROPERTIES WILL_FAIL TRUE)
 
 add_test(
   NAME OmniCli.CreatesOutputDirectoriesWithApostrophes

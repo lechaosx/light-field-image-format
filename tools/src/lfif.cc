@@ -181,6 +181,9 @@ int compress(int argc, char *argv[]) {
     if (ppm.mmapPPM(file_name.c_str()) < 0) {
       throw std::runtime_error("cannot read PPM: " + file_name);
     }
+    if (!std::has_single_bit(ppm.color_depth() + 1)) {
+      throw std::runtime_error("PPM maxval must be one less than a power of two");
+    }
     if (image == 0) {
       width = ppm.width();
       height = ppm.height();

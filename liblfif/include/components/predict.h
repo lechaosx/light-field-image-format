@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <cassert>
 #include <cmath>
+#include <type_traits>
 
 template <size_t D>
 struct interpolate {
@@ -261,7 +262,8 @@ void predict_direction(DynamicBlock<T, D> &output, const int8_t direction[D], F 
 
 template<size_t D, typename  T, typename F>
 T predict_DC(const std::array<size_t, D> &size, F &inputF) {
-  T      sum         {};
+  using Sum = std::conditional_t<std::is_integral_v<T>, int64_t, T>;
+  Sum    sum         {};
   size_t samples_cnt {};
 
   for (size_t neighbour_idx = 0; neighbour_idx < D; neighbour_idx++) {
@@ -284,11 +286,11 @@ T predict_DC(const std::array<size_t, D> &size, F &inputF) {
 
       position[neighbour_idx]--;
 
-      sum += inputF(position);
+      sum += static_cast<Sum>(inputF(position));
     });
   }
 
-  return sum / samples_cnt;
+  return static_cast<T>(sum / static_cast<Sum>(samples_cnt));
 }
 
 template<size_t D, typename T, typename F>

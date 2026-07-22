@@ -37,3 +37,10 @@ TEST(BlockPredictor, ScoresSixteenBitRangeWithoutOverflow) {
 
   EXPECT_EQ(selected.type, 1);
 }
+
+TEST(BlockPredictor, AveragesLargeFourDimensionalBoundaryWithoutOverflow) {
+  const std::array<size_t, 4> size {26, 26, 26, 26};
+  auto input = [](const std::array<int64_t, 4> &) { return int32_t {32767}; };
+
+  EXPECT_EQ((predict_DC<4, int32_t>(size, input)), 32767);
+}
