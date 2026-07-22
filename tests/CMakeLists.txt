@@ -148,8 +148,9 @@ if(LFIF_BUILD_EXTRAS)
       $<TARGET_FILE:xvcbench>
       -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
       -o ${CMAKE_CURRENT_BINARY_DIR}/xvcbench.txt
-      -f 20 -l 20
+      -f 40 -l 40
   )
+  set_tests_properties(ExtraSmoke.XvcBench PROPERTIES PASS_REGULAR_EXPRESSION "40 [0-9]")
 
   add_test(
     NAME ExtraSmoke.HevcCompress

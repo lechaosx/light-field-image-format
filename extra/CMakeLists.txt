@@ -109,7 +109,7 @@ target_link_libraries(
 add_executable(xvcbench xvcbench.cc)
 target_link_libraries(
   xvcbench
-  PRIVATE lfif_tool_io PkgConfig::XVC lfif_project_options
+  PRIVATE lfif_tool_io PkgConfig::SWSCALE PkgConfig::XVC lfif_project_options
 )
 
 install(

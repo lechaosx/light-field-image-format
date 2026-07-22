@@ -13,8 +13,9 @@ extern "C" {
 
 #include <getopt.h>
 #include <cmath>
-
+#include <fstream>
 #include <iostream>
+#include <sstream>
 
 using std::cerr;
 using std::endl;
@@ -22,12 +23,6 @@ using std::ios;
 using std::ofstream;
 using std::stringstream;
 using std::vector;
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <sstream>
-#include <cassert>
-#include <bitset>
 
 void print_usage(char *argv0) {
   cerr << "Usage: " << endl;
@@ -35,21 +30,26 @@ void print_usage(char *argv0) {
 }
 
 template <typename F>
-void encode(const xvc_encoder_api  *xvc_api, xvc_encoder *encoder, const uint8_t *buffer, F &&callback) {
+bool encode(const xvc_encoder_api  *xvc_api, xvc_encoder *encoder, const uint8_t *buffer, F &&callback) {
   xvc_enc_pic_buffer *rec_pic_ptr { nullptr };
   xvc_enc_nal_unit *nal_units;
   int num_nal_units;
 
   xvc_enc_return_code ret = xvc_api->encoder_encode(encoder, buffer, &nal_units, &num_nal_units, rec_pic_ptr);
-  assert(ret == XVC_ENC_OK);
+  if (ret != XVC_ENC_OK) {
+    cerr << "xvc encode failed: " << xvc_api->xvc_enc_get_error_text(ret) << endl;
+    return false;
+  }
 
   for (int i = 0; i < num_nal_units; i++) {
     callback(nal_units[i]);
   }
+
+  return true;
 }
 
 template <typename F>
-void flush(const xvc_encoder_api  *xvc_api, xvc_encoder *encoder, F &&callback) {
+bool flush(const xvc_encoder_api  *xvc_api, xvc_encoder *encoder, F &&callback) {
   xvc_enc_pic_buffer *rec_pic_ptr { nullptr };
   xvc_enc_nal_unit *nal_units;
   int num_nal_units;
@@ -58,13 +58,18 @@ void flush(const xvc_encoder_api  *xvc_api, xvc_encoder *encoder, F &&callback) 
 
   do {
     ret = xvc_api->encoder_flush(encoder, &nal_units, &num_nal_units, rec_pic_ptr);
-    assert(ret == XVC_ENC_OK || ret == XVC_ENC_NO_MORE_OUTPUT);
+    if (ret != XVC_ENC_OK && ret != XVC_ENC_NO_MORE_OUTPUT) {
+      cerr << "xvc flush failed: " << xvc_api->xvc_enc_get_error_text(ret) << endl;
+      return false;
+    }
 
     for (int i = 0; i < num_nal_units; i++) {
       callback(nal_units[i]);
     }
 
   } while (ret == XVC_ENC_OK);
+
+  return true;
 }
 
 int main(int argc, char *argv[]) {
@@ -164,6 +169,11 @@ int main(int argc, char *argv[]) {
   }
 
   encoder = xvc_api->encoder_create(params);
+  if (!encoder) {
+    cerr << "xvc encoder creation failed" << endl;
+    xvc_api->parameters_destroy(params);
+    return 1;
+  }
 
   in_convert_ctx = sws_getContext(width, height, AV_PIX_FMT_RGB24, width, height, AV_PIX_FMT_YUV444P, 0, 0, 0, 0);
   if (!in_convert_ctx) {
@@ -194,6 +204,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  bool encoded = true;
   for (size_t image = 0; image < image_count; image++) {
     uint8_t *inData[1]  = { &rgb_data[image * width * height * 3] };
     uint8_t *outData[3] = { &yuv_frame[width * height * 0], &yuv_frame[width * height * 1], &yuv_frame[width * height * 2] };
@@ -202,15 +213,20 @@ int main(int argc, char *argv[]) {
 
     sws_scale(in_convert_ctx, inData, inLineSize, 0, height, outData, outLineSize);
 
-    encode(xvc_api, encoder, yuv_frame.data(), saveNal);
+    if (!encode(xvc_api, encoder, yuv_frame.data(), saveNal)) {
+      encoded = false;
+      break;
+    }
   }
 
-  flush(xvc_api, encoder, saveNal);
+  if (encoded) {
+    encoded = flush(xvc_api, encoder, saveNal);
+  }
 
   sws_freeContext(in_convert_ctx);
 
   xvc_api->encoder_destroy(encoder);
   xvc_api->parameters_destroy(params);
 
-  return 0;
+  return encoded ? 0 : 1;
 }
