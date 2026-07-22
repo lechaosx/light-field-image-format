@@ -6,6 +6,7 @@
 #include "plenoppm.h"
 #include "file_mask.h"
 
+#include <cmath>
 #include <iostream>
 
 using namespace std;
@@ -50,6 +51,36 @@ int createPPMs(const char *output_file_mask, uint64_t width, uint64_t height, ui
 
     if (data[image].createPPM(file_name[image].c_str(), width, height, color_depth) < 0) {
       return -2;
+    }
+  }
+  return 0;
+}
+
+int loadPPMGrid(const char *input_file_mask, uint64_t &width, uint64_t &height, uint32_t &color_depth, uint64_t &image_count, std::vector<uint8_t> &data) {
+  std::vector<PPM> images;
+  if (mapPPMs(input_file_mask, width, height, color_depth, images) < 0 || images.empty()) {
+    std::cerr << "ERROR: NO IMAGE LOADED\n";
+    return -1;
+  }
+
+  image_count = images.size();
+  const uint64_t side = std::sqrt(image_count);
+  if (side * side != image_count) {
+    std::cerr << "ERROR: NOT SQUARE\n";
+    return -2;
+  }
+  if (color_depth > 255) {
+    std::cerr << "ERROR: BENCHMARK SUPPORTS ONLY 8-BIT PPM INPUT\n";
+    return -3;
+  }
+
+  data.resize(width * height * image_count * 3);
+  for (size_t image = 0; image < images.size(); ++image) {
+    for (size_t pixel = 0; pixel < width * height; ++pixel) {
+      const auto rgb = images[image].get(pixel);
+      for (size_t component = 0; component < rgb.size(); ++component) {
+        data[(image * width * height + pixel) * 3 + component] = rgb[component];
+      }
     }
   }
   return 0;

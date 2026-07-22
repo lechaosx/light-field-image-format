@@ -127,16 +127,11 @@ int main(int argc, char *argv[]) {
     stringstream(s_qp) >> qp;
   }
 
-  if (!checkPPMheaders(input_file_mask, width, height, color_depth, image_count)) {
+  if (loadPPMGrid(input_file_mask, width, height, color_depth, image_count, rgb_data) < 0) {
     return 2;
   }
 
-  rgb_data.resize(width * height * image_count * 3);
   yuv_frame.resize(width * height * 3 * 2);
-
-  if (!loadPPMs(input_file_mask, rgb_data.data())) {
-    return 3;
-  }
 
   xvc_api = xvc_encoder_api_get();
   params = xvc_api->parameters_create();

@@ -139,14 +139,8 @@ int main(int argc, char *argv[]) {
     q_last = tmp;
   }
 
-  if (!checkPPMheaders(input_file_mask, width, height, color_depth, image_count)) {
+  if (loadPPMGrid(input_file_mask, width, height, color_depth, image_count, rgb_data) < 0) {
     return 2;
-  }
-
-  rgb_data.resize(width * height * image_count * 3);
-
-  if (!loadPPMs(input_file_mask, rgb_data.data())) {
-    return 3;
   }
 
   cinfo.err = jpeg_std_error(&jerr);

@@ -155,9 +155,6 @@ int main(int argc, char *argv[]) {
   auto saveFrame = [&](xvc_decoded_picture &frame) {
     SwsContext *out_convert_ctx  {};
     vector<uint8_t> rgb_frame {};
-    PPMFileStruct ppm  {};
-    Pixel *ppm_row     {};
-
 
     rgb_frame.resize(frame.stats.width * frame.stats.height * 3);
 
@@ -172,49 +169,29 @@ int main(int argc, char *argv[]) {
 
     sws_scale(out_convert_ctx, reinterpret_cast<const uint8_t *const *>(frame.planes), frame.stride, 0, frame.stats.height, outData, outLineSize);
 
-    ppm.width       = frame.stats.width;
-    ppm.height      = frame.stats.height;
-    ppm.color_depth = 255;
-
-    ppm_row = allocPPMRow(ppm.width);
-
-    size_t last_slash_pos = string(output_file_mask).find_last_of('/');
     std::string filename = get_name_from_mask(output_file_mask, '#', view_counter);
 
     view_counter++;
 
-    if (create_directory(filename)) {
-      cerr << "ERROR: CANNON OPEN " << filename << " FOR WRITING\n";
-      return 1;
+    if (create_directory(filename.c_str())) {
+      cerr << "ERROR: CANNOT OPEN " << filename << " FOR WRITING\n";
+      exit(1);
     }
 
-    ppm.file = fopen(filename.c_str(), "wb");
-    if (!ppm.file) {
+    PPM ppm {};
+    if (ppm.createPPM(filename.c_str(), frame.stats.width, frame.stats.height, 255) < 0) {
       cerr << "ERROR: CANNOT OPEN " << filename << " FOR WRITING" << endl;
       exit(1);
     }
 
-    if (writePPMHeader(&ppm)) {
-      cerr << "ERROR: CANNOT WRITE TO " << filename << endl;
-      exit(1);
+    for (size_t pixel = 0; pixel < ppm.width() * ppm.height(); ++pixel) {
+      ppm.put(pixel, {
+        rgb_frame[pixel * 3 + 0],
+        rgb_frame[pixel * 3 + 1],
+        rgb_frame[pixel * 3 + 2]
+      });
     }
 
-    for (size_t row = 0; row < ppm.height; row++) {
-      for (size_t col = 0; col < ppm.width; col++) {
-        ppm_row[col].r = rgb_frame[(row * ppm.width + col) * 3 + 0];
-        ppm_row[col].g = rgb_frame[(row * ppm.width + col) * 3 + 1];
-        ppm_row[col].b = rgb_frame[(row * ppm.width + col) * 3 + 2];
-      }
-
-
-      if (writePPMRow(&ppm, ppm_row)) {
-        cerr << "ERROR: CANNOT WRITE TO " << filename << endl;
-        exit(1);
-      }
-    }
-
-    fclose(ppm.file);
-    freePPMRow(ppm_row);
     sws_freeContext(out_convert_ctx);
   };
 

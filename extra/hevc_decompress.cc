@@ -4,8 +4,7 @@
 \******************************************************************************/
 
 #include "file_mask.h"
-
-#include <ppm.h>
+#include "plenoppm.h"
 
 extern "C" {
   #include <libavcodec/avcodec.h>
@@ -56,7 +55,7 @@ int main(int argc, char *argv[]) {
 
   AVPacket *pkt                {};
   AVFrame *out_frame           {};
-  AVCodec *decoder             {};
+  const AVCodec *decoder       {};
   AVCodecContext *out_context  {};
   AVCodecParserContext *parser {};
   SwsContext *out_convert_ctx  {};
@@ -106,7 +105,6 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  avcodec_register_all();
   decoder = avcodec_find_decoder(AV_CODEC_ID_H265);
   if (!decoder) {
     cerr << "Decoder AV_CODEC_ID_H265 not found" << endl;
@@ -134,8 +132,6 @@ int main(int argc, char *argv[]) {
 
   auto saveFrame = [&](AVFrame *frame) {
     AVFrame *rgb_frame {};
-    PPMFileStruct ppm  {};
-    Pixel *ppm_row     {};
 
     rgb_frame = av_frame_alloc();
     if (!rgb_frame) {
@@ -161,55 +157,34 @@ int main(int argc, char *argv[]) {
     int outLinesize[1] = { static_cast<int>(3 * frame->width) };
     sws_scale(out_convert_ctx, frame->data, frame->linesize, 0, frame->height, rgb_frame->data, outLinesize);
 
-    ppm.width = rgb_frame->width;
-    ppm.height = rgb_frame->height;
-    ppm.color_depth = 255;
-
-    ppm_row = allocPPMRow(ppm.width);
-
-    size_t last_slash_pos = string(output_file_mask).find_last_of('/');
-
     std::string filename = get_name_from_mask(output_file_mask, '#', view_counter);
 
     view_counter++;
 
-    if (create_directory(file_name)) {
-      cerr << "ERROR: CANNON OPEN " << file_name << " FOR WRITING\n";
-      return 1;
+    if (create_directory(filename.c_str())) {
+      cerr << "ERROR: CANNOT OPEN " << filename << " FOR WRITING\n";
+      exit(1);
     }
 
-    ppm.file = fopen(filename.c_str(), "wb");
-    if (!ppm.file) {
+    PPM ppm {};
+    if (ppm.createPPM(filename.c_str(), rgb_frame->width, rgb_frame->height, 255) < 0) {
       cerr << "ERROR: CANNOT OPEN " << filename << " FOR WRITING" << endl;
       exit(1);
     }
 
-    if (writePPMHeader(&ppm)) {
-      cerr << "ERROR: CANNOT WRITE TO " << filename << endl;
-      exit(1);
+    for (size_t pixel = 0; pixel < ppm.width() * ppm.height(); ++pixel) {
+      ppm.put(pixel, {
+        rgb_frame->data[0][pixel * 3 + 0],
+        rgb_frame->data[0][pixel * 3 + 1],
+        rgb_frame->data[0][pixel * 3 + 2]
+      });
     }
 
-    for (size_t row = 0; row < ppm.height; row++) {
-      for (size_t col = 0; col < ppm.width; col++) {
-        ppm_row[col].r = rgb_frame->data[0][(row * ppm.width + col) * 3 + 0];
-        ppm_row[col].g = rgb_frame->data[0][(row * ppm.width + col) * 3 + 1];
-        ppm_row[col].b = rgb_frame->data[0][(row * ppm.width + col) * 3 + 2];
-      }
-
-
-      if (writePPMRow(&ppm, ppm_row)) {
-        cerr << "ERROR: CANNOT WRITE TO " << filename << endl;
-        exit(1);
-      }
-    }
-
-    fclose(ppm.file);
-    freePPMRow(ppm_row);
     av_frame_free(&rgb_frame);
     sws_freeContext(out_convert_ctx);
   };
 
-  input.open(input_file_name);
+  input.open(input_file_name, ios::binary);
   if (!input) {
     cerr << "Could not open " << input_file_name << " for reading\n";
     exit(1);
@@ -241,7 +216,6 @@ int main(int argc, char *argv[]) {
 
   decode(out_context, out_frame, NULL, saveFrame);
 
-  avcodec_close(out_context);
   avcodec_free_context(&out_context);
   av_parser_close(parser);
   av_frame_free(&out_frame);

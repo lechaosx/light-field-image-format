@@ -158,26 +158,20 @@ int main(int argc, char *argv[]) {
     l_b = stod(last_bitrate);
   }
 
-  if (!checkPPMheaders(input_file_mask, width, height, color_depth, image_count)) {
+  if (loadPPMGrid(input_file_mask, width, height, color_depth, image_count, rgb_data) < 0) {
     return 2;
-  }
-
-  rgb_data.resize(width * height * image_count * 3);
-
-  if (!loadPPMs(input_file_mask, rgb_data.data())) {
-    return 3;
   }
 
   image_pixels = width * height * image_count;
 
   AVPacket *pkt               {};
 
-  AVCodec *coder              {};
+  const AVCodec *coder        {};
   AVFrame *in_frame           {};
   AVCodecContext *in_context  {};
   SwsContext *in_convert_ctx  {};
 
-  AVCodec *decoder            {};
+  const AVCodec *decoder      {};
   AVFrame *out_frame          {};
   AVCodecContext *out_context {};
   SwsContext *out_convert_ctx {};
@@ -225,7 +219,6 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-avcodec_register_all();
   decoder = avcodec_find_decoder(AV_CODEC_ID_H265);
   if (!decoder) {
     cerr << "decoder AV_CODEC_ID_H265 not found" << endl;
@@ -237,29 +230,6 @@ avcodec_register_all();
     cerr << "coder AV_CODEC_ID_H265 not found" << endl;
     exit(1);
   }
-
-  out_context = avcodec_alloc_context3(decoder);
-  if (!out_context) {
-    cerr << "Could not allocate video coder context" << endl;
-    exit(1);
-  }
-
-  in_context = avcodec_alloc_context3(coder);
-  if (!in_context) {
-    cerr << "Could not allocate video coder context" << endl;
-    exit(1);
-  }
-
-  in_context->width = width;
-  in_context->height = height;
-
-  in_context->time_base = {1, int(image_count)};
-  in_context->framerate = {int(image_count), 1};
-
-  in_context->pix_fmt = AV_PIX_FMT_YUV444P;
-
- 	av_opt_set(in_context->priv_data, "tune", "psnr", 0);
-  av_opt_set(in_context->priv_data, "preset", "placebo", 0);
 
   in_convert_ctx = sws_getContext(width, height, AV_PIX_FMT_RGB24, width, height, AV_PIX_FMT_YUV444P, 0, 0, 0, 0);
   if (!in_convert_ctx) {
@@ -286,7 +256,22 @@ avcodec_register_all();
     vector<uint8_t> out_rgb_data {};
     size_t compressed_size = 0;
 
+    in_context = avcodec_alloc_context3(coder);
+    out_context = avcodec_alloc_context3(decoder);
+    if (!in_context || !out_context) {
+      cerr << "Could not allocate video codec context" << endl;
+      exit(1);
+    }
+
+    in_context->width = width;
+    in_context->height = height;
+    in_context->time_base = {1, int(image_count)};
+    in_context->framerate = {int(image_count), 1};
+    in_context->pix_fmt = AV_PIX_FMT_YUV444P;
     in_context->bit_rate = bpp * image_pixels;
+
+	  av_opt_set(in_context->priv_data, "tune", "psnr", 0);
+    av_opt_set(in_context->priv_data, "preset", "placebo", 0);
 
     if (avcodec_open2(in_context, coder, nullptr) < 0) {
       cerr << "Could not open coder" << endl;
@@ -337,8 +322,8 @@ avcodec_register_all();
 
     decodePkt(nullptr);
 
-    avcodec_close(in_context);
-    avcodec_close(out_context);
+    avcodec_free_context(&in_context);
+    avcodec_free_context(&out_context);
 
 
     mse /= image_count * width * height * 3;
@@ -360,8 +345,8 @@ avcodec_register_all();
   av_frame_free(&out_frame);
   av_frame_free(&rgb_frame);
   av_packet_free(&pkt);
-  free(in_convert_ctx);
-  free(out_convert_ctx);
+  sws_freeContext(in_convert_ctx);
+  sws_freeContext(out_convert_ctx);
 
   return 0;
 }
