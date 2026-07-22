@@ -159,6 +159,11 @@ int main(int argc, char *argv[]) {
   }
 
   size_t view_counter = 0;
+  const size_t output_name_count = get_mask_names_count(output_file_mask, '#');
+  if (output_name_count == 0) {
+    cerr << "output file mask is too large" << endl;
+    return 1;
+  }
 
   auto saveFrame = [&](xvc_decoded_picture &frame) {
     SwsContext *out_convert_ctx  {};
@@ -177,8 +182,12 @@ int main(int argc, char *argv[]) {
 
     sws_scale(out_convert_ctx, reinterpret_cast<const uint8_t *const *>(frame.planes), frame.stride, 0, frame.stats.height, outData, outLineSize);
 
-    std::string filename = get_name_from_mask(output_file_mask, '#', view_counter);
+    if (view_counter >= output_name_count) {
+      cerr << "file mask cannot represent frame " << view_counter << endl;
+      exit(1);
+    }
 
+    std::string filename = get_name_from_mask(output_file_mask, '#', view_counter);
     view_counter++;
 
     if (create_directory(filename.c_str())) {

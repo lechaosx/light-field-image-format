@@ -33,7 +33,7 @@ public:
    * @brief The method which returns maximum number to which the mask can be expanded before overflowing.
    * @return The maximum expanding number.
    */
-  size_t count();
+  size_t count() const;
 
 private:
   std::string m_filename_mask;

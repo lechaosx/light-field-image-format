@@ -14,12 +14,17 @@ using std::endl;
 
 int mapPPMs(const char *input_file_mask, uint64_t &width, uint64_t &height, uint32_t &color_depth, std::vector<PPM> &data) {
   FileMask file_name(input_file_mask);
+  const size_t file_name_count = file_name.count();
+  if (file_name_count == 0) {
+    cerr << "ERROR: INPUT FILE MASK IS TOO LARGE" << endl;
+    return -1;
+  }
 
   width       = 0;
   height      = 0;
   color_depth = 0;
 
-  for (size_t image = 0; image < file_name.count(); image++) {
+  for (size_t image = 0; image < file_name_count; image++) {
     PPM ppm {};
 
     if (ppm.mmapPPM(file_name[image].c_str()) < 0) {
@@ -44,6 +49,11 @@ int mapPPMs(const char *input_file_mask, uint64_t &width, uint64_t &height, uint
 
 int createPPMs(const char *output_file_mask, uint64_t width, uint64_t height, uint32_t color_depth, std::vector<PPM> &data) {
   FileMask file_name(output_file_mask);
+  const size_t file_name_count = file_name.count();
+  if (file_name_count == 0 || data.size() > file_name_count) {
+    cerr << "ERROR: OUTPUT FILE MASK CANNOT REPRESENT ALL IMAGES" << endl;
+    return -3;
+  }
 
   for (size_t image {}; image < data.size(); image++) {
     if (create_directory(file_name[image].c_str())) {

@@ -200,6 +200,39 @@ if(LFIF_BUILD_EXTRAS)
   )
   set_tests_properties(ExtraSmoke.XvcOutput PROPERTIES DEPENDS ExtraSmoke.XvcDecompress)
 
+  add_test(
+    NAME ExtraMask.CreateInput
+    COMMAND
+      $<TARGET_FILE:create_extra_test_ppm>
+      --grid ${CMAKE_CURRENT_BINARY_DIR}/mask-input- 16
+  )
+  set_tests_properties(ExtraMask.CreateInput PROPERTIES FIXTURES_SETUP ExtraMaskInput)
+  add_test(
+    NAME ExtraMask.HevcCompress
+    COMMAND
+      $<TARGET_FILE:hevc_compress>
+      -i "${CMAKE_CURRENT_BINARY_DIR}/mask-input-##.ppm"
+      -o ${CMAKE_CURRENT_BINARY_DIR}/mask-input.hevc
+      -b 1000
+  )
+  set_tests_properties(
+    ExtraMask.HevcCompress
+    PROPERTIES FIXTURES_REQUIRED ExtraMaskInput FIXTURES_SETUP ExtraMaskStream
+  )
+  add_test(
+    NAME ExtraMask.RejectsInsufficientOutputMask
+    COMMAND
+      $<TARGET_FILE:hevc_decompress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/mask-input.hevc
+      -o "${CMAKE_CURRENT_BINARY_DIR}/mask-output-#.ppm"
+  )
+  set_tests_properties(
+    ExtraMask.RejectsInsufficientOutputMask
+    PROPERTIES
+      FIXTURES_REQUIRED ExtraMaskStream
+      WILL_FAIL TRUE
+  )
+
   set_tests_properties(
     ExtraSmoke.Av1Bench
     ExtraSmoke.MozBench

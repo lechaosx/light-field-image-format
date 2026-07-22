@@ -136,6 +136,11 @@ int main(int argc, char *argv[]) {
   }
 
   size_t view_counter { 0 };
+  const size_t output_name_count = get_mask_names_count(output_file_mask, '#');
+  if (output_name_count == 0) {
+    cerr << "output file mask is too large" << endl;
+    return 1;
+  }
 
   auto saveFrame = [&](AVFrame *frame) {
     AVFrame *rgb_frame {};
@@ -164,8 +169,12 @@ int main(int argc, char *argv[]) {
     int outLinesize[1] = { static_cast<int>(3 * frame->width) };
     sws_scale(out_convert_ctx, frame->data, frame->linesize, 0, frame->height, rgb_frame->data, outLinesize);
 
-    std::string filename = get_name_from_mask(output_file_mask, '#', view_counter);
+    if (view_counter >= output_name_count) {
+      cerr << "file mask cannot represent frame " << view_counter << endl;
+      exit(1);
+    }
 
+    std::string filename = get_name_from_mask(output_file_mask, '#', view_counter);
     view_counter++;
 
     if (create_directory(filename.c_str())) {
