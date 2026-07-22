@@ -76,8 +76,12 @@ int main(int argc, char *argv[]) {
   ofstream output              {};
 
   char opt {};
-  while ((opt = getopt(argc, argv, "i:o:b:I")) >= 0) {
+  while ((opt = getopt(argc, argv, "hi:o:b:I")) >= 0) {
     switch (opt) {
+      case 'h':
+        print_usage(argv[0]);
+        return 0;
+
       case 'i':
         if (!input_file_mask) {
           input_file_mask = optarg;

@@ -125,3 +125,15 @@ install(
     xvcbench
   RUNTIME DESTINATION bin
 )
+
+if(BUILD_TESTING)
+  add_test(NAME ExtraHelp.Av1Bench COMMAND $<TARGET_FILE:av1bench> -h)
+  add_test(NAME ExtraHelp.HevcCompress COMMAND $<TARGET_FILE:hevc_compress> -h)
+  add_test(NAME ExtraHelp.HevcDecompress COMMAND $<TARGET_FILE:hevc_decompress> -h)
+  add_test(NAME ExtraHelp.MozBench COMMAND $<TARGET_FILE:mozbench> -h)
+  add_test(NAME ExtraHelp.OpenJpegBench COMMAND $<TARGET_FILE:openjpegbench> -h)
+  add_test(NAME ExtraHelp.X265Bench COMMAND $<TARGET_FILE:x265bench> -h)
+  add_test(NAME ExtraHelp.XvcCompress COMMAND $<TARGET_FILE:xvc_compress> -h)
+  add_test(NAME ExtraHelp.XvcDecompress COMMAND $<TARGET_FILE:xvc_decompress> -h)
+  add_test(NAME ExtraHelp.XvcBench COMMAND $<TARGET_FILE:xvcbench> -h)
+endif()

@@ -91,8 +91,12 @@ int main(int argc, char *argv[]) {
   bool intra_only {};
 
   char opt {};
-  while ((opt = getopt(argc, argv, "i:o:f:l:an")) >= 0) {
+  while ((opt = getopt(argc, argv, "hi:o:f:l:an")) >= 0) {
     switch (opt) {
+      case 'h':
+        print_usage(argv[0]);
+        return 0;
+
       case 'i':
         if (!input_file_mask) {
           input_file_mask = optarg;

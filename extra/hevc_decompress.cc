@@ -66,8 +66,12 @@ int main(int argc, char *argv[]) {
   uint8_t inbuf[INBUF_SIZE + AV_INPUT_BUFFER_PADDING_SIZE];
 
   char opt {};
-  while ((opt = getopt(argc, argv, "i:o:")) >= 0) {
+  while ((opt = getopt(argc, argv, "hi:o:")) >= 0) {
     switch (opt) {
+      case 'h':
+        print_usage(argv[0]);
+        return 0;
+
       case 'i':
         if (!input_file_name) {
           input_file_name = optarg;
