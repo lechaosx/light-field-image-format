@@ -7,7 +7,9 @@
 
 #include <getopt.h>
 
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
 
 #include <iostream>
 #include <fstream>
@@ -148,6 +150,10 @@ int main(int argc, char *argv[]) {
   cparameters.tcp_numlayers = 1;
   cparameters.cp_fixed_quality = 1;
   cparameters.irreversible = 1;
+  cparameters.numresolution = 1;
+  for (uint64_t extent = std::min(width, height); extent > 1; extent >>= 1) {
+    cparameters.numresolution++;
+  }
 
   opj_set_default_decoder_parameters(&dparameters);
   dparameters.decod_format = OPJ_CODEC_J2K;
@@ -162,7 +168,6 @@ int main(int argc, char *argv[]) {
     cmptparm[i].x0   = 0;
     cmptparm[i].y0   = 0;
     cmptparm[i].prec = 8;
-    cmptparm[i].bpp  = 8;
     cmptparm[i].sgnd = 0;
   }
 
@@ -187,6 +192,10 @@ int main(int argc, char *argv[]) {
 
     for (size_t img = 0; img < image_count; img++) {
       l_image = opj_image_create(3, cmptparm, OPJ_CLRSPC_SRGB);
+      if (!l_image) {
+        cerr << "Could not create OpenJPEG image" << endl;
+        return 3;
+      }
       l_image->x0 = 0;
       l_image->y0 = 0;
       l_image->x1 = width;
@@ -202,36 +211,64 @@ int main(int argc, char *argv[]) {
       l_stream = opj_stream_create_default_file_stream("/tmp/openjpeg.j2k", OPJ_FALSE);
 
       l_codec = opj_create_compress(OPJ_CODEC_J2K);
+      if (!l_stream || !l_codec) {
+        cerr << "Could not create OpenJPEG encoder" << endl;
+        opj_destroy_codec(l_codec);
+        opj_stream_destroy(l_stream);
+        opj_image_destroy(l_image);
+        return 3;
+      }
       opj_set_info_handler(l_codec, info_callback, nullptr);
       opj_set_warning_handler(l_codec, warning_callback, nullptr);
       opj_set_error_handler(l_codec, error_callback, nullptr);
 
-      opj_setup_encoder(l_codec, &cparameters, l_image);
-      opj_start_compress(l_codec, l_image, l_stream);
-      opj_encode(l_codec, l_stream);
-      opj_end_compress(l_codec, l_stream);
+      const bool encoded = opj_setup_encoder(l_codec, &cparameters, l_image)
+          && opj_start_compress(l_codec, l_image, l_stream)
+          && opj_encode(l_codec, l_stream)
+          && opj_end_compress(l_codec, l_stream);
 
       opj_destroy_codec(l_codec);
       opj_stream_destroy(l_stream);
       opj_image_destroy(l_image);
+      l_image = nullptr;
+      if (!encoded) {
+        cerr << "OpenJPEG encoding failed" << endl;
+        return 3;
+      }
 
       std::ifstream in("/tmp/openjpeg.j2k", std::ifstream::ate | std::ifstream::binary);
-      compressed_size += in.tellg();
+      if (!in || in.tellg() < 0) {
+        cerr << "Could not read OpenJPEG output" << endl;
+        return 3;
+      }
+      compressed_size += static_cast<size_t>(in.tellg());
 
       l_stream = opj_stream_create_default_file_stream("/tmp/openjpeg.j2k", OPJ_TRUE);
 
       l_codec = opj_create_decompress(OPJ_CODEC_J2K);
+      if (!l_stream || !l_codec) {
+        cerr << "Could not create OpenJPEG decoder" << endl;
+        opj_destroy_codec(l_codec);
+        opj_stream_destroy(l_stream);
+        return 3;
+      }
       opj_set_info_handler(l_codec, info_callback, nullptr);
       opj_set_warning_handler(l_codec, warning_callback, nullptr);
       opj_set_error_handler(l_codec, error_callback, nullptr);
 
       opj_codec_set_threads(l_codec, 4);
 
-      opj_setup_decoder(l_codec, &dparameters);
-
-      opj_read_header(l_stream, l_codec, &l_image);
-      opj_decode(l_codec, l_stream, l_image);
-      opj_end_decompress(l_codec,l_stream);
+      const bool decoded = opj_setup_decoder(l_codec, &dparameters)
+          && opj_read_header(l_stream, l_codec, &l_image)
+          && opj_decode(l_codec, l_stream, l_image)
+          && opj_end_decompress(l_codec, l_stream);
+      if (!decoded || !l_image) {
+        cerr << "OpenJPEG decoding failed" << endl;
+        opj_stream_destroy(l_stream);
+        opj_destroy_codec(l_codec);
+        opj_image_destroy(l_image);
+        return 3;
+      }
 
       for (size_t pixel = 0; pixel < width * height; pixel++) {
         for(size_t component = 0; component < 3; component++) {

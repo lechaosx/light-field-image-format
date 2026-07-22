@@ -218,7 +218,36 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  decode(out_context, out_frame, NULL, saveFrame);
+  const int parser_ret = av_parser_parse2(
+      parser,
+      out_context,
+      &pkt->data,
+      &pkt->size,
+      nullptr,
+      0,
+      AV_NOPTS_VALUE,
+      AV_NOPTS_VALUE,
+      0);
+  if (parser_ret < 0) {
+    cerr << "Error while draining parser\n";
+    avcodec_free_context(&out_context);
+    av_parser_close(parser);
+    av_frame_free(&out_frame);
+    av_packet_free(&pkt);
+    return 1;
+  }
+  if (pkt->size) {
+    decode(out_context, out_frame, pkt, saveFrame);
+  }
+  decode(out_context, out_frame, nullptr, saveFrame);
+  if (view_counter == 0) {
+    cerr << "No HEVC frames decoded\n";
+    avcodec_free_context(&out_context);
+    av_parser_close(parser);
+    av_frame_free(&out_frame);
+    av_packet_free(&pkt);
+    return 1;
+  }
 
   avcodec_free_context(&out_context);
   av_parser_close(parser);

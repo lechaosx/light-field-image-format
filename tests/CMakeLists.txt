@@ -89,3 +89,128 @@ add_test(
     ${CMAKE_CURRENT_BINARY_DIR}/omni-dct.ppm
 )
 set_tests_properties(OmniCli.DctDecompress PROPERTIES DEPENDS OmniCli.DctCompress)
+
+if(LFIF_BUILD_EXTRAS)
+  add_executable(create_extra_test_ppm create_extra_test_ppm.cc)
+  target_link_libraries(create_extra_test_ppm PRIVATE ppm lfif_project_options)
+
+  add_test(
+    NAME ExtraSmoke.CreateInput
+    COMMAND $<TARGET_FILE:create_extra_test_ppm> ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+  )
+  set_tests_properties(ExtraSmoke.CreateInput PROPERTIES FIXTURES_SETUP ExtraSmokeInput)
+
+  add_test(
+    NAME ExtraSmoke.Av1Bench
+    COMMAND
+      $<TARGET_FILE:av1bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/av1bench.txt
+      -f 1 -l 1
+  )
+  add_test(
+    NAME ExtraSmoke.MozBench
+    COMMAND
+      $<TARGET_FILE:mozbench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/mozbench.txt
+      -f 75 -l 75 -s 1
+  )
+  add_test(
+    NAME ExtraSmoke.OpenJpegBench
+    COMMAND
+      $<TARGET_FILE:openjpegbench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/openjpegbench.txt
+      -f 40 -l 40 -s 1
+  )
+  set_tests_properties(ExtraSmoke.OpenJpegBench PROPERTIES PASS_REGULAR_EXPRESSION "40 [0-9]")
+  add_test(
+    NAME ExtraSmoke.OpenJpegTinyImage
+    COMMAND
+      $<TARGET_FILE:openjpegbench>
+      -i ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/one-pixel.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/openjpeg-tiny.txt
+      -f 40 -l 40 -s 1
+  )
+  set_tests_properties(ExtraSmoke.OpenJpegTinyImage PROPERTIES PASS_REGULAR_EXPRESSION "40 (inf|[0-9])")
+  add_test(
+    NAME ExtraSmoke.X265Bench
+    COMMAND
+      $<TARGET_FILE:x265bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/x265bench.txt
+      -f 1 -l 1
+  )
+  add_test(
+    NAME ExtraSmoke.XvcBench
+    COMMAND
+      $<TARGET_FILE:xvcbench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/xvcbench.txt
+      -f 20 -l 20
+  )
+
+  add_test(
+    NAME ExtraSmoke.HevcCompress
+    COMMAND
+      $<TARGET_FILE:hevc_compress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/extra.hevc
+      -b 1000
+  )
+  add_test(
+    NAME ExtraSmoke.HevcDecompress
+    COMMAND
+      $<TARGET_FILE:hevc_decompress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra.hevc
+      -o "${CMAKE_CURRENT_BINARY_DIR}/hevc-#.ppm"
+  )
+  set_tests_properties(ExtraSmoke.HevcDecompress PROPERTIES DEPENDS ExtraSmoke.HevcCompress)
+  add_test(
+    NAME ExtraSmoke.HevcOutput
+    COMMAND
+      $<TARGET_FILE:create_extra_test_ppm>
+      --check ${CMAKE_CURRENT_BINARY_DIR}/hevc-0.ppm
+  )
+  set_tests_properties(ExtraSmoke.HevcOutput PROPERTIES DEPENDS ExtraSmoke.HevcDecompress)
+
+  add_test(
+    NAME ExtraSmoke.XvcCompress
+    COMMAND
+      $<TARGET_FILE:xvc_compress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/extra.xvc
+      -q 20
+  )
+  add_test(
+    NAME ExtraSmoke.XvcDecompress
+    COMMAND
+      $<TARGET_FILE:xvc_decompress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra.xvc
+      -o "${CMAKE_CURRENT_BINARY_DIR}/xvc-#.ppm"
+  )
+  set_tests_properties(ExtraSmoke.XvcDecompress PROPERTIES DEPENDS ExtraSmoke.XvcCompress)
+  add_test(
+    NAME ExtraSmoke.XvcOutput
+    COMMAND
+      $<TARGET_FILE:create_extra_test_ppm>
+      --check ${CMAKE_CURRENT_BINARY_DIR}/xvc-0.ppm
+  )
+  set_tests_properties(ExtraSmoke.XvcOutput PROPERTIES DEPENDS ExtraSmoke.XvcDecompress)
+
+  set_tests_properties(
+    ExtraSmoke.Av1Bench
+    ExtraSmoke.MozBench
+    ExtraSmoke.OpenJpegBench
+    ExtraSmoke.X265Bench
+    ExtraSmoke.XvcBench
+    ExtraSmoke.HevcCompress
+    ExtraSmoke.HevcDecompress
+    ExtraSmoke.HevcOutput
+    ExtraSmoke.XvcCompress
+    ExtraSmoke.XvcDecompress
+    ExtraSmoke.XvcOutput
+    PROPERTIES FIXTURES_REQUIRED ExtraSmokeInput
+  )
+endif()
