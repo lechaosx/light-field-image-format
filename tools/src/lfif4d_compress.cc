@@ -48,6 +48,10 @@ int main(int argc, char *argv[]) {
   }
 
   size_t  side        = sqrt(image_count);
+  if (side * side != image_count) {
+    std::cerr << "ERROR: IMAGE GRID IS NOT SQUARE\n";
+    return 2;
+  }
   uint8_t color_depth = ceil(log2(max_rgb_value + 1));
 
   std::array<uint64_t, 4> image_size { width, height, side, side };

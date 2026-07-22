@@ -34,3 +34,13 @@ add_test(
     -o "${CMAKE_CURRENT_BINARY_DIR}/directory'with-apostrophe/output.lfif"
     -d 0
 )
+
+add_test(
+  NAME ToolIo.RejectsNonSquareImageGrids
+  COMMAND
+    $<TARGET_FILE:lfif4d_compress>
+    -i "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/non-square-#.ppm"
+    -o ${CMAKE_CURRENT_BINARY_DIR}/non-square.lfif
+    -d 0
+)
+set_tests_properties(ToolIo.RejectsNonSquareImageGrids PROPERTIES WILL_FAIL TRUE)
