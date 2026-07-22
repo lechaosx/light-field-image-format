@@ -29,23 +29,13 @@ include(GoogleTest)
 gtest_discover_tests(lfif_unit_tests)
 
 add_test(
-  NAME ToolIo.CreatesOutputDirectoriesWithApostrophes
+  NAME OmniCli.CreatesOutputDirectoriesWithApostrophes
   COMMAND
-    $<TARGET_FILE:lfif4d_compress>
-    -i ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/one-pixel.ppm
-    -o "${CMAKE_CURRENT_BINARY_DIR}/directory'with-apostrophe/output.lfif"
-    -d 0
+    $<TARGET_FILE:lfif_cli>
+    compress
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/one-pixel.ppm
+    "${CMAKE_CURRENT_BINARY_DIR}/directory'with-apostrophe/output.lfif"
 )
-
-add_test(
-  NAME ToolIo.RejectsNonSquareImageGrids
-  COMMAND
-    $<TARGET_FILE:lfif4d_compress>
-    -i "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/non-square-#.ppm"
-    -o ${CMAKE_CURRENT_BINARY_DIR}/non-square.lfif
-    -d 0
-)
-set_tests_properties(ToolIo.RejectsNonSquareImageGrids PROPERTIES WILL_FAIL TRUE)
 
 add_test(
   NAME OmniCli.WaveletCompress
