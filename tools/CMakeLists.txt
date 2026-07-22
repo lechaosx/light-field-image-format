@@ -1,19 +1,55 @@
-cmake_minimum_required(VERSION 3.18)
+add_library(
+  lfif_tool_io
+  STATIC
+  src/file_mask.cc
+  src/plenoppm.cc
+)
+target_include_directories(lfif_tool_io PUBLIC include)
+target_link_libraries(lfif_tool_io PUBLIC ppm PRIVATE lfif_project_options)
 
-set(COMPRESS_SOURCES   src/compress.cc   src/lfif4d_compress.cc   src/plenoppm.cc src/file_mask.cc)
-set(DECOMPRESS_SOURCES src/decompress.cc src/lfif4d_decompress.cc src/plenoppm.cc src/file_mask.cc)
+add_executable(
+  lfif2d_compress
+  src/compress.cc
+  src/lfif2d_compress.cc
+)
+target_include_directories(lfif2d_compress PRIVATE include)
+target_link_libraries(lfif2d_compress PRIVATE lfif ppm lfif_project_options)
 
-add_executable(lfif2d_compress src/compress.cc src/lfif2d_compress.cc)
-add_executable(lfif2d_decompress src/decompress.cc src/lfif2d_decompress.cc)
-add_executable(lfif4d_compress ${COMPRESS_SOURCES})
-add_executable(lfif4d_decompress ${DECOMPRESS_SOURCES})
+add_executable(
+  lfif2d_decompress
+  src/decompress.cc
+  src/lfif2d_decompress.cc
+)
+target_include_directories(lfif2d_decompress PRIVATE include)
+target_link_libraries(lfif2d_decompress PRIVATE lfif ppm lfif_project_options)
 
-target_include_directories(lfif2d_compress   PUBLIC include)
-target_include_directories(lfif2d_decompress PUBLIC include)
-target_include_directories(lfif4d_compress   PUBLIC include)
-target_include_directories(lfif4d_decompress PUBLIC include)
+add_executable(
+  lfif4d_compress
+  src/compress.cc
+  src/lfif4d_compress.cc
+)
+target_include_directories(lfif4d_compress PRIVATE include)
+target_link_libraries(
+  lfif4d_compress
+  PRIVATE lfif lfif_tool_io ppm lfif_project_options
+)
 
-target_link_libraries(lfif2d_compress   lfif ppm)
-target_link_libraries(lfif2d_decompress lfif ppm)
-target_link_libraries(lfif4d_compress   lfif ppm)
-target_link_libraries(lfif4d_decompress lfif ppm)
+add_executable(
+  lfif4d_decompress
+  src/decompress.cc
+  src/lfif4d_decompress.cc
+)
+target_include_directories(lfif4d_decompress PRIVATE include)
+target_link_libraries(
+  lfif4d_decompress
+  PRIVATE lfif lfif_tool_io ppm lfif_project_options
+)
+
+install(
+  TARGETS
+    lfif2d_compress
+    lfif2d_decompress
+    lfif4d_compress
+    lfif4d_decompress
+  RUNTIME DESTINATION bin
+)

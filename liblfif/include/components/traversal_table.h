@@ -11,7 +11,7 @@
 
 #include "quant_table.h"
 #include "zigzag.h"
-#include "endian_t.h"
+#include "endian.h"
 
 #include <iosfwd>
 

@@ -1,5 +1,5 @@
-#include "runlength.h"
-#include "bitstream.h"
+#include "components/runlength.h"
+#include "components/bitstream.h"
 
 void RunLengthPair::huffmanEncodeToStream(const HuffmanEncoder &encoder, OBitstream &stream, size_t class_bits) const {
   HuffmanClass amp_class {};

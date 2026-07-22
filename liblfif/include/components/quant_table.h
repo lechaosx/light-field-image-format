@@ -9,14 +9,15 @@
 #ifndef QUANT_TABLE_H
 #define QUANT_TABLE_H
 
-#include "lfiftypes.h"
-#include "dct.h"
-#include "endian_t.h"
-#include "block.h"
-
 #include <istream>
 #include <ostream>
+#include <vector>
 
+#include "dct.h"
+#include "endian.h"
+#include "block.h"
+
+using DCTDATAUNIT = float;
 using QTABLEUNIT = uint64_t; /**< @brief Unit which is intended to containt quantization matrix value.*/
 
 /**

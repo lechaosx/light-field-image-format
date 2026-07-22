@@ -12,7 +12,7 @@
 #include "quant_table.h"
 #include "huffman.h"
 #include "cabac.h"
-#include "endian_t.h"
+#include "endian.h"
 
 #include <cstdint>
 #include <cmath>

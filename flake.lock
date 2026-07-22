@@ -1,0 +1,44 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1784497964,
+        "narHash": "sha256-vlHUuqAcbcH2RKmHbPiuQzbv1pnzzavXnI62RD0bqCU=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "241313f4e8e508cb9b13278c2b0fa25b9ca27163",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "xvc-src": "xvc-src"
+      }
+    },
+    "xvc-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1751545238,
+        "narHash": "sha256-4WBQn9L4u/8l/y9OPWL77b9Fx94jktt+PqoZDqAZ/LE=",
+        "owner": "divideon",
+        "repo": "xvc",
+        "rev": "c9fc596d6d85a5382cc7dd193d5de8ad4d45166a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "divideon",
+        "repo": "xvc",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

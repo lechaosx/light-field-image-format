@@ -3,9 +3,9 @@
 * AUTOR: Drahomir Dlabaja (xdlaba02)
 \******************************************************************************/
 
-#include "huffman.h"
-#include "bitstream.h"
-#include "endian_t.h"
+#include "components/huffman.h"
+#include "components/bitstream.h"
+#include "components/endian.h"
 
 #include <algorithm>
 #include <numeric>
