@@ -62,3 +62,8 @@ metadata without moving the payload.
 The payload length frames concatenated or embedded data and detects truncation
 when the payload is consumed. Version 1 has no checksum: the container does not
 claim to detect intentional modification or act as a security boundary.
+
+The current reference codec implementation encodes and decodes dimensions 2
+through 4. The dimension field and container validation are not tied to that
+implementation limit, so a later codec can extend the supported range without a
+container-version change.

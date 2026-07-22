@@ -7,6 +7,7 @@ add_executable(
   test_bwt.cc
   test_cabac.cc
   test_codec_parameters.cc
+  test_container_codec.cc
   test_dct.cc
   test_dwt.cc
   test_format.cc
