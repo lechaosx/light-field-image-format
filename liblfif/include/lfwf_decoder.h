@@ -20,16 +20,10 @@
 
 #include <cstdint>
 
+#include <iostream>
+
 template <size_t D>
 struct LFWFDecoder: public LFWF<D> {
-  LFWFDecoder(): LFWF<D>() {
-    StackAllocator::init(2147483648 * 4); //FIXME
-  }
-
-  ~LFWFDecoder() {
-    StackAllocator::cleanup();
-  }
-
   void open(std::istream &input) {
     this->depth_bits     = readValueFromStream<uint8_t>(input);
     this->discarded_bits = readValueFromStream<uint8_t>(input);

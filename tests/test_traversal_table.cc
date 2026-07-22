@@ -1,12 +1,10 @@
 #include <gtest/gtest.h>
 
 #include <components/traversal_table.h>
-#include <components/stack_allocator.h>
 
 #include <array>
 
 TEST(TraversalTable, OrdersRadiusFromNearToFarWithStableTies) {
-  StackAllocator::init(1024 * 1024);
   {
     TraversalTable<2> table({3, 3});
     constructByRadius(table);
@@ -16,11 +14,9 @@ TEST(TraversalTable, OrdersRadiusFromNearToFarWithStableTies) {
       EXPECT_EQ(table[i], expected[i]);
     }
   }
-  StackAllocator::cleanup();
 }
 
 TEST(TraversalTable, OrdersDiagonalsWithStableTies) {
-  StackAllocator::init(1024 * 1024);
   {
     TraversalTable<2> table({3, 3});
     constructByDiagonals(table);
@@ -30,5 +26,4 @@ TEST(TraversalTable, OrdersDiagonalsWithStableTies) {
       EXPECT_EQ(table[i], expected[i]);
     }
   }
-  StackAllocator::cleanup();
 }

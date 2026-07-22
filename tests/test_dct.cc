@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <components/dct.h>
-#include <components/stack_allocator.h>
 #include <dct_block_transformer.h>
 
 #include <array>
@@ -9,7 +8,6 @@
 #include <vector>
 
 TEST(Dct, OneDimensionalRoundTrip) {
-  StackAllocator::init(1024 * 1024);
   {
     const std::array<size_t, 1> size {8};
     const std::vector<float> expected {3.0F, -2.0F, 7.0F, 1.0F, 0.0F, 4.0F, -5.0F, 9.0F};
@@ -24,11 +22,9 @@ TEST(Dct, OneDimensionalRoundTrip) {
       EXPECT_NEAR(values[i], expected[i], 0.0001F);
     }
   }
-  StackAllocator::cleanup();
 }
 
 TEST(Dct, PreservesRoundingAtHalfBoundary) {
-  StackAllocator::init(1024 * 1024);
   {
     const std::array<size_t, 1> block_size {8};
     DynamicBlock<float, 1> block(block_size);
@@ -42,5 +38,4 @@ TEST(Dct, PreservesRoundingAtHalfBoundary) {
 
     EXPECT_EQ(block[7], 39);
   }
-  StackAllocator::cleanup();
 }

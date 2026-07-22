@@ -9,6 +9,7 @@
 #ifndef QUANT_TABLE_H
 #define QUANT_TABLE_H
 
+#include <cstdint>
 #include <istream>
 #include <ostream>
 #include <vector>

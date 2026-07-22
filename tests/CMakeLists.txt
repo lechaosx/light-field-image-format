@@ -3,6 +3,7 @@ find_package(GTest CONFIG REQUIRED)
 add_executable(
   lfif_unit_tests
   test_bitstream.cc
+  test_block.cc
   test_bwt.cc
   test_cabac.cc
   test_dct.cc

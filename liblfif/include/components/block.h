@@ -8,32 +8,33 @@
 
 #pragma once
 
-#include "stack_allocator.h"
-
 #include <cmath>
 
-#include <numeric>
 #include <array>
+#include <limits>
+#include <stdexcept>
+#include <vector>
 
 template<typename T, size_t D>
 class DynamicBlock {
 
-  T                     *m_data;
   std::array<size_t, D>  m_size;
+  std::vector<T>         m_data;
 
 public:
   DynamicBlock(const std::array<size_t, D> &size): DynamicBlock(size.data()) {}
 
   #pragma omp declare simd
   DynamicBlock(const size_t size[D]) {
-    size_t bytes = std::accumulate(size, size + D, 1, std::multiplies<size_t>()) * sizeof(T);
-    m_data = static_cast<T *>(StackAllocator::allocate(bytes));
     std::copy(size, size + D, std::begin(m_size));
-  }
-
-  #pragma omp declare simd
-  ~DynamicBlock() {
-    StackAllocator::free(m_data);
+    size_t values = 1;
+    for (const size_t extent : m_size) {
+      if (extent != 0 && values > std::numeric_limits<size_t>::max() / extent) {
+        throw std::length_error("block dimensions overflow");
+      }
+      values *= extent;
+    }
+    m_data.resize(values);
   }
 
   #pragma omp declare simd
@@ -87,8 +88,7 @@ public:
 
   #pragma omp declare simd
   void fill(T value) {
-    size_t num_values = std::accumulate(std::begin(m_size), std::end(m_size), 1, std::multiplies<size_t>());
-    std::fill(m_data, m_data + num_values, value);
+    std::fill(m_data.begin(), m_data.end(), value);
   }
 
 protected:

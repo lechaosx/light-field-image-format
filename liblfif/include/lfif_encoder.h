@@ -20,19 +20,12 @@
 
 #include <cstdint>
 
+#include <iostream>
 #include <sstream>
 #include <map>
 
 template <size_t D>
 struct LFIFEncoder: public LFIF<D> {
-  LFIFEncoder(): LFIF<D>() {
-    StackAllocator::init(2147483648 * 4); //FIXME
-  }
-
-  ~LFIFEncoder() {
-    StackAllocator::cleanup();
-  }
-
   void create(
             std::ostream          &output,
       const std::array<size_t, D> &size,

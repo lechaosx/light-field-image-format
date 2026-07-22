@@ -1,14 +1,12 @@
 #include <gtest/gtest.h>
 
 #include <components/dwt.h>
-#include <components/stack_allocator.h>
 
 #include <array>
 #include <cstdint>
 #include <vector>
 
 TEST(Dwt, RoundTripsOddLengthSignal) {
-  StackAllocator::init(1024 * 1024);
   {
     const std::array<size_t, 1> size {7};
     const std::vector<int32_t> expected {5, -2, 9, 3, -7, 4, 11};
@@ -20,11 +18,9 @@ TEST(Dwt, RoundTripsOddLengthSignal) {
 
     EXPECT_EQ(values, expected);
   }
-  StackAllocator::cleanup();
 }
 
 TEST(Dwt, RoundTripsTwoDimensionalSignal) {
-  StackAllocator::init(1024 * 1024);
   {
     const std::array<size_t, 2> size {3, 4};
     std::vector<int32_t> expected(12);
@@ -39,5 +35,4 @@ TEST(Dwt, RoundTripsTwoDimensionalSignal) {
 
     EXPECT_EQ(values, expected);
   }
-  StackAllocator::cleanup();
 }

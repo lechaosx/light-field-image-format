@@ -19,19 +19,12 @@
 
 #include <cstdint>
 
+#include <iostream>
 #include <sstream>
 #include <map>
 
 template <size_t D>
 struct LFWFEncoder: public LFWF<D> {
-  LFWFEncoder(): LFWF<D>() {
-    StackAllocator::init(2147483648 * 4); //FIXME
-  }
-
-  ~LFWFEncoder() {
-    StackAllocator::cleanup();
-  }
-
   void create(
             std::ostream          &output,
       const std::array<size_t, D> &size,
