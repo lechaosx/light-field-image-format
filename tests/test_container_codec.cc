@@ -65,9 +65,84 @@ TEST(ContainerCodec, RoundTripsWaveletImagesAcrossSupportedDimensions) {
   expectRoundTrip(header({3, 2, 2, 2}, {2, 2, 2, 2}), pixels(24));
 }
 
+TEST(ContainerCodec, RoundTripsPredictedWaveletImagesAcrossSupportedDimensions) {
+  auto two_dimensions = header({2, 2}, {2, 2});
+  two_dimensions.prediction = true;
+  expectRoundTrip(two_dimensions, pixels(4));
+
+  auto three_dimensions = header({2, 2, 2}, {2, 2, 2});
+  three_dimensions.prediction = true;
+  expectRoundTrip(three_dimensions, pixels(8));
+
+  auto four_dimensions = header({2, 2, 2, 2}, {2, 2, 2, 2});
+  four_dimensions.prediction = true;
+  expectRoundTrip(four_dimensions, pixels(16));
+}
+
+TEST(ContainerCodec, RoundTripsSixteenBitWaveletSamples) {
+  auto metadata = header({3, 3}, {2, 2});
+  metadata.sample_depth = 16;
+  std::vector<lfif::Pixel> samples(9);
+  for (size_t i = 0; i < samples.size(); ++i) {
+    samples[i] = {
+        static_cast<uint16_t>(i * 7000),
+        static_cast<uint16_t>(65535 - i * 7000),
+        static_cast<uint16_t>(i * 3000),
+    };
+  }
+  expectRoundTrip(metadata, samples);
+}
+
+TEST(ContainerCodec, PreservesLossyWaveletMetadataAndSampleBounds) {
+  auto metadata = header({7, 5}, {4, 4});
+  metadata.discarded_bits = 2;
+  const std::vector<lfif::Pixel> original = pixels(35);
+
+  std::stringstream stream;
+  const lfif::Header written = lfif::writeImage(stream, metadata, original);
+  const lfif::DecodedImage decoded = lfif::readImage(stream);
+
+  EXPECT_EQ(decoded.header, written);
+  ASSERT_EQ(decoded.pixels.size(), original.size());
+  EXPECT_NE(decoded.pixels, original);
+  for (const lfif::Pixel &pixel : decoded.pixels) {
+    for (const uint16_t sample : pixel) {
+      EXPECT_LE(sample, 255);
+    }
+  }
+}
+
+TEST(ContainerCodec, WritesDeterministicCompleteWaveletContainers) {
+  const auto metadata = header({7, 5}, {4, 4});
+  const auto samples = pixels(35);
+  const auto encode = [&] {
+    std::stringstream stream;
+    lfif::writeImage(stream, metadata, samples);
+    return stream.str();
+  };
+
+  EXPECT_EQ(encode(), encode());
+}
+
 TEST(ContainerCodec, RoundTripsExplicitDctVariant) {
   const std::vector<lfif::Pixel> constant(16, {80, 120, 160});
   expectRoundTrip(header({2, 2, 2, 2}, {2, 2, 2, 2}, lfif::Transform::dct), constant);
+}
+
+TEST(ContainerCodec, ReconstructsNonconstantDctSamplesWithinOneLevel) {
+  const auto metadata = header({4, 4}, {4, 4}, lfif::Transform::dct);
+  const std::vector<lfif::Pixel> original = pixels(16);
+  std::stringstream stream;
+  const lfif::Header written = lfif::writeImage(stream, metadata, original);
+  const lfif::DecodedImage decoded = lfif::readImage(stream);
+
+  EXPECT_EQ(decoded.header, written);
+  ASSERT_EQ(decoded.pixels.size(), original.size());
+  for (size_t pixel = 0; pixel < original.size(); ++pixel) {
+    for (size_t channel = 0; channel < original[pixel].size(); ++channel) {
+      EXPECT_NEAR(decoded.pixels[pixel][channel], original[pixel][channel], 1);
+    }
+  }
 }
 
 TEST(ContainerCodec, DoesNotWriteProgressToStandardError) {

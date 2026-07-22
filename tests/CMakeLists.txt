@@ -58,6 +58,54 @@ set_tests_properties(
   PROPERTIES DEPENDS OmniCli.WaveletCompress PASS_REGULAR_EXPRESSION "transform: wavelet"
 )
 add_test(
+  NAME OmniCli.WaveletInspectChannels
+  COMMAND $<TARGET_FILE:lfif_cli> inspect ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.lfif
+)
+set_tests_properties(
+  OmniCli.WaveletInspectChannels
+  PROPERTIES DEPENDS OmniCli.WaveletCompress PASS_REGULAR_EXPRESSION "channels: 3"
+)
+add_test(
+  NAME OmniCli.WaveletInspectSampleFormat
+  COMMAND $<TARGET_FILE:lfif_cli> inspect ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.lfif
+)
+set_tests_properties(
+  OmniCli.WaveletInspectSampleFormat
+  PROPERTIES DEPENDS OmniCli.WaveletCompress PASS_REGULAR_EXPRESSION "sample format: unsigned integer"
+)
+add_test(
+  NAME OmniCli.WaveletInspectEntropyCodec
+  COMMAND $<TARGET_FILE:lfif_cli> inspect ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.lfif
+)
+set_tests_properties(
+  OmniCli.WaveletInspectEntropyCodec
+  PROPERTIES DEPENDS OmniCli.WaveletCompress PASS_REGULAR_EXPRESSION "entropy codec: CABAC"
+)
+add_test(
+  NAME OmniCli.WaveletInspectColorSpace
+  COMMAND $<TARGET_FILE:lfif_cli> inspect ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.lfif
+)
+set_tests_properties(
+  OmniCli.WaveletInspectColorSpace
+  PROPERTIES DEPENDS OmniCli.WaveletCompress PASS_REGULAR_EXPRESSION "color space: RGB"
+)
+add_test(
+  NAME OmniCli.WaveletInspectDisparityCompensation
+  COMMAND $<TARGET_FILE:lfif_cli> inspect ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.lfif
+)
+set_tests_properties(
+  OmniCli.WaveletInspectDisparityCompensation
+  PROPERTIES DEPENDS OmniCli.WaveletCompress PASS_REGULAR_EXPRESSION "disparity compensation: no"
+)
+add_test(
+  NAME OmniCli.WaveletInspectDisparityShifts
+  COMMAND $<TARGET_FILE:lfif_cli> inspect ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.lfif
+)
+set_tests_properties(
+  OmniCli.WaveletInspectDisparityShifts
+  PROPERTIES DEPENDS OmniCli.WaveletCompress PASS_REGULAR_EXPRESSION "disparity shifts: 0, 0"
+)
+add_test(
   NAME OmniCli.WaveletDecompress
   COMMAND
     $<TARGET_FILE:lfif_cli>

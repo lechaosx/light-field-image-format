@@ -288,9 +288,17 @@ int inspect(const std::string &input_name) {
   std::cout << "block extents: ";
   printExtents(header.block_extents);
   std::cout << "sample depth: " << static_cast<unsigned>(header.sample_depth) << '\n';
+  std::cout << "channels: " << static_cast<unsigned>(header.channels) << '\n';
+  std::cout << "sample format: unsigned integer\n";
   std::cout << "transform: " << transformName(header.transform) << '\n';
+  std::cout << "entropy codec: CABAC\n";
+  std::cout << "color space: RGB\n";
   std::cout << "prediction: " << (header.prediction ? "yes" : "no") << '\n';
   std::cout << "discarded bits: " << static_cast<unsigned>(header.discarded_bits) << '\n';
+  std::cout << "disparity compensation: "
+            << (header.disparity_compensated ? "yes" : "no") << '\n';
+  std::cout << "disparity shifts: " << header.disparity_shift[0]
+            << ", " << header.disparity_shift[1] << '\n';
   std::cout << "payload bytes: " << header.payload_size << '\n';
   return 0;
 }

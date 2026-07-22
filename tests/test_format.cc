@@ -2,6 +2,7 @@
 
 #include <lfif/format.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <fstream>
 #include <sstream>
@@ -96,6 +97,35 @@ TEST(Format, RejectsMalformedAndUnsupportedHeaders) {
   truncated.resize(31);
   auto truncated_stream = streamFor(truncated);
   EXPECT_THROW(lfif::parseHeader(truncated_stream), std::runtime_error);
+
+  for (const size_t identifier : {19U, 20U, 21U, 22U}) {
+    auto unknown_identifier = valid;
+    unknown_identifier[identifier] = 0xff;
+    auto unknown_identifier_stream = streamFor(unknown_identifier);
+    EXPECT_THROW(lfif::parseHeader(unknown_identifier_stream), std::runtime_error);
+  }
+
+  auto zero_extent = valid;
+  std::fill(zero_extent.begin() + 48, zero_extent.begin() + 56, 0);
+  auto zero_extent_stream = streamFor(zero_extent);
+  EXPECT_THROW(lfif::parseHeader(zero_extent_stream), std::runtime_error);
+
+  auto zero_block_extent = valid;
+  std::fill(zero_block_extent.begin() + 64, zero_block_extent.begin() + 72, 0);
+  auto zero_block_extent_stream = streamFor(zero_block_extent);
+  EXPECT_THROW(lfif::parseHeader(zero_block_extent_stream), std::runtime_error);
+
+  auto overflowing_extents = valid;
+  std::fill(overflowing_extents.begin() + 48, overflowing_extents.begin() + 56, 0xff);
+  auto overflowing_extents_stream = streamFor(overflowing_extents);
+  EXPECT_THROW(lfif::parseHeader(overflowing_extents_stream), std::runtime_error);
+
+  auto truncated_extension = valid;
+  truncated_extension[9] = 1;
+  truncated_extension[11] = 0x52;
+  truncated_extension.push_back(0xaa);
+  auto truncated_extension_stream = streamFor(truncated_extension);
+  EXPECT_THROW(lfif::parseHeader(truncated_extension_stream), std::runtime_error);
 }
 
 TEST(Format, RejectsLegacyContainerHeadersExplicitly) {
