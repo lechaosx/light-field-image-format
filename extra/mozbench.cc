@@ -176,6 +176,10 @@ int main(int argc, char *argv[]) {
     output.open(output_file, std::fstream::trunc);
     output << "'mozjpeg' 'PSNR [dB]' 'bitrate [bpp]'" << endl;
   }
+  if (!output) {
+    cerr << "Could not open " << output_file << " for writing" << endl;
+    return 1;
+  }
 
   size_t image_pixels = width * height * image_count;
 
@@ -255,6 +259,13 @@ int main(int argc, char *argv[]) {
 
   jpeg_destroy_compress(&cinfo);
   jpeg_destroy_decompress(&dinfo);
+
+  output.flush();
+  output.close();
+  if (!output) {
+    cerr << "Could not write " << output_file << endl;
+    return 1;
+  }
 
   return 0;
 }

@@ -138,6 +138,10 @@ int main(int argc, char *argv[]) {
     output.open(output_file, std::fstream::trunc);
     output << "'xvc QP' 'PSNR [dB]' 'bitrate [bpp]'" << endl;
   }
+  if (!output) {
+    cerr << "Could not open " << output_file << " for writing" << endl;
+    return 1;
+  }
 
   const xvc_encoder_api  *xvc_api {};
   xvc_encoder_parameters *params  {};
@@ -281,6 +285,13 @@ int main(int argc, char *argv[]) {
 
   sws_freeContext(in_convert_ctx);
   xvc_api->parameters_destroy(params);
+
+  output.flush();
+  output.close();
+  if (!output) {
+    cerr << "Could not write " << output_file << endl;
+    return 1;
+  }
 
   return 0;
 }

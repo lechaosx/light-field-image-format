@@ -55,6 +55,15 @@ set_tests_properties(
   OmniCli.RejectsMissingPayload
   PROPERTIES FIXTURES_REQUIRED OmniCliMissingPayload WILL_FAIL TRUE
 )
+add_test(
+  NAME OmniCli.RejectsOutputWriteFailure
+  COMMAND
+    $<TARGET_FILE:lfif_cli>
+    compress
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/one-pixel.ppm
+    /dev/full
+)
+set_tests_properties(OmniCli.RejectsOutputWriteFailure PROPERTIES WILL_FAIL TRUE)
 
 add_test(
   NAME OmniCli.CreatesOutputDirectoriesWithApostrophes
@@ -314,6 +323,55 @@ if(LFIF_BUILD_EXTRAS)
   set_tests_properties(ExtraSmoke.XvcBench PROPERTIES PASS_REGULAR_EXPRESSION "40 [0-9]")
 
   add_test(
+    NAME ExtraOutput.Av1BenchRejectsWriteFailure
+    COMMAND
+      $<TARGET_FILE:av1bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o /dev/full
+      -f 1 -l 1
+  )
+  add_test(
+    NAME ExtraOutput.MozBenchRejectsWriteFailure
+    COMMAND
+      $<TARGET_FILE:mozbench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o /dev/full
+      -f 75 -l 75 -s 1
+  )
+  add_test(
+    NAME ExtraOutput.OpenJpegBenchRejectsWriteFailure
+    COMMAND
+      $<TARGET_FILE:openjpegbench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o /dev/full
+      -f 40 -l 40 -s 1
+  )
+  add_test(
+    NAME ExtraOutput.X265BenchRejectsWriteFailure
+    COMMAND
+      $<TARGET_FILE:x265bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o /dev/full
+      -f 1 -l 1
+  )
+  add_test(
+    NAME ExtraOutput.XvcBenchRejectsWriteFailure
+    COMMAND
+      $<TARGET_FILE:xvcbench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o /dev/full
+      -f 40 -l 40
+  )
+  set_tests_properties(
+    ExtraOutput.Av1BenchRejectsWriteFailure
+    ExtraOutput.MozBenchRejectsWriteFailure
+    ExtraOutput.OpenJpegBenchRejectsWriteFailure
+    ExtraOutput.X265BenchRejectsWriteFailure
+    ExtraOutput.XvcBenchRejectsWriteFailure
+    PROPERTIES FIXTURES_REQUIRED ExtraSmokeInput WILL_FAIL TRUE
+  )
+
+  add_test(
     NAME ExtraSmoke.HevcCompress
     COMMAND
       $<TARGET_FILE:hevc_compress>
@@ -561,12 +619,21 @@ if(LFIF_BUILD_EXTRAS)
       -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-xvc.txt
       -f 40 -l 20
   )
+  add_test(
+    NAME ExtraArgs.XvcCompressRejectsInvalidQp
+    COMMAND
+      $<TARGET_FILE:xvc_compress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-qp.xvc
+      -q not-a-number
+  )
   set_tests_properties(
     ExtraArgs.Av1RejectsDescendingBitrates
     ExtraArgs.X265RejectsDescendingBitrates
     ExtraArgs.MozBenchRejectsDescendingQualities
     ExtraArgs.OpenJpegRejectsDescendingPsnr
     ExtraArgs.XvcRejectsDescendingQp
+    ExtraArgs.XvcCompressRejectsInvalidQp
     PROPERTIES FIXTURES_REQUIRED ExtraSmokeInput WILL_FAIL TRUE
   )
 

@@ -126,6 +126,16 @@ Header writeImage(std::ostream &output, Header header, std::span<const Pixel> pi
   if (pixels.size() != pixelCount(header)) {
     throw std::invalid_argument("pixel count does not match image extents");
   }
+  const uint16_t maximum_sample = header.sample_depth == 16
+      ? std::numeric_limits<uint16_t>::max()
+      : static_cast<uint16_t>((uint32_t {1} << header.sample_depth) - 1);
+  for (const Pixel &pixel : pixels) {
+    if (std::any_of(pixel.begin(), pixel.end(), [maximum_sample](uint16_t sample) {
+          return sample > maximum_sample;
+        })) {
+      throw std::invalid_argument("pixel sample exceeds declared depth");
+    }
+  }
 
   const std::string payload = encodePayload(header, pixels);
   header.payload_size = payload.size();

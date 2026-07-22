@@ -227,6 +227,8 @@ int compress(int argc, char *argv[]) {
   std::ofstream output(options.output, std::ios::binary);
   const std::string bytes = encoded.str();
   output.write(bytes.data(), bytes.size());
+  output.flush();
+  output.close();
   if (!output) {
     throw std::runtime_error("cannot write output: " + options.output);
   }

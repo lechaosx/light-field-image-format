@@ -138,7 +138,11 @@ int main(int argc, char *argv[]) {
 
   qp = 30;
   if (s_qp) {
-    stringstream(s_qp) >> qp;
+    stringstream input(s_qp);
+    if (!(input >> qp) || (input >> std::ws, !input.eof())) {
+      print_usage(argv[0]);
+      return 1;
+    }
   }
 
   if (loadPPMGrid(input_file_mask, width, height, color_depth, image_count, rgb_data) < 0) {

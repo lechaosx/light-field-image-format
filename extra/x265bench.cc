@@ -270,6 +270,10 @@ int main(int argc, char *argv[]) {
     output.open(output_file, std::fstream::trunc);
     output << "'x265' 'PSNR [dB]' 'bitrate [bpp]'" << endl;
   }
+  if (!output) {
+    cerr << "Could not open " << output_file << " for writing" << endl;
+    return 1;
+  }
 
   for (double bpp = f_b; bpp <= l_b; bpp *= 1.25893) {
     vector<uint8_t> out_rgb_data {};
@@ -366,6 +370,13 @@ int main(int argc, char *argv[]) {
   av_packet_free(&pkt);
   sws_freeContext(in_convert_ctx);
   sws_freeContext(out_convert_ctx);
+
+  output.flush();
+  output.close();
+  if (!output) {
+    cerr << "Could not write " << output_file << endl;
+    return 1;
+  }
 
   return 0;
 }

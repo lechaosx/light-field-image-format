@@ -205,6 +205,14 @@ TEST(ContainerCodec, RejectsPixelCountMismatchBeforeWriting) {
   EXPECT_TRUE(stream.str().empty());
 }
 
+TEST(ContainerCodec, RejectsSamplesOutsideDeclaredDepthBeforeWriting) {
+  std::stringstream stream;
+  EXPECT_THROW(
+      lfif::writeImage(stream, header({1, 1}, {1, 1}), std::vector<lfif::Pixel> {{{256, 0, 0}}}),
+      std::invalid_argument);
+  EXPECT_TRUE(stream.str().empty());
+}
+
 TEST(ContainerCodec, RejectsUnsupportedCodecDimensionsBeforeWriting) {
   std::stringstream stream;
   EXPECT_THROW(lfif::writeImage(stream, header({8}, {4}), pixels(8)), std::invalid_argument);

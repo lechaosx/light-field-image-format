@@ -221,6 +221,10 @@ int main(int argc, char *argv[]) {
     output.open(output_file, std::fstream::trunc);
     output << "'openjpeg' 'PSNR [dB]' 'bitrate [bpp]'" << endl;
   }
+  if (!output) {
+    cerr << "Could not open " << output_file << " for writing" << endl;
+    return 1;
+  }
 
   size_t image_pixels = width * height * image_count;
   TemporaryFile temporary_file;
@@ -334,6 +338,13 @@ int main(int argc, char *argv[]) {
     output << param_psnr  << " " << psnr << " " << bpp << endl;
   }
 
+
+  output.flush();
+  output.close();
+  if (!output) {
+    cerr << "Could not write " << output_file << endl;
+    return 1;
+  }
 
   return 0;
 }
