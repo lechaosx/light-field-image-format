@@ -9,15 +9,16 @@
 #include <getopt.h>
 
 #include <cmath>
-
+#include <cstdio>
+#include <fstream>
 #include <iostream>
+#include <memory>
+#include <vector>
 
 using std::cerr;
 using std::endl;
 using std::ofstream;
 using std::vector;
-#include <fstream>
-#include <vector>
 
 #include <jpeglib.h>
 
@@ -49,8 +50,6 @@ int main(int argc, char *argv[]) {
   jpeg_compress_struct cinfo   {};
   jpeg_decompress_struct dinfo {};
   jpeg_error_mgr jerr          {};
-  FILE *outfile                {};
-  FILE *infile                 {};
   JSAMPROW row_pointer[1]      {};
   int row_stride               {};
 
@@ -195,12 +194,14 @@ int main(int argc, char *argv[]) {
       uint8_t *original = &rgb_data[i * width * height * 3];
       vector<uint8_t>  decompressed_rgb_data(width * height * 3);
 
-      if ((outfile = fopen("/tmp/mozbench.jpeg", "wb")) == NULL) {
-        fprintf(stderr, "can't open %s\n", "/tmp/mozbench.jpeg");
+      auto close_file = [](FILE *file) { fclose(file); };
+      std::unique_ptr<FILE, decltype(close_file)> compressed(std::tmpfile(), close_file);
+      if (!compressed) {
+        cerr << "Could not create temporary JPEG file" << endl;
         exit(1);
       }
 
-      jpeg_stdio_dest(&cinfo, outfile);
+      jpeg_stdio_dest(&cinfo, compressed.get());
 
       jpeg_start_compress(&cinfo, TRUE);
 
@@ -211,17 +212,15 @@ int main(int argc, char *argv[]) {
 
       jpeg_finish_compress(&cinfo);
 
-      compressed_size += ftell(outfile);
-      fclose(outfile);
-
-      /**/
-
-      if ((infile = fopen("/tmp/mozbench.jpeg", "rb")) == NULL) {
-        fprintf(stderr, "can't open %s\n", "/tmp/mozbench.jpeg");
-        return 0;
+      const long jpeg_size = ftell(compressed.get());
+      if (jpeg_size < 0) {
+        cerr << "Could not determine temporary JPEG size" << endl;
+        return 1;
       }
+      compressed_size += static_cast<size_t>(jpeg_size);
+      rewind(compressed.get());
 
-      jpeg_stdio_src(&dinfo, infile);
+      jpeg_stdio_src(&dinfo, compressed.get());
 
       jpeg_read_header(&dinfo, TRUE);
 
@@ -233,7 +232,6 @@ int main(int argc, char *argv[]) {
       }
 
       jpeg_finish_decompress(&dinfo);
-      fclose(infile);
 
       for (size_t pix = 0; pix < decompressed_rgb_data.size(); pix++) {
         double tmp = original[pix] - decompressed_rgb_data[pix];

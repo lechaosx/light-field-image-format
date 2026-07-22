@@ -10,18 +10,48 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-
-#include <iostream>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <openjpeg.h>
+#include <unistd.h>
 
 using std::cerr;
 using std::endl;
 using std::ifstream;
 using std::ofstream;
 using std::vector;
+
+namespace {
+
+struct TemporaryFile {
+  std::string path;
+
+  TemporaryFile() {
+    const std::filesystem::path pattern =
+        std::filesystem::temp_directory_path() / "lfif-openjpeg-XXXXXX";
+    const std::string pattern_string = pattern.string();
+    std::vector<char> writable_pattern(pattern_string.begin(), pattern_string.end());
+    writable_pattern.push_back('\0');
+    const int descriptor = mkstemp(writable_pattern.data());
+    if (descriptor < 0) {
+      throw std::runtime_error("Could not create temporary OpenJPEG file");
+    }
+    close(descriptor);
+    path = writable_pattern.data();
+  }
+
+  ~TemporaryFile() {
+    std::error_code error;
+    std::filesystem::remove(path, error);
+  }
+};
+
+}
 
 void print_usage(char *argv0) {
   cerr << "Usage: " << endl;
@@ -185,6 +215,7 @@ int main(int argc, char *argv[]) {
   }
 
   size_t image_pixels = width * height * image_count;
+  TemporaryFile temporary_file;
 
   for (size_t param_psnr = psnr_first; param_psnr <= psnr_last; param_psnr += psnr_step) {
     cerr << "PSNR: " << param_psnr << "\n";
@@ -212,7 +243,7 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      l_stream = opj_stream_create_default_file_stream("/tmp/openjpeg.j2k", OPJ_FALSE);
+      l_stream = opj_stream_create_default_file_stream(temporary_file.path.c_str(), OPJ_FALSE);
 
       l_codec = opj_create_compress(OPJ_CODEC_J2K);
       if (!l_stream || !l_codec) {
@@ -240,14 +271,14 @@ int main(int argc, char *argv[]) {
         return 3;
       }
 
-      std::ifstream in("/tmp/openjpeg.j2k", std::ifstream::ate | std::ifstream::binary);
+      std::ifstream in(temporary_file.path, std::ifstream::ate | std::ifstream::binary);
       if (!in || in.tellg() < 0) {
         cerr << "Could not read OpenJPEG output" << endl;
         return 3;
       }
       compressed_size += static_cast<size_t>(in.tellg());
 
-      l_stream = opj_stream_create_default_file_stream("/tmp/openjpeg.j2k", OPJ_TRUE);
+      l_stream = opj_stream_create_default_file_stream(temporary_file.path.c_str(), OPJ_TRUE);
 
       l_codec = opj_create_decompress(OPJ_CODEC_J2K);
       if (!l_stream || !l_codec) {
