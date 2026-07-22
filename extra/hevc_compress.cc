@@ -18,6 +18,8 @@ extern "C" {
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <limits>
+#include <stdexcept>
 
 using std::cerr;
 using std::endl;
@@ -128,8 +130,22 @@ int main(int argc, char *argv[]) {
   }
 
   bitrate = 0.1;
-  if (s_bitrate) {
-    bitrate = stod(s_bitrate);
+  try {
+    if (s_bitrate) {
+      size_t parsed {};
+      bitrate = stod(s_bitrate, &parsed);
+      if (s_bitrate[parsed] != '\0') {
+        throw std::invalid_argument("trailing bitrate characters");
+      }
+    }
+  } catch (const std::exception &) {
+    cerr << "Bitrate must be a number" << endl;
+    return 1;
+  }
+  if (!std::isfinite(bitrate) || bitrate <= 0
+      || bitrate > static_cast<double>(std::numeric_limits<int64_t>::max())) {
+    cerr << "Bitrate must be positive and finite" << endl;
+    return 1;
   }
 
   if (mapPPMs(input_file_mask, width, height, color_depth, images) < 0 || images.empty()) {

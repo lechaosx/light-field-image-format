@@ -162,13 +162,25 @@ int main(int argc, char *argv[]) {
   psnr_last = 50.f;
   try {
     if (param_psnr_step) {
-      psnr_step = std::stof(param_psnr_step);
+      size_t parsed {};
+      psnr_step = std::stof(param_psnr_step, &parsed);
+      if (param_psnr_step[parsed] != '\0') {
+        throw std::invalid_argument("trailing PSNR characters");
+      }
     }
     if (param_psnr_first) {
-      psnr_first = std::stof(param_psnr_first);
+      size_t parsed {};
+      psnr_first = std::stof(param_psnr_first, &parsed);
+      if (param_psnr_first[parsed] != '\0') {
+        throw std::invalid_argument("trailing PSNR characters");
+      }
     }
     if (param_psnr_last) {
-      psnr_last = std::stof(param_psnr_last);
+      size_t parsed {};
+      psnr_last = std::stof(param_psnr_last, &parsed);
+      if (param_psnr_last[parsed] != '\0') {
+        throw std::invalid_argument("trailing PSNR characters");
+      }
     }
   } catch (const std::exception &) {
     cerr << "PSNR values must be numbers" << endl;

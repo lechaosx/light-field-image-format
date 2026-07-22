@@ -163,10 +163,18 @@ int main(int argc, char *argv[]) {
   l_b = 15;
   try {
     if (first_bitrate) {
-      f_b = stod(first_bitrate);
+      size_t parsed {};
+      f_b = stod(first_bitrate, &parsed);
+      if (first_bitrate[parsed] != '\0') {
+        throw std::invalid_argument("trailing bitrate characters");
+      }
     }
     if (last_bitrate) {
-      l_b = stod(last_bitrate);
+      size_t parsed {};
+      l_b = stod(last_bitrate, &parsed);
+      if (last_bitrate[parsed] != '\0') {
+        throw std::invalid_argument("trailing bitrate characters");
+      }
     }
   } catch (const std::exception &) {
     cerr << "Bitrates must be numbers" << endl;

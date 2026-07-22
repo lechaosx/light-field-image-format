@@ -8,11 +8,13 @@
 
 #include <getopt.h>
 
+#include <charconv>
 #include <cmath>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 using std::cerr;
@@ -25,6 +27,18 @@ using std::vector;
 void print_usage(char *argv0) {
   cerr << "Usage: " << endl;
   cerr << argv0 << " -i <input-file-mask> -o <output-file-name> [-f <fist-quality>] [-l <last-quality>] [-s <quality-step>] [-a]" << endl;
+}
+
+bool parseQuality(const char *text, uint8_t &quality) {
+  const std::string_view input(text);
+  unsigned value {};
+  const auto result = std::from_chars(input.data(), input.data() + input.size(), value);
+  if (result.ec != std::errc {} || result.ptr != input.data() + input.size()
+      || value < 1 || value > 100) {
+    return false;
+  }
+  quality = static_cast<uint8_t>(value);
+  return true;
 }
 
 int main(int argc, char *argv[]) {
@@ -116,33 +130,21 @@ int main(int argc, char *argv[]) {
 
   q_step = 1;
 
-  if (quality_step) {
-    int tmp = atoi(quality_step);
-    if ((tmp < 1) || (tmp > 100)) {
-      print_usage(argv[0]);
-      return 1;
-    }
-    q_step = tmp;
+  if (quality_step && !parseQuality(quality_step, q_step)) {
+    print_usage(argv[0]);
+    return 1;
   }
 
   q_first = q_step;
-  if (quality_first) {
-    int tmp = atoi(quality_first);
-    if ((tmp < 1) || (tmp > 100)) {
-      print_usage(argv[0]);
-      return 1;
-    }
-    q_first = tmp;
+  if (quality_first && !parseQuality(quality_first, q_first)) {
+    print_usage(argv[0]);
+    return 1;
   }
 
   q_last = 100;
-  if (quality_last) {
-    int tmp = atoi(quality_last);
-    if ((tmp < 1) || (tmp > 100)) {
-      print_usage(argv[0]);
-      return 1;
-    }
-    q_last = tmp;
+  if (quality_last && !parseQuality(quality_last, q_last)) {
+    print_usage(argv[0]);
+    return 1;
   }
   if (q_first > q_last) {
     cerr << "Qualities must be ordered from first to last" << endl;

@@ -627,6 +627,46 @@ if(LFIF_BUILD_EXTRAS)
       -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-qp.xvc
       -q not-a-number
   )
+  add_test(
+    NAME ExtraArgs.Av1RejectsNumericSuffix
+    COMMAND
+      $<TARGET_FILE:av1bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-av1-suffix.txt
+      -f 1junk -l 1
+  )
+  add_test(
+    NAME ExtraArgs.X265RejectsNumericSuffix
+    COMMAND
+      $<TARGET_FILE:x265bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-x265-suffix.txt
+      -f 1junk -l 1
+  )
+  add_test(
+    NAME ExtraArgs.MozBenchRejectsNumericSuffix
+    COMMAND
+      $<TARGET_FILE:mozbench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-mozjpeg-suffix.txt
+      -f 75junk -l 75 -s 1
+  )
+  add_test(
+    NAME ExtraArgs.OpenJpegRejectsNumericSuffix
+    COMMAND
+      $<TARGET_FILE:openjpegbench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-openjpeg-suffix.txt
+      -f 40junk -l 40 -s 1
+  )
+  add_test(
+    NAME ExtraArgs.HevcCompressRejectsNumericSuffix
+    COMMAND
+      $<TARGET_FILE:hevc_compress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-hevc-suffix.hevc
+      -b 1000junk
+  )
   set_tests_properties(
     ExtraArgs.Av1RejectsDescendingBitrates
     ExtraArgs.X265RejectsDescendingBitrates
@@ -634,6 +674,11 @@ if(LFIF_BUILD_EXTRAS)
     ExtraArgs.OpenJpegRejectsDescendingPsnr
     ExtraArgs.XvcRejectsDescendingQp
     ExtraArgs.XvcCompressRejectsInvalidQp
+    ExtraArgs.Av1RejectsNumericSuffix
+    ExtraArgs.X265RejectsNumericSuffix
+    ExtraArgs.MozBenchRejectsNumericSuffix
+    ExtraArgs.OpenJpegRejectsNumericSuffix
+    ExtraArgs.HevcCompressRejectsNumericSuffix
     PROPERTIES FIXTURES_REQUIRED ExtraSmokeInput WILL_FAIL TRUE
   )
 

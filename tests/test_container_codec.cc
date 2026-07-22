@@ -96,9 +96,10 @@ TEST(ContainerCodec, RoundTripsPredictedWaveletImagesAcrossSupportedDimensions) 
   expectRoundTrip(four_dimensions, pixels(16));
 }
 
-TEST(ContainerCodec, RoundTripsSixteenBitWaveletSamples) {
+TEST(ContainerCodec, RoundTripsPredictedSixteenBitWaveletSamples) {
   auto metadata = header({3, 3}, {2, 2});
   metadata.sample_depth = 16;
+  metadata.prediction = true;
   std::vector<lfif::Pixel> samples(9);
   for (size_t i = 0; i < samples.size(); ++i) {
     samples[i] = {

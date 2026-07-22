@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 
 template <size_t D, typename T>
@@ -86,24 +87,27 @@ public:
 
   PredictionType<D> selectPredictionType(const DynamicBlock<T, D> &input_block, const std::array<size_t, D> &offset) {
     DynamicBlock<T, D> prediction_block(input_block.size());
+    using Score = std::conditional_t<std::is_integral_v<T>, long double, T>;
 
-    auto prediction_error = [&]() -> auto {
-      T error {};
+    auto prediction_error = [&]() {
+      Score error {};
 
       iterate_dimensions<D>(input_block.size(), [&](const auto &pos) {
-        error += (input_block[pos] - prediction_block[pos]) * (input_block[pos] - prediction_block[pos]);
+        const Score difference = static_cast<Score>(input_block[pos])
+            - static_cast<Score>(prediction_block[pos]);
+        error += difference * difference;
       });
 
       return error;
     };
 
     PredictionType<D> best_prediction_type {};
-    T lowest_error = prediction_error(); // No prediction, just input block energy.
+    Score lowest_error = prediction_error();
 
     auto eval_prediction = [&](PredictionType<D> type) {
       predict(prediction_block, offset, type);
 
-      T current_error = prediction_error();
+      const Score current_error = prediction_error();
       if (current_error < lowest_error) {
         lowest_error = current_error;
         best_prediction_type = type;
