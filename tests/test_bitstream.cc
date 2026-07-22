@@ -3,7 +3,19 @@
 #include <components/bitstream.h>
 
 #include <sstream>
+#include <streambuf>
 #include <vector>
+
+namespace {
+
+class FailingBuffer: public std::streambuf {
+protected:
+  int_type overflow(int_type) override {
+    return traits_type::eof();
+  }
+};
+
+} // namespace
 
 TEST(Bitstream, RoundTripsAcrossByteBoundaries) {
   std::vector<bool> expected;
@@ -28,4 +40,30 @@ TEST(Bitstream, FlushWritesPartialByteLeastSignificantBitFirst) {
 
   ASSERT_EQ(stream.str().size(), 1U);
   EXPECT_EQ(static_cast<unsigned char>(stream.str()[0]), 0x0d);
+}
+
+TEST(Bitstream, DestructorDoesNotFlushPartialByte) {
+  std::ostringstream stream;
+  {
+    OBitstream output(stream);
+    output.writeBit(true);
+  }
+  EXPECT_TRUE(stream.str().empty());
+}
+
+TEST(Bitstream, ReadBitReportsEndOfStream) {
+  std::istringstream stream(std::string(1, '\0'));
+  IBitstream input(stream);
+  for (size_t i = 0; i < 8; ++i) {
+    EXPECT_FALSE(input.readBit());
+  }
+  EXPECT_THROW(input.readBit(), std::ios_base::failure);
+}
+
+TEST(Bitstream, FlushReportsOutputFailure) {
+  FailingBuffer buffer;
+  std::ostream stream(&buffer);
+  OBitstream output(stream);
+  output.writeBit(true);
+  EXPECT_THROW(output.flush(), std::ios_base::failure);
 }

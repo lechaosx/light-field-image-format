@@ -72,7 +72,14 @@ public:
    */
   bool readBit() {
     if (m_index >= 8) {
-      m_accumulator = m_stream->get();
+      const auto value = m_stream->get();
+      if (value == std::istream::traits_type::eof()) {
+        if (m_stream->eof()) {
+          throw std::ios_base::failure("unexpected end of bitstream");
+        }
+        throw std::ios_base::failure("failed to read bitstream");
+      }
+      m_accumulator = static_cast<uint8_t>(value);
       m_index = 0;
     }
 
@@ -110,11 +117,6 @@ public:
   OBitstream(std::ostream &stream): m_stream { &stream } {}
 
   /**
-   * @brief Destructor flushing the output buffer to stream.
-   */
-  ~OBitstream() { flush(); }
-
-  /**
    * @brief This method (re)opens bitstream to new destination.
    * @param stream The output stream pointer to write.
    */
@@ -149,6 +151,9 @@ public:
   void flush() {
     if (m_index > 0) {
       m_stream->put(m_accumulator);
+      if (!*m_stream) {
+        throw std::ios_base::failure("failed to write bitstream");
+      }
       m_index = 0;
       m_accumulator = 0;
     }
