@@ -8,10 +8,12 @@
 #ifndef MTF_H
 #define MTF_H
 
-#include <vector>
+#include <algorithm>
 #include <cstdint>
 #include <cmath>
+#include <iterator>
 #include <map>
+#include <vector>
 
 template<typename F>
 void moveToFront(std::vector<uint64_t> &dictionary, std::vector<int64_t> &data, F &&update) {

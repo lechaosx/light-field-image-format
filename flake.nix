@@ -60,10 +60,12 @@
             src = self;
 
             nativeBuildInputs = [ pkgs.cmake pkgs.ninja pkgs.pkg-config ];
+            buildInputs = [ pkgs.gtest ];
             cmakeFlags = [
-              "-DBUILD_TESTING=OFF"
+              "-DBUILD_TESTING=ON"
               "-DLFIF_BUILD_EXTRAS=OFF"
             ];
+            doCheck = true;
           };
         });
 

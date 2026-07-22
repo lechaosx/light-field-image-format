@@ -36,11 +36,15 @@ add_subdirectory(liblfif)
 add_subdirectory(libppm)
 add_subdirectory(tools)
 
+include(CTest)
+
+if(BUILD_TESTING)
+  add_subdirectory(tests)
+endif()
+
 if(LFIF_BUILD_EXTRAS)
   add_subdirectory(extra)
 endif()
-
-include(CTest)
 
 install(
   TARGETS lfif ppm
