@@ -20,4 +20,4 @@ struct DecodedImage {
 Header writeImage(std::ostream &output, Header header, std::span<const Pixel> pixels);
 DecodedImage readImage(std::istream &input);
 
-} // namespace lfif
+}

@@ -24,7 +24,7 @@ void expectRoundTrip(const std::vector<int64_t> &input, UpdateFactory make_updat
   EXPECT_EQ(encoded, input);
 }
 
-} // namespace
+}
 
 TEST(Mtf, BaseTransformMatchesKnownVector) {
   std::vector<uint64_t> dictionary;

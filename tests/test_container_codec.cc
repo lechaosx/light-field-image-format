@@ -57,7 +57,7 @@ void expectRoundTrip(const lfif::Header &metadata, const std::vector<lfif::Pixel
   EXPECT_EQ(decoded.pixels, expected);
 }
 
-} // namespace
+}
 
 TEST(ContainerCodec, RoundTripsWaveletImagesAcrossSupportedDimensions) {
   expectRoundTrip(header({7, 5}, {4, 4}), pixels(35));

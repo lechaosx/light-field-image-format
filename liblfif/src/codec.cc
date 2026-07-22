@@ -113,7 +113,7 @@ std::vector<Pixel> decodePayload(const Header &header, std::istream &payload) {
   }
 }
 
-} // namespace
+}
 
 Header writeImage(std::ostream &output, Header header, std::span<const Pixel> pixels) {
   header.payload_size = 0;
@@ -156,4 +156,4 @@ DecodedImage readImage(std::istream &input) {
   return {header, decodePayload(header, payload)};
 }
 
-} // namespace lfif
+}

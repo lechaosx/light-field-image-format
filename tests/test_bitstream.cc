@@ -15,7 +15,7 @@ protected:
   }
 };
 
-} // namespace
+}
 
 TEST(Bitstream, RoundTripsAcrossByteBoundaries) {
   std::vector<bool> expected;

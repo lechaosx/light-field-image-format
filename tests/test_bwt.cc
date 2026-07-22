@@ -13,7 +13,7 @@ std::vector<int64_t> roundTrip(std::vector<int64_t> values) {
   return values;
 }
 
-} // namespace
+}
 
 TEST(Bwt, RoundTripsClassicBanana) {
   const std::vector<int64_t> values {'b', 'a', 'n', 'a', 'n', 'a'};

@@ -295,7 +295,7 @@ int inspect(const std::string &input_name) {
   return 0;
 }
 
-} // namespace
+}
 
 int main(int argc, char *argv[]) {
   try {

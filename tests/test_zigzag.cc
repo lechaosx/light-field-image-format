@@ -38,7 +38,7 @@ std::vector<std::array<size_t, D>> legacyZigzagOrder(const std::array<size_t, D>
   return order;
 }
 
-} // namespace
+}
 
 TEST(Zigzag, ScansKnownThreeByThreeOrder) {
   const std::vector<std::array<size_t, 2>> expected {

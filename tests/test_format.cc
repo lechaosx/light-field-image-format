@@ -33,7 +33,7 @@ lfif::Header twoDimensionalWaveletHeader() {
   };
 }
 
-} // namespace
+}
 
 TEST(Format, SerializesCanonicalHeaderBytes) {
   const std::vector<uint8_t> expected {

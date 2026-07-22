@@ -45,4 +45,4 @@ struct Header {
 std::vector<uint8_t> serializeHeader(const Header &header);
 Header parseHeader(std::istream &input);
 
-} // namespace lfif
+}

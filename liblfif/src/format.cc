@@ -96,7 +96,7 @@ void validate(const Header &header) {
   }
 }
 
-} // namespace
+}
 
 std::vector<uint8_t> serializeHeader(const Header &header) {
   validate(header);
@@ -203,4 +203,4 @@ Header parseHeader(std::istream &input) {
   return header;
 }
 
-} // namespace lfif
+}

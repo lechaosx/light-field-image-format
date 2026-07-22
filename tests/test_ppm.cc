@@ -40,7 +40,7 @@ private:
   std::string path_;
 };
 
-} // namespace
+}
 
 TEST(Ppm, CreatesAndMapsEightBitPixels) {
   TemporaryFile file;

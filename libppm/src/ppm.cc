@@ -39,7 +39,7 @@ bool imageSize(uint64_t width, uint64_t height, uint32_t color_depth, size_t &si
   return true;
 }
 
-} // namespace
+}
 
 enum PPMHeaderParserState {
   STATE_INIT,

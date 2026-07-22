@@ -32,7 +32,7 @@ std::stringstream header(
   return stream;
 }
 
-} // namespace
+}
 
 TEST(CodecParameters, EncodersRejectZeroImageExtentsBeforeWriting) {
   std::stringstream dct_stream;

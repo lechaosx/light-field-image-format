@@ -54,7 +54,7 @@ std::string compressWavelet(
   return stream.str();
 }
 
-} // namespace
+}
 
 TEST(LfwfRoundTrip, ReconstructsNonAlignedTwoDimensionalImage) {
   const auto pixels = [](const std::array<size_t, 2> &position) {

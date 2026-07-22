@@ -58,7 +58,7 @@ std::vector<bool> bypassRoundTrip(const std::vector<bool> &bits) {
   return decoded;
 }
 
-} // namespace
+}
 
 TEST(Cabac, RoundTripsAdaptiveContextBits) {
   std::vector<bool> bits;
