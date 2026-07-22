@@ -7,6 +7,11 @@ add_library(
 target_include_directories(lfif_tool_io PUBLIC include)
 target_link_libraries(lfif_tool_io PUBLIC ppm PRIVATE lfif_project_options)
 
+add_executable(lfif_cli src/lfif.cc)
+set_target_properties(lfif_cli PROPERTIES OUTPUT_NAME lfif)
+target_include_directories(lfif_cli PRIVATE include)
+target_link_libraries(lfif_cli PRIVATE lfif ppm lfif_project_options)
+
 add_executable(
   lfif2d_compress
   src/compress.cc
@@ -47,6 +52,7 @@ target_link_libraries(
 
 install(
   TARGETS
+    lfif_cli
     lfif2d_compress
     lfif2d_decompress
     lfif4d_compress

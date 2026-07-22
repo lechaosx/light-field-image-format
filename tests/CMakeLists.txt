@@ -46,3 +46,56 @@ add_test(
     -d 0
 )
 set_tests_properties(ToolIo.RejectsNonSquareImageGrids PROPERTIES WILL_FAIL TRUE)
+
+add_test(
+  NAME OmniCli.WaveletCompress
+  COMMAND
+    $<TARGET_FILE:lfif_cli>
+    compress
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/one-pixel.ppm
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.lfif
+)
+add_test(
+  NAME OmniCli.WaveletInspect
+  COMMAND $<TARGET_FILE:lfif_cli> inspect ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.lfif
+)
+set_tests_properties(
+  OmniCli.WaveletInspect
+  PROPERTIES DEPENDS OmniCli.WaveletCompress PASS_REGULAR_EXPRESSION "transform: wavelet"
+)
+add_test(
+  NAME OmniCli.WaveletDecompress
+  COMMAND
+    $<TARGET_FILE:lfif_cli>
+    decompress
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.lfif
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-wavelet.ppm
+)
+set_tests_properties(OmniCli.WaveletDecompress PROPERTIES DEPENDS OmniCli.WaveletCompress)
+
+add_test(
+  NAME OmniCli.DctCompress
+  COMMAND
+    $<TARGET_FILE:lfif_cli>
+    compress
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/one-pixel.ppm
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-dct.lfif
+    --transform dct
+)
+add_test(
+  NAME OmniCli.DctInspect
+  COMMAND $<TARGET_FILE:lfif_cli> inspect ${CMAKE_CURRENT_BINARY_DIR}/omni-dct.lfif
+)
+set_tests_properties(
+  OmniCli.DctInspect
+  PROPERTIES DEPENDS OmniCli.DctCompress PASS_REGULAR_EXPRESSION "transform: dct"
+)
+add_test(
+  NAME OmniCli.DctDecompress
+  COMMAND
+    $<TARGET_FILE:lfif_cli>
+    decompress
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-dct.lfif
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-dct.ppm
+)
+set_tests_properties(OmniCli.DctDecompress PROPERTIES DEPENDS OmniCli.DctCompress)
