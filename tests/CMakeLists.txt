@@ -23,7 +23,7 @@ add_executable(
 )
 target_link_libraries(
   lfif_unit_tests
-  PRIVATE lfif ppm GTest::gtest GTest::gtest_main lfif_project_options
+  PRIVATE lfif ppm GTest::gtest GTest::gtest_main
 )
 target_compile_definitions(
   lfif_unit_tests
@@ -34,10 +34,10 @@ include(GoogleTest)
 gtest_discover_tests(lfif_unit_tests)
 
 add_executable(create_test_lfif create_test_lfif.cc)
-target_link_libraries(create_test_lfif PRIVATE lfif lfif_project_options)
+target_link_libraries(create_test_lfif PRIVATE lfif)
 
 add_executable(compare_test_ppm compare_test_ppm.cc)
-target_link_libraries(compare_test_ppm PRIVATE ppm lfif_project_options)
+target_link_libraries(compare_test_ppm PRIVATE ppm)
 
 add_test(
   NAME OmniCli.CreateMissingPayload
@@ -271,7 +271,7 @@ set_tests_properties(
 
 if(LFIF_BUILD_EXTRAS)
   add_executable(create_extra_test_ppm create_extra_test_ppm.cc)
-  target_link_libraries(create_extra_test_ppm PRIVATE ppm lfif_project_options)
+  target_link_libraries(create_extra_test_ppm PRIVATE ppm)
 
   add_test(
     NAME ExtraSmoke.CreateInput

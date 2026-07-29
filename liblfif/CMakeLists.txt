@@ -11,12 +11,6 @@ add_library(
 target_include_directories(
   lfif
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-target_link_libraries(lfif PRIVATE lfif_project_options)
-target_compile_features(lfif PUBLIC cxx_std_20)
-
-if(LFIF_ENABLE_OPENMP)
-  target_link_libraries(lfif PUBLIC OpenMP::OpenMP_CXX)
-endif()
+target_link_libraries(lfif PUBLIC OpenMP::OpenMP_CXX)

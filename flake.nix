@@ -1,5 +1,5 @@
 {
-  description = "Light Field Image Format development and build environment";
+  description = "Light Field Image Format";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -13,18 +13,17 @@
     let
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      pkgsFor = system: import nixpkgs {
-        inherit system;
-        overlays = [ self.overlays.default ];
-      };
-    in {
-      overlays.default = final: prev: {
-        xvc = final.stdenv.mkDerivation {
+      pkgsFor = system: import nixpkgs { inherit system; };
+      xvcFor = system:
+        let
+          pkgs = pkgsFor system;
+        in
+        pkgs.gcc16Stdenv.mkDerivation {
           pname = "xvc";
           version = "2.0-unstable-2025-07-03";
           src = xvc-src;
 
-          nativeBuildInputs = [ final.cmake final.ninja final.pkg-config ];
+          nativeBuildInputs = [ pkgs.cmake pkgs.ninja pkgs.pkg-config ];
           cmakeFlags = [
             "-DBUILD_APPS=OFF"
             "-DBUILD_SHARED_LIBS=ON"
@@ -39,36 +38,39 @@
               --replace-fail "Version: 1.0" \
                              "Version: 2.0-unstable-2025-07-03"
           '';
-
-          meta = {
-            description = "xvc encoder and decoder libraries";
-            homepage = "https://github.com/divideon/xvc";
-            license = final.lib.licenses.lgpl21Plus;
-            platforms = final.lib.platforms.linux;
-          };
         };
-      };
-
+    in {
       packages = forAllSystems (system:
         let
           pkgs = pkgsFor system;
         in {
-          xvc = pkgs.xvc;
-          default = pkgs.stdenv.mkDerivation {
+          xvc = xvcFor system;
+          default = pkgs.gcc16Stdenv.mkDerivation {
             pname = "lfif";
             version = "2.0.0";
             src = self;
 
-            nativeBuildInputs = [ pkgs.cmake pkgs.ninja pkgs.pkg-config ];
-            buildInputs = [ pkgs.gtest ];
+            nativeBuildInputs = [ pkgs.cmake pkgs.ninja ];
             cmakeFlags = [
-              "-DBUILD_TESTING=ON"
+              "-DBUILD_TESTING=OFF"
               "-DLFIF_BUILD_EXTRAS=OFF"
             ];
-            doCheck = true;
+
+            installPhase = ''
+              mkdir -p $out/bin $out/include $out/lib
+              cp tools/lfif $out/bin/
+              cp liblfif/liblfif.a libppm/libppm.a $out/lib/
+              cp -R ../liblfif/include/. ../libppm/include/. $out/include/
+            '';
           };
-          full = pkgs.stdenv.mkDerivation {
-            pname = "lfif-full";
+        });
+
+      checks = forAllSystems (system:
+        let
+          pkgs = pkgsFor system;
+        in {
+          full = pkgs.gcc16Stdenv.mkDerivation {
+            pname = "lfif-check";
             version = "2.0.0";
             src = self;
 
@@ -78,26 +80,25 @@
               pkgs.ffmpeg
               pkgs.openjpeg
               pkgs.mozjpeg
-              pkgs.xvc
+              (xvcFor system)
             ];
             MOZJPEG_ROOT = "${pkgs.mozjpeg}";
-            cmakeFlags = [
-              "-DBUILD_TESTING=ON"
-              "-DLFIF_BUILD_EXTRAS=ON"
-            ];
+
+            configurePhase = "cmake --preset full-check";
+            buildPhase = "cmake --build --preset full-check";
+            checkPhase = "ctest --preset full-check";
             doCheck = true;
+            installPhase = "mkdir -p $out";
           };
         });
-
-      checks = forAllSystems (system: {
-        inherit (self.packages.${system}) default full xvc;
-      });
 
       devShells = forAllSystems (system:
         let
           pkgs = pkgsFor system;
         in {
-          default = pkgs.mkShell {
+          default = pkgs.mkShell.override {
+            stdenv = pkgs.gcc16Stdenv;
+          } {
             packages = [
               pkgs.cmake
               pkgs.ninja
@@ -110,10 +111,11 @@
               pkgs.ffmpeg.dev
               pkgs.openjpeg
               pkgs.mozjpeg
-              pkgs.xvc
+              (xvcFor system)
             ];
 
             MOZJPEG_ROOT = "${pkgs.mozjpeg}";
+            NIX_ENFORCE_NO_NATIVE = "0";
           };
         });
     };

@@ -38,7 +38,6 @@ target_link_libraries(
     PkgConfig::AVCODEC
     PkgConfig::AVUTIL
     PkgConfig::SWSCALE
-    lfif_project_options
 )
 
 add_executable(hevc_compress hevc_compress.cc)
@@ -49,7 +48,6 @@ target_link_libraries(
     PkgConfig::AVCODEC
     PkgConfig::AVUTIL
     PkgConfig::SWSCALE
-    lfif_project_options
 )
 
 add_executable(hevc_decompress hevc_decompress.cc)
@@ -60,19 +58,18 @@ target_link_libraries(
     PkgConfig::AVCODEC
     PkgConfig::AVUTIL
     PkgConfig::SWSCALE
-    lfif_project_options
 )
 
 add_executable(mozbench mozbench.cc)
 target_link_libraries(
   mozbench
-  PRIVATE lfif_tool_io mozjpeg lfif_project_options
+  PRIVATE lfif_tool_io mozjpeg
 )
 
 add_executable(openjpegbench openjpegbench.cc)
 target_link_libraries(
   openjpegbench
-  PRIVATE lfif_tool_io PkgConfig::OPENJPEG lfif_project_options
+  PRIVATE lfif_tool_io PkgConfig::OPENJPEG
 )
 
 add_executable(x265bench x265bench.cc)
@@ -83,7 +80,6 @@ target_link_libraries(
     PkgConfig::AVCODEC
     PkgConfig::AVUTIL
     PkgConfig::SWSCALE
-    lfif_project_options
 )
 
 add_executable(xvc_compress xvc_compress.cc)
@@ -93,7 +89,6 @@ target_link_libraries(
     lfif_tool_io
     PkgConfig::SWSCALE
     PkgConfig::XVC
-    lfif_project_options
 )
 
 add_executable(xvc_decompress xvc_decompress.cc)
@@ -103,27 +98,12 @@ target_link_libraries(
     lfif_tool_io
     PkgConfig::SWSCALE
     PkgConfig::XVC
-    lfif_project_options
 )
 
 add_executable(xvcbench xvcbench.cc)
 target_link_libraries(
   xvcbench
-  PRIVATE lfif_tool_io PkgConfig::SWSCALE PkgConfig::XVC lfif_project_options
-)
-
-install(
-  TARGETS
-    av1bench
-    hevc_compress
-    hevc_decompress
-    mozbench
-    openjpegbench
-    x265bench
-    xvc_compress
-    xvc_decompress
-    xvcbench
-  RUNTIME DESTINATION bin
+  PRIVATE lfif_tool_io PkgConfig::SWSCALE PkgConfig::XVC
 )
 
 if(BUILD_TESTING)

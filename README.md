@@ -3,31 +3,36 @@ Light Field Image Format (LFIF) is an implementation of a lossy light field imag
 Evaluation of this encoder was performed in the paper [1]. The method is described in the Excel@FIT paper [2] and in the separate bachelor's thesis [3].
 
 ## Compile
-The project uses C++20, CMake and Nix. Enter the reproducible development environment and build the release preset with:
+The project uses C++26, OpenMP, CMake and Nix. Enter the reproducible GCC 16 development environment and build the optimized local workflow with:
 
     nix develop
-    cmake --preset release
-    cmake --build --preset release
-    ctest --preset release
+    cmake --preset optimized
+    cmake --build --preset optimized
+    ctest --preset optimized
 
-The ``full`` preset also builds and tests the codec comparison tools:
+This preset enables ``-Wall -Wextra -Wpedantic -march=native``. The portable ``full-check`` workflow builds and tests the codec comparison tools:
 
-    cmake --preset full
-    cmake --build --preset full
-    ctest --preset full
+    cmake --preset full-check
+    cmake --build --preset full-check
+    ctest --preset full-check
 
-The Nix flake builds the main package with ``nix build``; ``nix build .#full`` also builds and tests all comparison tools. It provides their dependencies directly: xvc is built from its pinned upstream repository, and ``mozbench`` links Mozilla mozjpeg.
+The presets are conveniences, not requirements. Their cache values can be overridden on the command line or inherited in a local ``CMakeUserPresets.json``. A direct build supplies no optional warning or architecture flags:
+
+    cmake -S . -B build/custom -G Ninja -DCMAKE_BUILD_TYPE=Release
+    cmake --build build/custom
+
+The Nix flake builds the portable main package with ``nix build``; ``nix flake check`` builds and tests the full project. It provides the dependencies directly: xvc is built from its pinned upstream repository, and ``mozbench`` links Mozilla mozjpeg.
 
 ## Usage
 The tools are able to compress a light field image which exists as a set of ppm images representing individual views.
 The image files must be sorted in row or column order and the view indices must be part of file names.
 To compress a light field image, use the compression tool like this:
 
-    ./build/cmake/release/tools/lfif compress path/to/input.ppm path/to/output.lfif
+    ./build/optimized/tools/lfif compress path/to/input.ppm path/to/output.lfif
 
 For a four-dimensional light field with a 15 by 15 view grid, specify the two view dimensions:
 
-    ./build/cmake/release/tools/lfif compress 'path/to/input-###.ppm' path/to/output.lfif --shape 15x15 --block 8x8x4x4
+    ./build/optimized/tools/lfif compress 'path/to/input-###.ppm' path/to/output.lfif --shape 15x15 --block 8x8x4x4
 
 The ``#`` characters are replaced with zero-padded sequential view numbers. The number of input images must match the product of ``--shape``, and all PPM properties must match. Omitting ``--shape`` compresses one two-dimensional PPM. One view dimension produces a three-dimensional image and two view dimensions produce a four-dimensional image.
 
@@ -35,11 +40,11 @@ Wavelet compression is the default. Use ``--transform dct`` to select DCT explic
 
 The decompression command writes one PPM for a two-dimensional image, or expands a mask for the higher-dimensional view axes:
 
-    ./build/cmake/release/tools/lfif decompress path/to/input.lfif 'path/to/output-###.ppm'
+    ./build/optimized/tools/lfif decompress path/to/input.lfif 'path/to/output-###.ppm'
 
 Container metadata can be inspected without decoding the payload:
 
-    ./build/cmake/release/tools/lfif inspect path/to/input.lfif
+    ./build/optimized/tools/lfif inspect path/to/input.lfif
 
 The versioned binary container is documented in [docs/format.md](docs/format.md).
 

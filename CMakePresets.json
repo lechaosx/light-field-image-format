@@ -2,7 +2,7 @@
   "version": 6,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 25,
+    "minor": 30,
     "patch": 0
   },
   "configurePresets": [
@@ -10,59 +10,75 @@
       "name": "base",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/cmake/${presetName}",
-      "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": true
-      }
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
-      "name": "debug",
+      "name": "development",
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
         "BUILD_TESTING": true,
         "LFIF_BUILD_EXTRAS": false
       }
     },
     {
-      "name": "release",
+      "name": "optimized",
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -march=native",
         "BUILD_TESTING": true,
         "LFIF_BUILD_EXTRAS": false
       }
     },
     {
-      "name": "full",
+      "name": "full-check",
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic",
         "BUILD_TESTING": true,
         "LFIF_BUILD_EXTRAS": true
       }
     }
   ],
   "buildPresets": [
-    { "name": "debug", "configurePreset": "debug" },
-    { "name": "release", "configurePreset": "release" },
-    { "name": "full", "configurePreset": "full" }
+    {
+      "name": "development",
+      "configurePreset": "development"
+    },
+    {
+      "name": "optimized",
+      "configurePreset": "optimized"
+    },
+    {
+      "name": "full-check",
+      "configurePreset": "full-check"
+    }
   ],
   "testPresets": [
     {
-      "name": "debug",
-      "configurePreset": "debug",
-      "output": { "outputOnFailure": true }
+      "name": "development",
+      "configurePreset": "development",
+      "output": {
+        "outputOnFailure": true
+      }
     },
     {
-      "name": "release",
-      "configurePreset": "release",
-      "output": { "outputOnFailure": true }
+      "name": "optimized",
+      "configurePreset": "optimized",
+      "output": {
+        "outputOnFailure": true
+      }
     },
     {
-      "name": "full",
-      "configurePreset": "full",
-      "output": { "outputOnFailure": true }
+      "name": "full-check",
+      "configurePreset": "full-check",
+      "output": {
+        "outputOnFailure": true
+      }
     }
   ]
 }
