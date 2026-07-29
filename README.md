@@ -16,12 +16,22 @@ This preset enables ``-Wall -Wextra -Wpedantic -march=native``. The portable ``f
     cmake --build --preset full-check
     ctest --preset full-check
 
-The presets are conveniences, not requirements. Their cache values can be overridden on the command line or inherited in a local ``CMakeUserPresets.json``. A direct build supplies no optional warning or architecture flags:
+The presets are conveniences, not requirements. Override their cache values on the command line, for example with ``cmake --preset development -DLFIF_BUILD_EXTRAS=ON``. A local ``CMakeUserPresets.json`` can instead specialize a workflow:
 
-    cmake -S . -B build/custom -G Ninja -DCMAKE_BUILD_TYPE=Release
+    {
+      "version": 6,
+      "configurePresets": [
+        {"name": "local", "inherits": "development", "cacheVariables": {"LFIF_BUILD_EXTRAS": true}}
+      ]
+    }
+
+A direct build supplies no optional warning or architecture flags:
+
+    cmake -S . -B build/custom -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
     cmake --build build/custom
+    ctest --test-dir build/custom --output-on-failure
 
-The Nix flake builds the portable main package with ``nix build``; ``nix flake check`` builds and tests the full project. It provides the dependencies directly: xvc is built from its pinned upstream repository, and ``mozbench`` links Mozilla mozjpeg.
+The full workflow includes ``av1bench``, the HEVC tools, ``x265bench``, ``openjpegbench``, ``mozbench`` and the XVC tools. The Nix flake builds the portable main package with ``nix build``; ``nix flake check`` builds and tests the full project. It provides the dependencies directly: xvc is built from its pinned upstream repository, and ``mozbench`` links Mozilla mozjpeg.
 
 ## Usage
 The tools are able to compress a light field image which exists as a set of ppm images representing individual views.
