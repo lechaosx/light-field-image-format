@@ -8,8 +8,9 @@
 #include "components/endian.h"
 
 #include <algorithm>
-#include <numeric>
 #include <fstream>
+#include <numeric>
+#include <stdexcept>
 
 
 void HuffmanEncoder::generateFromWeights(const HuffmanWeights &huffman_weights) {
@@ -155,7 +156,11 @@ void HuffmanDecoder::readFromStream(std::istream &stream) {
 }
 
 HuffmanSymbol HuffmanDecoder::decodeSymbolFromStream(IBitstream &stream) const {
-  return m_huffman_symbols[decodeOneHuffmanSymbolIndex(stream)];
+  const size_t index = decodeOneHuffmanSymbolIndex(stream);
+  if (index >= m_huffman_symbols.size()) {
+    throw std::runtime_error("invalid Huffman symbol index");
+  }
+  return m_huffman_symbols[index];
 }
 
 size_t HuffmanDecoder::decodeOneHuffmanSymbolIndex(IBitstream &stream) const {
@@ -176,5 +181,5 @@ size_t HuffmanDecoder::decodeOneHuffmanSymbolIndex(IBitstream &stream) const {
     code  <<= 1;
   }
 
-  return 0;
+  throw std::runtime_error("invalid Huffman codeword");
 }

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <components/bitstream.h>
+#include <components/endian.h>
 
 #include <sstream>
 #include <streambuf>
@@ -66,4 +67,15 @@ TEST(Bitstream, FlushReportsOutputFailure) {
   OBitstream output(stream);
   output.writeBit(true);
   EXPECT_THROW(output.flush(), std::ios_base::failure);
+}
+
+TEST(Bitstream, FixedWidthReadReportsTruncation) {
+  std::istringstream stream(std::string(1, '\0'));
+  EXPECT_THROW(readValueFromStream<uint16_t>(stream), std::ios_base::failure);
+}
+
+TEST(Bitstream, FixedWidthWriteReportsOutputFailure) {
+  FailingBuffer buffer;
+  std::ostream stream(&buffer);
+  EXPECT_THROW(writeValueToStream<uint16_t>(42, stream), std::ios_base::failure);
 }

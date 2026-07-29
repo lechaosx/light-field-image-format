@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <components/bitstream.h>
+#include <components/endian.h>
 #include <components/huffman.h>
 
 #include <sstream>
@@ -35,4 +36,19 @@ TEST(Huffman, RoundTripsSymbolStream) {
     decoded.push_back(decoder.decodeSymbolFromStream(input));
   }
   EXPECT_EQ(decoded, expected);
+}
+
+TEST(Huffman, RejectsUnmatchedCodeword) {
+  std::stringstream table;
+  writeValueToStream<HuffmanCodelength>(1, table);
+  writeValueToStream<HuffmanCodelength>(0, table);
+  writeValueToStream<HuffmanCodelength>(1, table);
+  writeValueToStream<HuffmanSymbol>(42, table);
+
+  HuffmanDecoder decoder;
+  decoder.readFromStream(table);
+
+  std::istringstream encoded(std::string(1, '\1'));
+  IBitstream input(encoded);
+  EXPECT_THROW(decoder.decodeSymbolFromStream(input), std::runtime_error);
 }
