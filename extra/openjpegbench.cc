@@ -64,7 +64,7 @@ static void warning_callback(const char *msg, void *) {
 static void info_callback(const char *, void *) {
 }
 
-int main(int argc, char *argv[]) {
+void run(int argc, char *argv[]) {
   const char *input_file_mask {};
   const char *output_file     {};
   const char *param_psnr_first   {};
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
     switch (opt) {
       case 'h':
         print_usage(argv[0]);
-        return 0;
+        return;
 
       case 'i':
         if (!input_file_mask) {
@@ -142,14 +142,14 @@ int main(int argc, char *argv[]) {
 
       default:
         print_usage(argv[0]);
-        return 1;
+        throw std::invalid_argument("invalid arguments");
       break;
     }
   }
 
   if (!input_file_mask || !output_file) {
     print_usage(argv[0]);
-    return 1;
+    throw std::invalid_argument("input and output are required");
   }
 
   psnr_step = 1.0;
@@ -178,30 +178,23 @@ int main(int argc, char *argv[]) {
       }
     }
   } catch (const std::exception &) {
-    std::cerr << "PSNR values must be numbers" << std::endl;
-    return 1;
+    throw std::invalid_argument("PSNR values must be numbers");
   }
   if (!std::isfinite(psnr_step) || !std::isfinite(psnr_first) || !std::isfinite(psnr_last)
       || psnr_step <= 0 || psnr_first <= 0 || psnr_first > psnr_last
       || psnr_first + psnr_step == psnr_first) {
-    std::cerr << "PSNR values must be positive, increasing and ordered from first to last" << std::endl;
-    return 1;
+    throw std::invalid_argument(
+        "PSNR values must be positive, increasing and ordered from first to last");
   }
 
-  try {
-    images = mapPPMs(input_file_mask);
-  } catch (const std::exception &error) {
-    std::cerr << error.what() << std::endl;
-    return 2;
-  }
+  images = mapPPMs(input_file_mask);
   width = images.front().width();
   height = images.front().height();
   color_depth = images.front().color_depth();
   image_count = images.size();
   const uint64_t view_side = std::sqrt(image_count);
   if (view_side * view_side != image_count || color_depth > 255) {
-    std::cerr << "Input must be a square grid of 8-bit PPM images" << std::endl;
-    return 2;
+    throw std::invalid_argument("input must be a square grid of 8-bit PPM images");
   }
 
   ///////////////////////////////////
@@ -241,8 +234,8 @@ int main(int argc, char *argv[]) {
     output << "'openjpeg' 'PSNR [dB]' 'bitrate [bpp]'" << std::endl;
   }
   if (!output) {
-    std::cerr << "Could not open " << output_file << " for writing" << std::endl;
-    return 1;
+    throw std::ios_base::failure(
+        "could not open " + std::string(output_file) + " for writing");
   }
 
   size_t image_pixels = width * height * image_count;
@@ -259,8 +252,7 @@ int main(int argc, char *argv[]) {
     for (size_t img = 0; img < image_count; img++) {
       l_image = opj_image_create(3, cmptparm, OPJ_CLRSPC_SRGB);
       if (!l_image) {
-        std::cerr << "Could not create OpenJPEG image" << std::endl;
-        return 3;
+        throw std::runtime_error("could not create OpenJPEG image");
       }
       l_image->x0 = 0;
       l_image->y0 = 0;
@@ -279,17 +271,16 @@ int main(int argc, char *argv[]) {
 
       l_codec = opj_create_compress(OPJ_CODEC_J2K);
       if (!l_stream || !l_codec) {
-        std::cerr << "Could not create OpenJPEG encoder" << std::endl;
         opj_destroy_codec(l_codec);
         opj_stream_destroy(l_stream);
         opj_image_destroy(l_image);
-        return 3;
+        throw std::runtime_error("could not create OpenJPEG encoder");
       }
       opj_set_info_handler(l_codec, info_callback, nullptr);
       opj_set_warning_handler(l_codec, warning_callback, nullptr);
       opj_set_error_handler(l_codec, error_callback, nullptr);
 
-      const bool encoded = opj_setup_encoder(l_codec, &cparameters, l_image)
+      const OPJ_BOOL encoded = opj_setup_encoder(l_codec, &cparameters, l_image)
           && opj_start_compress(l_codec, l_image, l_stream)
           && opj_encode(l_codec, l_stream)
           && opj_end_compress(l_codec, l_stream);
@@ -299,14 +290,12 @@ int main(int argc, char *argv[]) {
       opj_image_destroy(l_image);
       l_image = nullptr;
       if (!encoded) {
-        std::cerr << "OpenJPEG encoding failed" << std::endl;
-        return 3;
+        throw std::runtime_error("OpenJPEG encoding failed");
       }
 
       std::ifstream in(temporary_file.path, std::ifstream::ate | std::ifstream::binary);
       if (!in || in.tellg() < 0) {
-        std::cerr << "Could not read OpenJPEG output" << std::endl;
-        return 3;
+        throw std::runtime_error("could not read OpenJPEG output");
       }
       compressed_size += static_cast<size_t>(in.tellg());
 
@@ -314,10 +303,9 @@ int main(int argc, char *argv[]) {
 
       l_codec = opj_create_decompress(OPJ_CODEC_J2K);
       if (!l_stream || !l_codec) {
-        std::cerr << "Could not create OpenJPEG decoder" << std::endl;
         opj_destroy_codec(l_codec);
         opj_stream_destroy(l_stream);
-        return 3;
+        throw std::runtime_error("could not create OpenJPEG decoder");
       }
       opj_set_info_handler(l_codec, info_callback, nullptr);
       opj_set_warning_handler(l_codec, warning_callback, nullptr);
@@ -325,16 +313,15 @@ int main(int argc, char *argv[]) {
 
       opj_codec_set_threads(l_codec, 4);
 
-      const bool decoded = opj_setup_decoder(l_codec, &dparameters)
+      const OPJ_BOOL decoded = opj_setup_decoder(l_codec, &dparameters)
           && opj_read_header(l_stream, l_codec, &l_image)
           && opj_decode(l_codec, l_stream, l_image)
           && opj_end_decompress(l_codec, l_stream);
       if (!decoded || !l_image) {
-        std::cerr << "OpenJPEG decoding failed" << std::endl;
         opj_stream_destroy(l_stream);
         opj_destroy_codec(l_codec);
         opj_image_destroy(l_image);
-        return 3;
+        throw std::runtime_error("OpenJPEG decoding failed");
       }
 
       for (size_t pixel = 0; pixel < width * height; pixel++) {
@@ -363,9 +350,16 @@ int main(int argc, char *argv[]) {
   output.flush();
   output.close();
   if (!output) {
-    std::cerr << "Could not write " << output_file << std::endl;
+    throw std::ios_base::failure("could not write " + std::string(output_file));
+  }
+}
+
+int main(int argc, char *argv[]) {
+  try {
+    run(argc, argv);
+    return 0;
+  } catch (const std::exception &error) {
+    std::cerr << "error: " << error.what() << '\n';
     return 1;
   }
-
-  return 0;
 }
