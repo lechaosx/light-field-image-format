@@ -23,11 +23,6 @@ extern "C" {
 
 #include <iostream>
 
-using std::cerr;
-using std::endl;
-using std::ifstream;
-using std::string;
-using std::vector;
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -60,8 +55,8 @@ inline T readValueFromStream(std::istream &stream) {
 }
 
 void print_usage(char *argv0) {
-  cerr << "Usage: " << endl;
-  cerr << argv0 << " -i <input-file-name> -o <output-file-mask>" << endl;
+  std::cerr << "Usage: " << std::endl;
+  std::cerr << argv0 << " -i <input-file-name> -o <output-file-mask>" << std::endl;
 }
 
 template <typename F>
@@ -74,7 +69,7 @@ bool outputPictures(const xvc_decoder_api *xvc_api, xvc_decoder *decoder, F &&ca
       return true;
     }
     if (ret != XVC_DEC_OK) {
-      cerr << "xvc output failed: " << xvc_api->xvc_dec_get_error_text(ret) << endl;
+      std::cerr << "xvc output failed: " << xvc_api->xvc_dec_get_error_text(ret) << std::endl;
       return false;
     }
     callback(decoded_pic);
@@ -82,10 +77,10 @@ bool outputPictures(const xvc_decoder_api *xvc_api, xvc_decoder *decoder, F &&ca
 }
 
 template <typename F>
-bool decode(const xvc_decoder_api *xvc_api, xvc_decoder *decoder, vector<uint8_t> &nal, F &&callback) {
+bool decode(const xvc_decoder_api *xvc_api, xvc_decoder *decoder, std::vector<uint8_t> &nal, F &&callback) {
   const xvc_dec_return_code ret = xvc_api->decoder_decode_nal(decoder, nal.data(), nal.size(), 0);
   if (ret != XVC_DEC_OK) {
-    cerr << "xvc decode failed: " << xvc_api->xvc_dec_get_error_text(ret) << endl;
+    std::cerr << "xvc decode failed: " << xvc_api->xvc_dec_get_error_text(ret) << std::endl;
     return false;
   }
   return outputPictures(xvc_api, decoder, callback);
@@ -95,7 +90,7 @@ template <typename F>
 bool flush(const xvc_decoder_api *xvc_api, xvc_decoder *decoder, F &&callback) {
   const xvc_dec_return_code ret = xvc_api->decoder_flush(decoder);
   if (ret != XVC_DEC_OK) {
-    cerr << "xvc flush failed: " << xvc_api->xvc_dec_get_error_text(ret) << endl;
+    std::cerr << "xvc flush failed: " << xvc_api->xvc_dec_get_error_text(ret) << std::endl;
     return false;
   }
   return outputPictures(xvc_api, decoder, callback);
@@ -109,9 +104,9 @@ int main(int argc, char *argv[]) {
   xvc_decoder_parameters *params  {};
   xvc_decoder *decoder            {};
 
-  vector<uint8_t> nal_buffer      {};
+  std::vector<uint8_t> nal_buffer      {};
 
-  ifstream input                   {};
+  std::ifstream input                   {};
 
   char opt {};
   while ((opt = getopt(argc, argv, "hi:o:")) >= 0) {
@@ -156,14 +151,14 @@ int main(int argc, char *argv[]) {
 
   decoder = xvc_api->decoder_create(params);
   if (!decoder) {
-    cerr << "xvc decoder creation failed" << endl;
+    std::cerr << "xvc decoder creation failed" << std::endl;
     xvc_api->parameters_destroy(params);
     return 1;
   }
 
   input.open(input_file_name, std::ios::binary);
   if (!input) {
-    cerr << "Could not open " << input_file_name << " for reading\n";
+    std::cerr << "Could not open " << input_file_name << " for reading\n";
     xvc_api->decoder_destroy(decoder);
     xvc_api->parameters_destroy(params);
     return 1;
@@ -172,19 +167,19 @@ int main(int argc, char *argv[]) {
   size_t view_counter = 0;
   const size_t output_name_count = get_mask_names_count(output_file_mask, '#');
   if (output_name_count == 0) {
-    cerr << "output file mask is too large" << endl;
+    std::cerr << "output file mask is too large" << std::endl;
     return 1;
   }
 
   auto saveFrame = [&](xvc_decoded_picture &frame) {
     SwsContext *out_convert_ctx  {};
-    vector<uint8_t> rgb_frame {};
+    std::vector<uint8_t> rgb_frame {};
 
     rgb_frame.resize(frame.stats.width * frame.stats.height * 3);
 
     out_convert_ctx = sws_getContext(frame.stats.width, frame.stats.height, AV_PIX_FMT_YUV444P, frame.stats.width, frame.stats.height, AV_PIX_FMT_RGB24, 0, 0, 0, 0);
     if (!out_convert_ctx) {
-      cerr << "Could not get image conversion context" << endl;
+      std::cerr << "Could not get image conversion context" << std::endl;
       exit(1);
     }
 
@@ -194,7 +189,7 @@ int main(int argc, char *argv[]) {
     sws_scale(out_convert_ctx, reinterpret_cast<const uint8_t *const *>(frame.planes), frame.stride, 0, frame.stats.height, outData, outLineSize);
 
     if (view_counter >= output_name_count) {
-      cerr << "file mask cannot represent frame " << view_counter << endl;
+      std::cerr << "file mask cannot represent frame " << view_counter << std::endl;
       exit(1);
     }
 
@@ -230,7 +225,7 @@ int main(int argc, char *argv[]) {
       break;
     }
     if (input.gcount() != 4) {
-      cerr << "Unable to read nal size." << endl;
+      std::cerr << "Unable to read nal size." << std::endl;
       decoded = false;
       break;
     }
@@ -240,7 +235,7 @@ int main(int argc, char *argv[]) {
       (static_cast<uint32_t>(nal_size[2]) << 16) |
       (static_cast<uint32_t>(nal_size[3]) << 24);
     if (size == 0) {
-      cerr << "Invalid zero-length nal." << endl;
+      std::cerr << "Invalid zero-length nal." << std::endl;
       decoded = false;
       break;
     }
@@ -253,7 +248,7 @@ int main(int argc, char *argv[]) {
         const size_t chunk = std::min(remaining, buffer.size());
         input.read(reinterpret_cast<char *>(buffer.data()), chunk);
         if (static_cast<size_t>(input.gcount()) != chunk) {
-          cerr << "Unable to read nal." << endl;
+          std::cerr << "Unable to read nal." << std::endl;
           decoded = false;
           break;
         }
@@ -261,7 +256,7 @@ int main(int argc, char *argv[]) {
         remaining -= chunk;
       }
     } catch (const std::bad_alloc &) {
-      cerr << "nal is too large for memory" << endl;
+      std::cerr << "nal is too large for memory" << std::endl;
       decoded = false;
     }
     if (!decoded) {
@@ -279,7 +274,7 @@ int main(int argc, char *argv[]) {
   xvc_api->parameters_destroy(params);
 
   if (decoded && view_counter == 0) {
-    cerr << "xvc stream contained no pictures" << endl;
+    std::cerr << "xvc stream contained no pictures" << std::endl;
     decoded = false;
   }
 

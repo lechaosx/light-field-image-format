@@ -22,22 +22,16 @@ extern "C" {
 #include <limits>
 #include <stdexcept>
 
-using std::cerr;
-using std::endl;
-using std::ios;
-using std::ofstream;
-using std::stod;
-using std::vector;
 
 void print_usage(char *argv0) {
-  cerr << "Usage: " << endl;
-  cerr << argv0 << " -i <input-file-mask> -o <output-file-name> -b <bitrate>" << endl;
+  std::cerr << "Usage: " << std::endl;
+  std::cerr << argv0 << " -i <input-file-mask> -o <output-file-name> -b <bitrate>" << std::endl;
 }
 
 template <typename F>
 void encode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, F &&callback) {
   if (avcodec_send_frame(context, frame) < 0) {
-    cerr << "Error sending a frame for encoding" << endl;
+    std::cerr << "Error sending a frame for encoding" << std::endl;
     exit(1);
   }
 
@@ -48,7 +42,7 @@ void encode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, F &&callback
       return;
     }
     else if (ret < 0) {
-      cerr << "Error during encoding" << endl;
+      std::cerr << "Error during encoding" << std::endl;
       exit(1);
     }
 
@@ -63,7 +57,7 @@ int main(int argc, char *argv[]) {
   const char *output_file_name {};
   const char *s_bitrate        {};
 
-  vector<PPM> images           {};
+  std::vector<PPM> images           {};
 
   uint64_t width               {};
   uint64_t height              {};
@@ -80,7 +74,7 @@ int main(int argc, char *argv[]) {
   AVCodecContext *in_context   {};
   SwsContext *in_convert_ctx   {};
 
-  ofstream output              {};
+  std::ofstream output              {};
 
   char opt {};
   while ((opt = getopt(argc, argv, "hi:o:b:I")) >= 0) {
@@ -133,25 +127,25 @@ int main(int argc, char *argv[]) {
   try {
     if (s_bitrate) {
       size_t parsed {};
-      bitrate = stod(s_bitrate, &parsed);
+      bitrate = std::stod(s_bitrate, &parsed);
       if (s_bitrate[parsed] != '\0') {
         throw std::invalid_argument("trailing bitrate characters");
       }
     }
   } catch (const std::exception &) {
-    cerr << "Bitrate must be a number" << endl;
+    std::cerr << "Bitrate must be a number" << std::endl;
     return 1;
   }
   if (!std::isfinite(bitrate) || bitrate <= 0
       || bitrate > static_cast<double>(std::numeric_limits<int64_t>::max())) {
-    cerr << "Bitrate must be positive and finite" << endl;
+    std::cerr << "Bitrate must be positive and finite" << std::endl;
     return 1;
   }
 
   try {
     images = mapPPMs(input_file_mask);
   } catch (const std::exception &error) {
-    cerr << error.what() << endl;
+    std::cerr << error.what() << std::endl;
     return 2;
   }
   width = images.front().width();
@@ -159,7 +153,7 @@ int main(int argc, char *argv[]) {
   color_depth = images.front().color_depth();
 
   if (color_depth != 255) {
-    cerr << "Unsupported color depth!" << endl;
+    std::cerr << "Unsupported color depth!" << std::endl;
     return 2;
   }
 
@@ -170,7 +164,7 @@ int main(int argc, char *argv[]) {
 
   in_frame = av_frame_alloc();
   if (!in_frame) {
-    cerr << "Could not allocate video frame" << endl;
+    std::cerr << "Could not allocate video frame" << std::endl;
     exit(1);
   }
 
@@ -179,13 +173,13 @@ int main(int argc, char *argv[]) {
   in_frame->height = height;
 
   if (av_frame_get_buffer(in_frame, 32) < 0) {
-    cerr << "Could not allocate the video frame data" << endl;
+    std::cerr << "Could not allocate the video frame data" << std::endl;
     exit(1);
   }
 
   rgb_frame = av_frame_alloc();
   if (!rgb_frame) {
-    cerr << "Could not allocate video frame" << endl;
+    std::cerr << "Could not allocate video frame" << std::endl;
     exit(1);
   }
 
@@ -194,19 +188,19 @@ int main(int argc, char *argv[]) {
   rgb_frame->height = height;
 
   if (av_frame_get_buffer(rgb_frame, 32) < 0) {
-    cerr << "Could not allocate the video frame data" << endl;
+    std::cerr << "Could not allocate the video frame data" << std::endl;
     exit(1);
   }
 
   coder = avcodec_find_encoder(AV_CODEC_ID_H265);
   if (!coder) {
-    cerr << "coder AV_CODEC_ID_H265 not found" << endl;
+    std::cerr << "coder AV_CODEC_ID_H265 not found" << std::endl;
     exit(1);
   }
 
   in_context = avcodec_alloc_context3(coder);
   if (!in_context) {
-    cerr << "Could not allocate video coder context" << endl;
+    std::cerr << "Could not allocate video coder context" << std::endl;
     exit(1);
   }
 
@@ -225,12 +219,12 @@ int main(int argc, char *argv[]) {
 
   in_convert_ctx = sws_getContext(width, height, AV_PIX_FMT_RGB24, width, height, AV_PIX_FMT_YUV444P, 0, 0, 0, 0);
   if (!in_convert_ctx) {
-    cerr << "Could not get image conversion context" << endl;
+    std::cerr << "Could not get image conversion context" << std::endl;
     exit(1);
   }
 
   if (avcodec_open2(in_context, coder, nullptr) < 0) {
-    cerr << "Could not open coder" << endl;
+    std::cerr << "Could not open coder" << std::endl;
     exit(1);
   }
 
@@ -239,9 +233,9 @@ int main(int argc, char *argv[]) {
     std::filesystem::create_directories(output_path.parent_path());
   }
   
-  output.open(output_file_name, ios::binary);
+  output.open(output_file_name, std::ios::binary);
   if (!output) {
-    cerr << "Could not open " << output_file_name << " for writing\n";
+    std::cerr << "Could not open " << output_file_name << " for writing\n";
     exit(1);
   }
 
@@ -279,7 +273,7 @@ int main(int argc, char *argv[]) {
   output.flush();
   output.close();
   if (!output) {
-    cerr << "Could not write " << output_file_name << endl;
+    std::cerr << "Could not write " << output_file_name << std::endl;
     encoded = false;
   }
 

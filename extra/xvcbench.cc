@@ -17,15 +17,10 @@ extern "C" {
 #include <iostream>
 #include <sstream>
 
-using std::cerr;
-using std::endl;
-using std::ofstream;
-using std::stringstream;
-using std::vector;
 
 void print_usage(char *argv0) {
-  cerr << "Usage: " << endl;
-  cerr << argv0 << " -i <input-file-mask> -o <output-file-name> [-f <first-qp>] [-l <last-qp>] [-a]" << endl;
+  std::cerr << "Usage: " << std::endl;
+  std::cerr << argv0 << " -i <input-file-mask> -o <output-file-name> [-f <first-qp>] [-l <last-qp>] [-a]" << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -34,7 +29,7 @@ int main(int argc, char *argv[]) {
   const char *first_qp          {};
   const char *last_qp           {};
 
-  vector<PPM> images        {};
+  std::vector<PPM> images        {};
 
   uint64_t width       {};
   uint64_t height      {};
@@ -103,7 +98,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (first_qp) {
-    stringstream value {first_qp};
+    std::stringstream value {first_qp};
     if (!(value >> qp_first) || !value.eof()) {
       print_usage(argv[0]);
       return 1;
@@ -111,7 +106,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (last_qp) {
-    stringstream value {last_qp};
+    std::stringstream value {last_qp};
     if (!(value >> qp_last) || !value.eof()) {
       print_usage(argv[0]);
       return 1;
@@ -126,7 +121,7 @@ int main(int argc, char *argv[]) {
   try {
     images = mapPPMs(input_file_mask);
   } catch (const std::exception &error) {
-    cerr << error.what() << endl;
+    std::cerr << error.what() << std::endl;
     return 2;
   }
   width = images.front().width();
@@ -135,7 +130,7 @@ int main(int argc, char *argv[]) {
   image_count = images.size();
   const uint64_t view_side = std::sqrt(image_count);
   if (view_side * view_side != image_count || color_depth > 255) {
-    cerr << "Input must be a square grid of 8-bit PPM images" << endl;
+    std::cerr << "Input must be a square grid of 8-bit PPM images" << std::endl;
     return 2;
   }
 
@@ -143,16 +138,16 @@ int main(int argc, char *argv[]) {
 
   //////////////////////////////////////////////////////////////////////////////
 
-  ofstream output {};
+  std::ofstream output {};
   if (append) {
     output.open(output_file, std::fstream::app);
   }
   else {
     output.open(output_file, std::fstream::trunc);
-    output << "'xvc QP' 'PSNR [dB]' 'bitrate [bpp]'" << endl;
+    output << "'xvc QP' 'PSNR [dB]' 'bitrate [bpp]'" << std::endl;
   }
   if (!output) {
-    cerr << "Could not open " << output_file << " for writing" << endl;
+    std::cerr << "Could not open " << output_file << " for writing" << std::endl;
     return 1;
   }
 
@@ -175,19 +170,19 @@ int main(int argc, char *argv[]) {
     0, nullptr, nullptr, nullptr
   );
   if (!in_convert_ctx) {
-    cerr << "Could not get image conversion context" << endl;
+    std::cerr << "Could not get image conversion context" << std::endl;
     xvc_api->parameters_destroy(params);
     return 1;
   }
 
-  vector<uint8_t> yuv_frame(width * height * 3);
+  std::vector<uint8_t> yuv_frame(width * height * 3);
 
   for (int qp = qp_first; qp <= qp_last; ++qp) {
     params->qp = qp;
 
     xvc_enc_return_code ret = xvc_api->parameters_check(params);
     if (ret != XVC_ENC_OK) {
-      cerr << "xvc parameter error: " << xvc_api->xvc_enc_get_error_text(ret) << endl;
+      std::cerr << "xvc parameter error: " << xvc_api->xvc_enc_get_error_text(ret) << std::endl;
       sws_freeContext(in_convert_ctx);
       xvc_api->parameters_destroy(params);
       return 1;
@@ -195,7 +190,7 @@ int main(int argc, char *argv[]) {
 
     xvc_encoder *encoder = xvc_api->encoder_create(params);
     if (!encoder) {
-      cerr << "xvc encoder creation failed" << endl;
+      std::cerr << "xvc encoder creation failed" << std::endl;
       sws_freeContext(in_convert_ctx);
       xvc_api->parameters_destroy(params);
       return 1;
@@ -250,7 +245,7 @@ int main(int argc, char *argv[]) {
         nullptr
       );
       if (ret != XVC_ENC_OK) {
-        cerr << "xvc encode failed: " << xvc_api->xvc_enc_get_error_text(ret) << endl;
+        std::cerr << "xvc encode failed: " << xvc_api->xvc_enc_get_error_text(ret) << std::endl;
         xvc_api->encoder_destroy(encoder);
         sws_freeContext(in_convert_ctx);
         xvc_api->parameters_destroy(params);
@@ -265,7 +260,7 @@ int main(int argc, char *argv[]) {
       int num_nal_units {};
       ret = xvc_api->encoder_flush(encoder, &nal_units, &num_nal_units, nullptr);
       if (ret != XVC_ENC_OK && ret != XVC_ENC_NO_MORE_OUTPUT) {
-        cerr << "xvc flush failed: " << xvc_api->xvc_enc_get_error_text(ret) << endl;
+        std::cerr << "xvc flush failed: " << xvc_api->xvc_enc_get_error_text(ret) << std::endl;
         xvc_api->encoder_destroy(encoder);
         sws_freeContext(in_convert_ctx);
         xvc_api->parameters_destroy(params);
@@ -280,7 +275,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (psnr_values == 0) {
-      cerr << "xvc returned no image metrics" << endl;
+      std::cerr << "xvc returned no image metrics" << std::endl;
       xvc_api->encoder_destroy(encoder);
       sws_freeContext(in_convert_ctx);
       xvc_api->parameters_destroy(params);
@@ -290,8 +285,8 @@ int main(int argc, char *argv[]) {
     double bpp = total_size * 8.0 / image_pixels;
     double psnr = total_psnr / psnr_values;
 
-    cerr << qp << " " << psnr << " " << bpp << endl;
-    output << qp << " " << psnr << " " << bpp << endl;
+    std::cerr << qp << " " << psnr << " " << bpp << std::endl;
+    output << qp << " " << psnr << " " << bpp << std::endl;
 
     xvc_api->encoder_destroy(encoder);
   }
@@ -302,7 +297,7 @@ int main(int argc, char *argv[]) {
   output.flush();
   output.close();
   if (!output) {
-    cerr << "Could not write " << output_file << endl;
+    std::cerr << "Could not write " << output_file << std::endl;
     return 1;
   }
 

@@ -20,11 +20,6 @@
 #include <openjpeg.h>
 #include <unistd.h>
 
-using std::cerr;
-using std::endl;
-using std::ifstream;
-using std::ofstream;
-using std::vector;
 
 namespace {
 
@@ -54,16 +49,16 @@ struct TemporaryFile {
 }
 
 void print_usage(char *argv0) {
-  cerr << "Usage: " << endl;
-  cerr << argv0 << " -i <input-file-mask> -o <output-file-name> [-f <fist-psnr>] [-l <last-psnr>] [-s <psnr-step>] [-a]" << endl;
+  std::cerr << "Usage: " << std::endl;
+  std::cerr << argv0 << " -i <input-file-mask> -o <output-file-name> [-f <fist-psnr>] [-l <last-psnr>] [-s <psnr-step>] [-a]" << std::endl;
 }
 
 static void error_callback(const char *msg, void *) {
-  cerr << "[ERROR] " << msg;
+  std::cerr << "[ERROR] " << msg;
 }
 
 static void warning_callback(const char *msg, void *) {
-  cerr << "[WARNING] " << msg;
+  std::cerr << "[WARNING] " << msg;
 }
 
 static void info_callback(const char *, void *) {
@@ -82,7 +77,7 @@ int main(int argc, char *argv[]) {
   float psnr_last  {};
   bool append     {};
 
-  vector<PPM> images       {};
+  std::vector<PPM> images       {};
 
   uint64_t width       {};
   uint64_t height      {};
@@ -183,20 +178,20 @@ int main(int argc, char *argv[]) {
       }
     }
   } catch (const std::exception &) {
-    cerr << "PSNR values must be numbers" << endl;
+    std::cerr << "PSNR values must be numbers" << std::endl;
     return 1;
   }
   if (!std::isfinite(psnr_step) || !std::isfinite(psnr_first) || !std::isfinite(psnr_last)
       || psnr_step <= 0 || psnr_first <= 0 || psnr_first > psnr_last
       || psnr_first + psnr_step == psnr_first) {
-    cerr << "PSNR values must be positive, increasing and ordered from first to last" << endl;
+    std::cerr << "PSNR values must be positive, increasing and ordered from first to last" << std::endl;
     return 1;
   }
 
   try {
     images = mapPPMs(input_file_mask);
   } catch (const std::exception &error) {
-    cerr << error.what() << endl;
+    std::cerr << error.what() << std::endl;
     return 2;
   }
   width = images.front().width();
@@ -205,7 +200,7 @@ int main(int argc, char *argv[]) {
   image_count = images.size();
   const uint64_t view_side = std::sqrt(image_count);
   if (view_side * view_side != image_count || color_depth > 255) {
-    cerr << "Input must be a square grid of 8-bit PPM images" << endl;
+    std::cerr << "Input must be a square grid of 8-bit PPM images" << std::endl;
     return 2;
   }
 
@@ -237,16 +232,16 @@ int main(int argc, char *argv[]) {
     cmptparm[i].sgnd = 0;
   }
 
-  ofstream output {};
+  std::ofstream output {};
   if (append) {
     output.open(output_file, std::fstream::app);
   }
   else {
     output.open(output_file, std::fstream::trunc);
-    output << "'openjpeg' 'PSNR [dB]' 'bitrate [bpp]'" << endl;
+    output << "'openjpeg' 'PSNR [dB]' 'bitrate [bpp]'" << std::endl;
   }
   if (!output) {
-    cerr << "Could not open " << output_file << " for writing" << endl;
+    std::cerr << "Could not open " << output_file << " for writing" << std::endl;
     return 1;
   }
 
@@ -254,7 +249,7 @@ int main(int argc, char *argv[]) {
   TemporaryFile temporary_file;
 
   for (float param_psnr = psnr_first; param_psnr <= psnr_last; param_psnr += psnr_step) {
-    cerr << "PSNR: " << param_psnr << "\n";
+    std::cerr << "PSNR: " << param_psnr << "\n";
 
     double mse = 0;
     size_t compressed_size = 0;
@@ -264,7 +259,7 @@ int main(int argc, char *argv[]) {
     for (size_t img = 0; img < image_count; img++) {
       l_image = opj_image_create(3, cmptparm, OPJ_CLRSPC_SRGB);
       if (!l_image) {
-        cerr << "Could not create OpenJPEG image" << endl;
+        std::cerr << "Could not create OpenJPEG image" << std::endl;
         return 3;
       }
       l_image->x0 = 0;
@@ -284,7 +279,7 @@ int main(int argc, char *argv[]) {
 
       l_codec = opj_create_compress(OPJ_CODEC_J2K);
       if (!l_stream || !l_codec) {
-        cerr << "Could not create OpenJPEG encoder" << endl;
+        std::cerr << "Could not create OpenJPEG encoder" << std::endl;
         opj_destroy_codec(l_codec);
         opj_stream_destroy(l_stream);
         opj_image_destroy(l_image);
@@ -304,13 +299,13 @@ int main(int argc, char *argv[]) {
       opj_image_destroy(l_image);
       l_image = nullptr;
       if (!encoded) {
-        cerr << "OpenJPEG encoding failed" << endl;
+        std::cerr << "OpenJPEG encoding failed" << std::endl;
         return 3;
       }
 
       std::ifstream in(temporary_file.path, std::ifstream::ate | std::ifstream::binary);
       if (!in || in.tellg() < 0) {
-        cerr << "Could not read OpenJPEG output" << endl;
+        std::cerr << "Could not read OpenJPEG output" << std::endl;
         return 3;
       }
       compressed_size += static_cast<size_t>(in.tellg());
@@ -319,7 +314,7 @@ int main(int argc, char *argv[]) {
 
       l_codec = opj_create_decompress(OPJ_CODEC_J2K);
       if (!l_stream || !l_codec) {
-        cerr << "Could not create OpenJPEG decoder" << endl;
+        std::cerr << "Could not create OpenJPEG decoder" << std::endl;
         opj_destroy_codec(l_codec);
         opj_stream_destroy(l_stream);
         return 3;
@@ -335,7 +330,7 @@ int main(int argc, char *argv[]) {
           && opj_decode(l_codec, l_stream, l_image)
           && opj_end_decompress(l_codec, l_stream);
       if (!decoded || !l_image) {
-        cerr << "OpenJPEG decoding failed" << endl;
+        std::cerr << "OpenJPEG decoding failed" << std::endl;
         opj_stream_destroy(l_stream);
         opj_destroy_codec(l_codec);
         opj_image_destroy(l_image);
@@ -360,15 +355,15 @@ int main(int argc, char *argv[]) {
     double bpp = compressed_size * 8.0 / image_pixels;
     double psnr = 10 * log10((255 * 255) / mse);
 
-    cerr << param_psnr  << " " << psnr << " " << bpp << endl;
-    output << param_psnr  << " " << psnr << " " << bpp << endl;
+    std::cerr << param_psnr  << " " << psnr << " " << bpp << std::endl;
+    output << param_psnr  << " " << psnr << " " << bpp << std::endl;
   }
 
 
   output.flush();
   output.close();
   if (!output) {
-    cerr << "Could not write " << output_file << endl;
+    std::cerr << "Could not write " << output_file << std::endl;
     return 1;
   }
 

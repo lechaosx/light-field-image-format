@@ -18,16 +18,10 @@ extern "C" {
 #include <iostream>
 #include <sstream>
 
-using std::cerr;
-using std::endl;
-using std::ios;
-using std::ofstream;
-using std::stringstream;
-using std::vector;
 
 void print_usage(char *argv0) {
-  cerr << "Usage: " << endl;
-  cerr << argv0 << " -i <input-file-mask> -o <output-file-name> -q <qp>" << endl;
+  std::cerr << "Usage: " << std::endl;
+  std::cerr << argv0 << " -i <input-file-mask> -o <output-file-name> -q <qp>" << std::endl;
 }
 
 template <typename F>
@@ -38,7 +32,7 @@ bool encode(const xvc_encoder_api  *xvc_api, xvc_encoder *encoder, const uint8_t
 
   xvc_enc_return_code ret = xvc_api->encoder_encode(encoder, buffer, &nal_units, &num_nal_units, rec_pic_ptr);
   if (ret != XVC_ENC_OK) {
-    cerr << "xvc encode failed: " << xvc_api->xvc_enc_get_error_text(ret) << endl;
+    std::cerr << "xvc encode failed: " << xvc_api->xvc_enc_get_error_text(ret) << std::endl;
     return false;
   }
 
@@ -60,7 +54,7 @@ bool flush(const xvc_encoder_api  *xvc_api, xvc_encoder *encoder, F &&callback) 
   do {
     ret = xvc_api->encoder_flush(encoder, &nal_units, &num_nal_units, rec_pic_ptr);
     if (ret != XVC_ENC_OK && ret != XVC_ENC_NO_MORE_OUTPUT) {
-      cerr << "xvc flush failed: " << xvc_api->xvc_enc_get_error_text(ret) << endl;
+      std::cerr << "xvc flush failed: " << xvc_api->xvc_enc_get_error_text(ret) << std::endl;
       return false;
     }
 
@@ -78,7 +72,7 @@ int main(int argc, char *argv[]) {
   const char *output_file_name    {};
   const char *s_qp                {};
 
-  vector<PPM> images              {};
+  std::vector<PPM> images              {};
   uint64_t width                  {};
   uint64_t height                 {};
   uint32_t color_depth            {};
@@ -92,9 +86,9 @@ int main(int argc, char *argv[]) {
 
   SwsContext *in_convert_ctx      {};
 
-  vector<uint8_t> yuv_frame       {};
+  std::vector<uint8_t> yuv_frame       {};
 
-  ofstream output                 {};
+  std::ofstream output                 {};
 
   char opt {};
   while ((opt = getopt(argc, argv, "hi:o:q:")) >= 0) {
@@ -139,7 +133,7 @@ int main(int argc, char *argv[]) {
 
   qp = 30;
   if (s_qp) {
-    stringstream input(s_qp);
+    std::stringstream input(s_qp);
     if (!(input >> qp) || (input >> std::ws, !input.eof())) {
       print_usage(argv[0]);
       return 1;
@@ -149,7 +143,7 @@ int main(int argc, char *argv[]) {
   try {
     images = mapPPMs(input_file_mask);
   } catch (const std::exception &error) {
-    cerr << error.what() << endl;
+    std::cerr << error.what() << std::endl;
     return 2;
   }
   width = images.front().width();
@@ -158,7 +152,7 @@ int main(int argc, char *argv[]) {
   image_count = images.size();
   const uint64_t view_side = std::sqrt(image_count);
   if (view_side * view_side != image_count || color_depth > 255) {
-    cerr << "Input must be a square grid of 8-bit PPM images" << endl;
+    std::cerr << "Input must be a square grid of 8-bit PPM images" << std::endl;
     return 2;
   }
 
@@ -181,20 +175,20 @@ int main(int argc, char *argv[]) {
 
   xvc_enc_return_code ret = xvc_api->parameters_check(params);
   if (ret != XVC_ENC_OK) {
-    cerr << xvc_api->xvc_enc_get_error_text(ret) << endl;
+    std::cerr << xvc_api->xvc_enc_get_error_text(ret) << std::endl;
     return 1;
   }
 
   encoder = xvc_api->encoder_create(params);
   if (!encoder) {
-    cerr << "xvc encoder creation failed" << endl;
+    std::cerr << "xvc encoder creation failed" << std::endl;
     xvc_api->parameters_destroy(params);
     return 1;
   }
 
   in_convert_ctx = sws_getContext(width, height, AV_PIX_FMT_RGB24, width, height, AV_PIX_FMT_YUV444P, 0, 0, 0, 0);
   if (!in_convert_ctx) {
-    cerr << "Could not get image conversion context" << endl;
+    std::cerr << "Could not get image conversion context" << std::endl;
     exit(1);
   }
 
@@ -218,9 +212,9 @@ int main(int argc, char *argv[]) {
     std::filesystem::create_directories(output_path.parent_path());
   }
 
-  output.open(output_file_name, ios::binary);
+  output.open(output_file_name, std::ios::binary);
   if (!output) {
-    cerr << "Could not open " << output_file_name << " for writing\n";
+    std::cerr << "Could not open " << output_file_name << " for writing\n";
     exit(1);
   }
 
@@ -250,7 +244,7 @@ int main(int argc, char *argv[]) {
   output.flush();
   output.close();
   if (!output) {
-    cerr << "Could not write " << output_file_name << endl;
+    std::cerr << "Could not write " << output_file_name << std::endl;
     encoded = false;
   }
 

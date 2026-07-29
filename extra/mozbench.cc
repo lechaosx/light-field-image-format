@@ -17,16 +17,12 @@
 #include <string_view>
 #include <vector>
 
-using std::cerr;
-using std::endl;
-using std::ofstream;
-using std::vector;
 
 #include <jpeglib.h>
 
 void print_usage(char *argv0) {
-  cerr << "Usage: " << endl;
-  cerr << argv0 << " -i <input-file-mask> -o <output-file-name> [-f <fist-quality>] [-l <last-quality>] [-s <quality-step>] [-a]" << endl;
+  std::cerr << "Usage: " << std::endl;
+  std::cerr << argv0 << " -i <input-file-mask> -o <output-file-name> [-f <fist-quality>] [-l <last-quality>] [-s <quality-step>] [-a]" << std::endl;
 }
 
 bool parseQuality(const char *text, uint8_t &quality) {
@@ -54,7 +50,7 @@ int main(int argc, char *argv[]) {
   uint8_t q_last  {};
   bool append             {};
 
-  vector<PPM> images       {};
+  std::vector<PPM> images       {};
 
   uint64_t width       {};
   uint64_t height      {};
@@ -147,14 +143,14 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   if (q_first > q_last) {
-    cerr << "Qualities must be ordered from first to last" << endl;
+    std::cerr << "Qualities must be ordered from first to last" << std::endl;
     return 1;
   }
 
   try {
     images = mapPPMs(input_file_mask);
   } catch (const std::exception &error) {
-    cerr << error.what() << endl;
+    std::cerr << error.what() << std::endl;
     return 2;
   }
   width = images.front().width();
@@ -163,7 +159,7 @@ int main(int argc, char *argv[]) {
   image_count = images.size();
   const uint64_t view_side = std::sqrt(image_count);
   if (view_side * view_side != image_count || color_depth > 255) {
-    cerr << "Input must be a square grid of 8-bit PPM images" << endl;
+    std::cerr << "Input must be a square grid of 8-bit PPM images" << std::endl;
     return 2;
   }
 
@@ -182,23 +178,23 @@ int main(int argc, char *argv[]) {
 
   row_stride = width * 3;
 
-  ofstream output {};
+  std::ofstream output {};
   if (append) {
     output.open(output_file, std::fstream::app);
   }
   else {
     output.open(output_file, std::fstream::trunc);
-    output << "'mozjpeg' 'PSNR [dB]' 'bitrate [bpp]'" << endl;
+    output << "'mozjpeg' 'PSNR [dB]' 'bitrate [bpp]'" << std::endl;
   }
   if (!output) {
-    cerr << "Could not open " << output_file << " for writing" << endl;
+    std::cerr << "Could not open " << output_file << " for writing" << std::endl;
     return 1;
   }
 
   size_t image_pixels = width * height * image_count;
 
   for (size_t quality = q_first; quality <= q_last; quality += q_step) {
-    cerr << "Q" << quality << " STARTED" << endl;
+    std::cerr << "Q" << quality << " STARTED" << std::endl;
 
     size_t compressed_size = 0;
     double mse = 0;
@@ -214,12 +210,12 @@ int main(int argc, char *argv[]) {
 
     for (size_t i = 0; i < image_count; i++) {
       const auto *original = images[i].pixels().data();
-      vector<uint8_t>  decompressed_rgb_data(width * height * 3);
+      std::vector<uint8_t>  decompressed_rgb_data(width * height * 3);
 
       auto close_file = [](FILE *file) { fclose(file); };
       std::unique_ptr<FILE, decltype(close_file)> compressed(std::tmpfile(), close_file);
       if (!compressed) {
-        cerr << "Could not create temporary JPEG file" << endl;
+        std::cerr << "Could not create temporary JPEG file" << std::endl;
         exit(1);
       }
 
@@ -237,7 +233,7 @@ int main(int argc, char *argv[]) {
 
       const long jpeg_size = ftell(compressed.get());
       if (jpeg_size < 0) {
-        cerr << "Could not determine temporary JPEG size" << endl;
+        std::cerr << "Could not determine temporary JPEG size" << std::endl;
         return 1;
       }
       compressed_size += static_cast<size_t>(jpeg_size);
@@ -268,8 +264,8 @@ int main(int argc, char *argv[]) {
     double bpp = compressed_size * 8.0 / image_pixels;
     double psnr = 10 * log10((255 * 255) / mse);
 
-    cerr << quality  << " " << psnr << " " << bpp << endl;
-    output << quality  << " " << psnr << " " << bpp << endl;
+    std::cerr << quality  << " " << psnr << " " << bpp << std::endl;
+    output << quality  << " " << psnr << " " << bpp << std::endl;
   }
 
   jpeg_destroy_compress(&cinfo);
@@ -278,7 +274,7 @@ int main(int argc, char *argv[]) {
   output.flush();
   output.close();
   if (!output) {
-    cerr << "Could not write " << output_file << endl;
+    std::cerr << "Could not write " << output_file << std::endl;
     return 1;
   }
 

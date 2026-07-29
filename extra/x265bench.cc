@@ -20,22 +20,15 @@ extern "C" {
 #include <iostream>
 #include <stdexcept>
 
-using std::abs;
-using std::cerr;
-using std::endl;
-using std::function;
-using std::ofstream;
-using std::stod;
-using std::vector;
 
 void print_usage(char *argv0) {
-  cerr << "Usage: " << endl;
-  cerr << argv0 << " -i <input-file-mask> -o <output-file-name> [-f <fist-bitrate>] [-l <last-bitrate>] [-a] [-I]" << endl;
+  std::cerr << "Usage: " << std::endl;
+  std::cerr << argv0 << " -i <input-file-mask> -o <output-file-name> [-f <fist-bitrate>] [-l <last-bitrate>] [-a] [-I]" << std::endl;
 }
 
-void encode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, const function<void(AVPacket *)> &callback) {
+void encode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, const std::function<void(AVPacket *)> &callback) {
   if (avcodec_send_frame(context, frame) < 0) {
-    cerr << "Error sending a frame for encoding" << endl;
+    std::cerr << "Error sending a frame for encoding" << std::endl;
     exit(1);
   }
 
@@ -46,7 +39,7 @@ void encode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, const functi
       return;
     }
     else if (ret < 0) {
-      cerr << "Error during encoding" << endl;
+      std::cerr << "Error during encoding" << std::endl;
       exit(1);
     }
 
@@ -56,9 +49,9 @@ void encode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, const functi
   }
 }
 
-void decode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, const function<void(AVFrame *)> &callback) {
+void decode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, const std::function<void(AVFrame *)> &callback) {
   if (avcodec_send_packet(context, pkt) < 0) {
-    cerr << "Error sending a packet for decoding" << endl;
+    std::cerr << "Error sending a packet for decoding" << std::endl;
     exit(1);
   }
 
@@ -69,7 +62,7 @@ void decode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, const functi
       return;
     }
     else if (ret < 0) {
-      cerr << "Error during decoding" << endl;
+      std::cerr << "Error during decoding" << std::endl;
       exit(1);
     }
 
@@ -83,7 +76,7 @@ int main(int argc, char *argv[]) {
   const char *first_bitrate     {};
   const char *last_bitrate     {};
 
-  vector<PPM> images        {};
+  std::vector<PPM> images        {};
 
   uint64_t width       {};
   uint64_t height      {};
@@ -164,31 +157,31 @@ int main(int argc, char *argv[]) {
   try {
     if (first_bitrate) {
       size_t parsed {};
-      f_b = stod(first_bitrate, &parsed);
+      f_b = std::stod(first_bitrate, &parsed);
       if (first_bitrate[parsed] != '\0') {
         throw std::invalid_argument("trailing bitrate characters");
       }
     }
     if (last_bitrate) {
       size_t parsed {};
-      l_b = stod(last_bitrate, &parsed);
+      l_b = std::stod(last_bitrate, &parsed);
       if (last_bitrate[parsed] != '\0') {
         throw std::invalid_argument("trailing bitrate characters");
       }
     }
   } catch (const std::exception &) {
-    cerr << "Bitrates must be numbers" << endl;
+    std::cerr << "Bitrates must be numbers" << std::endl;
     return 1;
   }
   if (!std::isfinite(f_b) || !std::isfinite(l_b) || f_b <= 0 || f_b > l_b) {
-    cerr << "Bitrates must be positive and ordered from first to last" << endl;
+    std::cerr << "Bitrates must be positive and ordered from first to last" << std::endl;
     return 1;
   }
 
   try {
     images = mapPPMs(input_file_mask);
   } catch (const std::exception &error) {
-    cerr << error.what() << endl;
+    std::cerr << error.what() << std::endl;
     return 2;
   }
   width = images.front().width();
@@ -197,7 +190,7 @@ int main(int argc, char *argv[]) {
   image_count = images.size();
   const uint64_t view_side = std::sqrt(image_count);
   if (view_side * view_side != image_count || color_depth > 255) {
-    cerr << "Input must be a square grid of 8-bit PPM images" << endl;
+    std::cerr << "Input must be a square grid of 8-bit PPM images" << std::endl;
     return 2;
   }
 
@@ -224,13 +217,13 @@ int main(int argc, char *argv[]) {
 
   out_frame = av_frame_alloc();
   if (!out_frame) {
-    cerr << "Could not allocate video frame" << endl;
+    std::cerr << "Could not allocate video frame" << std::endl;
     exit(1);
   }
 
   in_frame = av_frame_alloc();
   if (!in_frame) {
-    cerr << "Could not allocate video frame" << endl;
+    std::cerr << "Could not allocate video frame" << std::endl;
     exit(1);
   }
 
@@ -239,13 +232,13 @@ int main(int argc, char *argv[]) {
   in_frame->height = height;
 
   if (av_frame_get_buffer(in_frame, 32) < 0) {
-    cerr << "Could not allocate the video frame data" << endl;
+    std::cerr << "Could not allocate the video frame data" << std::endl;
     exit(1);
   }
 
   rgb_frame = av_frame_alloc();
   if (!rgb_frame) {
-    cerr << "Could not allocate video frame" << endl;
+    std::cerr << "Could not allocate video frame" << std::endl;
     exit(1);
   }
 
@@ -254,55 +247,55 @@ int main(int argc, char *argv[]) {
   rgb_frame->height = height;
 
   if (av_frame_get_buffer(rgb_frame, 32) < 0) {
-    cerr << "Could not allocate the video frame data" << endl;
+    std::cerr << "Could not allocate the video frame data" << std::endl;
     exit(1);
   }
 
   decoder = avcodec_find_decoder(AV_CODEC_ID_H265);
   if (!decoder) {
-    cerr << "decoder AV_CODEC_ID_H265 not found" << endl;
+    std::cerr << "decoder AV_CODEC_ID_H265 not found" << std::endl;
     exit(1);
   }
 
   coder = avcodec_find_encoder(AV_CODEC_ID_H265);
   if (!coder) {
-    cerr << "coder AV_CODEC_ID_H265 not found" << endl;
+    std::cerr << "coder AV_CODEC_ID_H265 not found" << std::endl;
     exit(1);
   }
 
   in_convert_ctx = sws_getContext(width, height, AV_PIX_FMT_RGB24, width, height, AV_PIX_FMT_YUV444P, 0, 0, 0, 0);
   if (!in_convert_ctx) {
-    cerr << "Could not get image conversion context" << endl;
+    std::cerr << "Could not get image conversion context" << std::endl;
     exit(1);
   }
 
   out_convert_ctx = sws_getContext(width, height, AV_PIX_FMT_YUV444P, width, height, AV_PIX_FMT_RGB24, 0, 0, 0, 0);
   if (!out_convert_ctx) {
-    cerr << "Could not get image conversion context" << endl;
+    std::cerr << "Could not get image conversion context" << std::endl;
     exit(1);
   }
 
-  ofstream output {};
+  std::ofstream output {};
   if (append) {
     output.open(output_file, std::fstream::app);
   }
   else {
     output.open(output_file, std::fstream::trunc);
-    output << "'x265' 'PSNR [dB]' 'bitrate [bpp]'" << endl;
+    output << "'x265' 'PSNR [dB]' 'bitrate [bpp]'" << std::endl;
   }
   if (!output) {
-    cerr << "Could not open " << output_file << " for writing" << endl;
+    std::cerr << "Could not open " << output_file << " for writing" << std::endl;
     return 1;
   }
 
   for (double bpp = f_b; bpp <= l_b; bpp *= 1.25893) {
-    vector<uint8_t> out_rgb_data {};
+    std::vector<uint8_t> out_rgb_data {};
     size_t compressed_size = 0;
 
     in_context = avcodec_alloc_context3(coder);
     out_context = avcodec_alloc_context3(decoder);
     if (!in_context || !out_context) {
-      cerr << "Could not allocate video codec context" << endl;
+      std::cerr << "Could not allocate video codec context" << std::endl;
       exit(1);
     }
 
@@ -317,12 +310,12 @@ int main(int argc, char *argv[]) {
     av_opt_set(in_context->priv_data, "preset", "placebo", 0);
 
     if (avcodec_open2(in_context, coder, nullptr) < 0) {
-      cerr << "Could not open coder" << endl;
+      std::cerr << "Could not open coder" << std::endl;
       exit(1);
     }
 
     if (avcodec_open2(out_context, decoder, nullptr) < 0) {
-      cerr << "Could not open decoder" << endl;
+      std::cerr << "Could not open decoder" << std::endl;
       exit(1);
     }
 
@@ -375,10 +368,10 @@ int main(int argc, char *argv[]) {
     double out_bpp = compressed_size * 8.0 / image_pixels;
     double psnr = 10 * log10((255 * 255) / mse);
 
-    cerr << bpp << " " << psnr << " " << out_bpp << endl;
-    output << bpp << " " << psnr << " " << out_bpp << endl;
+    std::cerr << bpp << " " << psnr << " " << out_bpp << std::endl;
+    output << bpp << " " << psnr << " " << out_bpp << std::endl;
 
-    if (abs(bpp - out_bpp) > 2) {
+    if (std::abs(bpp - out_bpp) > 2) {
       break;
     }
   }
@@ -395,7 +388,7 @@ int main(int argc, char *argv[]) {
   output.flush();
   output.close();
   if (!output) {
-    cerr << "Could not write " << output_file << endl;
+    std::cerr << "Could not write " << output_file << std::endl;
     return 1;
   }
 

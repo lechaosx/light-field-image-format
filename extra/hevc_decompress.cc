@@ -21,20 +21,16 @@ extern "C" {
 #include <functional>
 #include <iostream>
 
-using std::cerr;
-using std::endl;
-using std::ifstream;
-using std::ios;
 
 void print_usage(char *argv0) {
-  cerr << "Usage: " << endl;
-  cerr << argv0 << " -i <input-file-name> -o <output-file-mask>" << endl;
+  std::cerr << "Usage: " << std::endl;
+  std::cerr << argv0 << " -i <input-file-name> -o <output-file-mask>" << std::endl;
 }
 
 template <typename F>
 void decode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, F &&callback) {
   if (avcodec_send_packet(context, pkt) < 0) {
-    cerr << "Error sending a packet for decoding" << endl;
+    std::cerr << "Error sending a packet for decoding" << std::endl;
     exit(1);
   }
 
@@ -45,7 +41,7 @@ void decode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, F &&callback
       return;
     }
     else if (ret < 0) {
-      cerr << "Error during decoding" << endl;
+      std::cerr << "Error during decoding" << std::endl;
       exit(1);
     }
 
@@ -64,7 +60,7 @@ int main(int argc, char *argv[]) {
   AVCodecParserContext *parser {};
   SwsContext *out_convert_ctx  {};
 
-  ifstream input               {};
+  std::ifstream input               {};
 
   const size_t INBUF_SIZE = 4096;
   uint8_t inbuf[INBUF_SIZE + AV_INPUT_BUFFER_PADDING_SIZE];
@@ -109,37 +105,37 @@ int main(int argc, char *argv[]) {
 
   out_frame = av_frame_alloc();
   if (!out_frame) {
-    cerr << "Could not allocate video frame" << endl;
+    std::cerr << "Could not allocate video frame" << std::endl;
     exit(1);
   }
 
   decoder = avcodec_find_decoder(AV_CODEC_ID_H265);
   if (!decoder) {
-    cerr << "Decoder AV_CODEC_ID_H265 not found" << endl;
+    std::cerr << "Decoder AV_CODEC_ID_H265 not found" << std::endl;
     exit(1);
   }
 
   parser = av_parser_init(decoder->id);
   if (!parser) {
-    cerr << "Parser not found!" << endl;
+    std::cerr << "Parser not found!" << std::endl;
     exit(1);
   }
 
   out_context = avcodec_alloc_context3(decoder);
   if (!out_context) {
-    cerr << "Could not allocate video coder context" << endl;
+    std::cerr << "Could not allocate video coder context" << std::endl;
     exit(1);
   }
 
   if (avcodec_open2(out_context, decoder, nullptr) < 0) {
-    cerr << "Could not open decoder" << endl;
+    std::cerr << "Could not open decoder" << std::endl;
     exit(1);
   }
 
   size_t view_counter { 0 };
   const size_t output_name_count = get_mask_names_count(output_file_mask, '#');
   if (output_name_count == 0) {
-    cerr << "output file mask is too large" << endl;
+    std::cerr << "output file mask is too large" << std::endl;
     return 1;
   }
 
@@ -148,7 +144,7 @@ int main(int argc, char *argv[]) {
 
     rgb_frame = av_frame_alloc();
     if (!rgb_frame) {
-      cerr << "Could not allocate video frame" << endl;
+      std::cerr << "Could not allocate video frame" << std::endl;
       exit(1);
     }
 
@@ -157,13 +153,13 @@ int main(int argc, char *argv[]) {
     rgb_frame->height = frame->height;
 
     if (av_frame_get_buffer(rgb_frame, 32) < 0) {
-      cerr << "Could not allocate the video frame data" << endl;
+      std::cerr << "Could not allocate the video frame data" << std::endl;
       exit(1);
     }
 
     out_convert_ctx = sws_getContext(frame->width, frame->height, AV_PIX_FMT_YUV444P, rgb_frame->width, rgb_frame->height, AV_PIX_FMT_RGB24, 0, 0, 0, 0);
     if (!out_convert_ctx) {
-      cerr << "Could not get image conversion context" << endl;
+      std::cerr << "Could not get image conversion context" << std::endl;
       exit(1);
     }
 
@@ -171,7 +167,7 @@ int main(int argc, char *argv[]) {
     sws_scale(out_convert_ctx, frame->data, frame->linesize, 0, frame->height, rgb_frame->data, outLinesize);
 
     if (view_counter >= output_name_count) {
-      cerr << "file mask cannot represent frame " << view_counter << endl;
+      std::cerr << "file mask cannot represent frame " << view_counter << std::endl;
       exit(1);
     }
 
@@ -198,9 +194,9 @@ int main(int argc, char *argv[]) {
     sws_freeContext(out_convert_ctx);
   };
 
-  input.open(input_file_name, ios::binary);
+  input.open(input_file_name, std::ios::binary);
   if (!input) {
-    cerr << "Could not open " << input_file_name << " for reading\n";
+    std::cerr << "Could not open " << input_file_name << " for reading\n";
     exit(1);
   }
 
@@ -215,7 +211,7 @@ int main(int argc, char *argv[]) {
     while (data_size > 0) {
       int64_t ret = av_parser_parse2(parser, out_context, &pkt->data, &pkt->size, ptr, data_size, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
       if (ret < 0) {
-        cerr << "Error while parsing\n";
+        std::cerr << "Error while parsing\n";
         exit(1);
       }
 
@@ -239,7 +235,7 @@ int main(int argc, char *argv[]) {
       AV_NOPTS_VALUE,
       0);
   if (parser_ret < 0) {
-    cerr << "Error while draining parser\n";
+    std::cerr << "Error while draining parser\n";
     avcodec_free_context(&out_context);
     av_parser_close(parser);
     av_frame_free(&out_frame);
@@ -251,7 +247,7 @@ int main(int argc, char *argv[]) {
   }
   decode(out_context, out_frame, nullptr, saveFrame);
   if (view_counter == 0) {
-    cerr << "No HEVC frames decoded\n";
+    std::cerr << "No HEVC frames decoded\n";
     avcodec_free_context(&out_context);
     av_parser_close(parser);
     av_frame_free(&out_frame);
