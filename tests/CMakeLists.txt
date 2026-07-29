@@ -23,7 +23,7 @@ add_executable(
 )
 target_link_libraries(
   lfif_unit_tests
-  PRIVATE lfif ppm GTest::gtest GTest::gtest_main
+  PRIVATE lfif lfif_container ppm GTest::gtest GTest::gtest_main
 )
 target_compile_definitions(
   lfif_unit_tests
@@ -34,7 +34,7 @@ include(GoogleTest)
 gtest_discover_tests(lfif_unit_tests)
 
 add_executable(create_test_lfif create_test_lfif.cc)
-target_link_libraries(create_test_lfif PRIVATE lfif)
+target_link_libraries(create_test_lfif PRIVATE lfif_container)
 
 add_executable(compare_test_ppm compare_test_ppm.cc)
 target_link_libraries(compare_test_ppm PRIVATE ppm)

@@ -11,6 +11,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(OpenMP REQUIRED COMPONENTS CXX)
 
 add_subdirectory(liblfif)
+add_subdirectory(lfif_container)
 add_subdirectory(libppm)
 add_subdirectory(tools)
 

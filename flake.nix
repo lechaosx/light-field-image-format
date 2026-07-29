@@ -59,8 +59,8 @@
             installPhase = ''
               mkdir -p $out/bin $out/include $out/lib
               cp tools/lfif $out/bin/
-              cp liblfif/liblfif.a libppm/libppm.a $out/lib/
-              cp -R ../liblfif/include/. ../libppm/include/. $out/include/
+              cp liblfif/liblfif.a lfif_container/liblfif_container.a libppm/libppm.a $out/lib/
+              cp -R ../liblfif/include/. ../lfif_container/include/. ../libppm/include/. $out/include/
             '';
           };
         });
