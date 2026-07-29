@@ -137,7 +137,6 @@ void project_neighbours_to_main_ref(const std::array<size_t, D> &BS, DynamicBloc
       position[idx] = pos[i] + start_offsets[idx];
     }
 
-    // najde nejblizsi stenu po vektoru direction
     double nearest_neighbour_distance = std::numeric_limits<double>::max();
     size_t nearest_neighbour_idx {};
     for (size_t i { 0 }; i < D; i++) {
@@ -151,7 +150,6 @@ void project_neighbours_to_main_ref(const std::array<size_t, D> &BS, DynamicBloc
       }
     }
 
-    //posune soradnice podle vektoru diection tak, aby byly pokud mozno vsechny vetsi nebo rovno nule
     int64_t num_steps = position[nearest_neighbour_idx];
     for (size_t i { 0 }; i < D; i++) {
       position[i] *= direction[nearest_neighbour_idx];
@@ -189,7 +187,7 @@ void predict_from_main_ref(DynamicBlock<T, D> &output, const int8_t direction[D]
     }
   }
 
-  //REWRITE the offsets for main ref, the order is important!
+  // The main-reference offset must override the generic dimensional offsets.
   if (direction[main_ref_idx] < 0) {
     offsets[main_ref_idx] = -output.size(main_ref_idx);
   }
@@ -206,12 +204,8 @@ void predict_from_main_ref(DynamicBlock<T, D> &output, const int8_t direction[D]
       size_t idx = i < main_ref_idx ? i : i + 1;
       main_ref_pos[i] = pos[idx] + offsets[idx];
 
-      main_ref_pos[i] *= direction[main_ref_idx]; //vynasobi se tak, aby se nemuselo konvertovat do floating point
-      main_ref_pos[i] -= direction[idx] * distance; //vytvori projekci souradnice na hlavni referencni rovinu
-
-      //if (main_ref_pos[i] > static_cast<int64_t>(output.size(idx) + output.size(main_ref_idx)) * direction[main_ref_idx]) {
-      //  main_ref_pos[i] = (output.size(idx) + output.size(main_ref_idx)) * direction[main_ref_idx];
-      //}
+      main_ref_pos[i] *= direction[main_ref_idx];
+      main_ref_pos[i] -= direction[idx] * distance;
     }
 
     auto inputF = [&](size_t index) {
@@ -239,7 +233,6 @@ void predict_direction(DynamicBlock<T, D> &output, const int8_t direction[D], F 
     return;
   }
 
-  // find which neighbouring block will be main
   for (size_t d = 0; d < D; d++) {
     if (std::abs(direction[d]) >= std::abs(direction[main_ref_idx])) {
       main_ref_idx = d;

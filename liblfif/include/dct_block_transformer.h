@@ -29,7 +29,7 @@ public:
     fdct<D>(this->block_size, dct_coefs, proxy);
 
     iterate_dimensions<D>(this->block_size, [&](const auto &pos) {
-      block[pos] = std::round(ldexp(block[pos], -this->discarded_bits)); // QUANTIZATION
+      block[pos] = std::round(ldexp(block[pos], -this->discarded_bits));
     });
   }
 

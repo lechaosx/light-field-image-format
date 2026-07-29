@@ -36,7 +36,6 @@ class BlockPredictor {
         }
       }
 
-      //resi pokud se prediktor chce divat na vzorky mimo obrazek v zapornych souradnicich
       int64_t min_pos = std::numeric_limits<int64_t>::max();
       for (size_t i = 0; i < D; i++) {
         if (offset[i] > 0) {
@@ -57,7 +56,6 @@ class BlockPredictor {
 
       std::array<size_t, D> image_pos {};
       for (size_t i = 0; i < D; i++) {
-        //resi pokud se prediktor chce divat na vzorky mimo obrazek v kladnych souradnicich
         image_pos[i] = std::clamp<size_t>(offset[i] + block_pos[i], 0, decoded_image.size(i) - 1);
       }
 

@@ -35,7 +35,7 @@ void constructByReference(const ReferenceBlock<D> &reference, TraversalTable<D> 
     srt[i].second = i;
   }
 
-  //do NOT sort DC coefficient, thus +1 at the begining.
+  // The DC coefficient remains first while the AC coefficients are reordered.
   stable_sort(&srt[0] + 1, &srt[srt.stride(D)], [](auto &left, auto &right) {
     return left.first > right.first;
   });

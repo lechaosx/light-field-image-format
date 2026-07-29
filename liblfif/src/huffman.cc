@@ -111,13 +111,12 @@ void HuffmanEncoder::generateHuffmanCodelengths(const HuffmanWeights &huffman_we
 void HuffmanEncoder::generateHuffmanMap() {
   std::unordered_map<HuffmanSymbol, HuffmanCodeword> map {};
 
-  // TODO PROVE ME
-
   size_t  prefix_ones      {};
   int64_t huffman_codeword {};
 
   for (auto &pair: m_huffman_codelengths) {
-    map[pair.second]; //DO NOT ERASE, this will emplace a codeword of zero length
+    // A single-symbol alphabet has a zero-length codeword.
+    map.try_emplace(pair.second);
 
     for (size_t i = 0; i < prefix_ones; i++) {
       map[pair.second].push_back(1);
@@ -164,8 +163,6 @@ size_t HuffmanDecoder::decodeOneHuffmanSymbolIndex(IBitstream &stream) const {
   int64_t first = 0;
   size_t  index = 0;
   HuffmanCodelength count = 0;
-
-  //i genuinely have no idea why this is working
 
   for (size_t len = 1; len < m_huffman_counts.size(); len++) {
     code |= stream.readBit();

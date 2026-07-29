@@ -26,7 +26,7 @@ public:
     fdwt<D>(block.size(), proxy);
 
     iterate_dimensions<D>(block.size(), [&](const auto &pos) {
-      block[pos] >>= this->discarded_bits; //QUANTIZATION
+      block[pos] >>= this->discarded_bits;
     });
   }
 
