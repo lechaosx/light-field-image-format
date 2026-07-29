@@ -146,7 +146,8 @@ int main(int argc, char *argv[]) {
   }
 
   size_t view_counter = 0;
-  const size_t output_name_count = get_mask_names_count(output_file_mask, '#');
+  const FileMask output_names{output_file_mask};
+  const size_t output_name_count = output_names.count();
   if (output_name_count == 0) {
     throw std::invalid_argument("output file mask is too large");
   }
@@ -179,8 +180,7 @@ int main(int argc, char *argv[]) {
                                   std::to_string(view_counter));
     }
 
-    std::string filename =
-        get_name_from_mask(output_file_mask, '#', view_counter);
+    std::string filename = output_names[view_counter];
     view_counter++;
 
     const std::filesystem::path output_path = filename;
