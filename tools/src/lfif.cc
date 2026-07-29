@@ -344,9 +344,13 @@ void inspect(const std::filesystem::path &input_name) {
 }
 
 int main(int argc, char *argv[]) {
-  if (argc < 2 || std::string_view(argv[1]) == "--help" || std::string_view(argv[1]) == "-h") {
-    printUsage(argc < 2 ? std::cerr : std::cout);
-    return argc < 2 ? 1 : 0;
+  if (argc < 2) {
+    printUsage(std::cerr);
+    throw std::invalid_argument("missing command");
+  }
+  if (std::string_view(argv[1]) == "--help" || std::string_view(argv[1]) == "-h") {
+    printUsage(std::cout);
+    return 0;
   }
 
   const std::string_view command = argv[1];

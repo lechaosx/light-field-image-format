@@ -13,9 +13,6 @@
 std::vector<PPM> mapPPMs(std::string_view input_file_mask) {
   const FileMask file_name {input_file_mask};
   const size_t file_name_count = file_name.count();
-  if (file_name_count == 0) {
-    throw std::length_error("input file mask is too large");
-  }
 
   std::vector<PPM> images;
   for (size_t image = 0; image < file_name_count; ++image) {

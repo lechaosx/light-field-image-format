@@ -43,7 +43,7 @@ size_t FileMask::count() const {
   size_t count = 1;
   for (size_t digit = 0; digit < m_mask_indexes.size(); ++digit) {
     if (count > std::numeric_limits<size_t>::max() / 10) {
-      return 0;
+      throw std::length_error("file mask is too large");
     }
     count *= 10;
   }
