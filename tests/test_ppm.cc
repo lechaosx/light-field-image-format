@@ -80,6 +80,16 @@ TEST(Ppm, CreatesAndMoveAssignsSixteenBitPixels) {
   EXPECT_NO_THROW(moved.flush());
 }
 
+TEST(Ppm, ReadsUnalignedSixteenBitPixels) {
+  std::string contents = "P6\n1 1\n65535\n";
+  contents.append("\x01\x02\x7f\xff\xff\xfe", 6);
+  TemporaryFile file(contents);
+
+  PPM input = PPM::map(file.path());
+  ASSERT_NE(reinterpret_cast<uintptr_t>(input.pixels().data()) % alignof(uint16_t), 0U);
+  EXPECT_EQ(input.get(0), (std::array<uint16_t, 3> {0x0102, 0x7fff, 0xfffe}));
+}
+
 TEST(Ppm, RejectsFlushingReadOnlyMapping) {
   TemporaryFile file;
   {

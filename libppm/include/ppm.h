@@ -17,8 +17,6 @@
 #include <filesystem>
 #include <span>
 
-#include "ppm_endian.h"
-
 class PPM {
   uint64_t    m_width {};       /**< @brief Image width in pixels.*/
   uint64_t    m_height {};      /**< @brief Image height in pixels.*/
@@ -58,43 +56,39 @@ public:
   }
 
   std::array<uint16_t, 3> get(size_t index) const {
-    uint16_t R {};
-    uint16_t G {};
-    uint16_t B {};
-
+    std::array<uint16_t, 3> result {};
+    const std::span<const uint8_t> data = pixels();
     if (m_color_depth > 255) {
-      const BigEndian<uint16_t> *ptr =
-          reinterpret_cast<const BigEndian<uint16_t> *>(pixels().data());
-      R = ptr[index * 3 + 0];
-      G = ptr[index * 3 + 1];
-      B = ptr[index * 3 + 2];
+      const size_t offset = index * 6;
+      for (size_t channel = 0; channel < result.size(); ++channel) {
+        const size_t sample = offset + channel * 2;
+        result[channel] =
+            static_cast<uint16_t>(data[sample]) << 8 | data[sample + 1];
+      }
+    } else {
+      const size_t offset = index * 3;
+      for (size_t channel = 0; channel < result.size(); ++channel) {
+        result[channel] = data[offset + channel];
+      }
     }
-    else {
-      const BigEndian<uint8_t> *ptr =
-          reinterpret_cast<const BigEndian<uint8_t> *>(pixels().data());
-      R = ptr[index * 3 + 0];
-      G = ptr[index * 3 + 1];
-      B = ptr[index * 3 + 2];
-    }
-
-    return {R, G, B};
+    return result;
   }
 
   void put(size_t index, const std::array<uint16_t, 3> &value) {
     assert(m_writable);
+    uint8_t *data = static_cast<uint8_t *>(m_file) + m_header_offset;
     if (m_color_depth > 255) {
-      BigEndian<uint16_t> *ptr = reinterpret_cast<BigEndian<uint16_t> *>(
-          static_cast<uint8_t *>(m_file) + m_header_offset);
-      ptr[index * 3 + 0] = value[0];
-      ptr[index * 3 + 1] = value[1];
-      ptr[index * 3 + 2] = value[2];
-    }
-    else {
-      BigEndian<uint8_t> *ptr = reinterpret_cast<BigEndian<uint8_t> *>(
-          static_cast<uint8_t *>(m_file) + m_header_offset);
-      ptr[index * 3 + 0] = value[0];
-      ptr[index * 3 + 1] = value[1];
-      ptr[index * 3 + 2] = value[2];
+      const size_t offset = index * 6;
+      for (size_t channel = 0; channel < value.size(); ++channel) {
+        const size_t sample = offset + channel * 2;
+        data[sample] = static_cast<uint8_t>(value[channel] >> 8);
+        data[sample + 1] = static_cast<uint8_t>(value[channel]);
+      }
+    } else {
+      const size_t offset = index * 3;
+      for (size_t channel = 0; channel < value.size(); ++channel) {
+        data[offset + channel] = static_cast<uint8_t>(value[channel]);
+      }
     }
   }
 
