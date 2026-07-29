@@ -10,10 +10,9 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  PPM expected;
-  PPM actual;
-  if (expected.mmapPPM(argv[1]) < 0 || actual.mmapPPM(argv[2]) < 0
-      || expected.width() != actual.width()
+  PPM expected = PPM::map(argv[1]);
+  PPM actual = PPM::map(argv[2]);
+  if (expected.width() != actual.width()
       || expected.height() != actual.height()
       || expected.color_depth() != actual.color_depth()) {
     return 1;

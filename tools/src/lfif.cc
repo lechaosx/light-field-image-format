@@ -177,10 +177,7 @@ int compress(int argc, char *argv[]) {
   std::vector<lfif::Pixel> pixels;
   for (size_t image = 0; image < image_count; ++image) {
     const std::string file_name = expandMask(options.input, image, image_count);
-    PPM ppm;
-    if (ppm.mmapPPM(file_name.c_str()) < 0) {
-      throw std::runtime_error("cannot read PPM: " + file_name);
-    }
+    PPM ppm = PPM::map(file_name);
     if (!std::has_single_bit(ppm.color_depth() + 1)) {
       throw std::runtime_error("PPM maxval must be one less than a power of two");
     }
@@ -255,14 +252,12 @@ int decompress(const std::string &input_name, const std::string &output_mask) {
   for (size_t view = 0; view < image_count; ++view) {
     const std::string output_name = expandMask(output_mask, view, image_count);
     createParentDirectory(output_name);
-    PPM ppm;
-    if (ppm.createPPM(
-            output_name.c_str(), image.header.extents[0], image.header.extents[1], color_depth) < 0) {
-      throw std::runtime_error("cannot create PPM: " + output_name);
-    }
+    PPM ppm = PPM::create(
+        output_name, image.header.extents[0], image.header.extents[1], color_depth);
     for (size_t pixel = 0; pixel < pixels_per_image; ++pixel) {
       ppm.put(pixel, image.pixels[view * pixels_per_image + pixel]);
     }
+    ppm.flush();
   }
   return 0;
 }

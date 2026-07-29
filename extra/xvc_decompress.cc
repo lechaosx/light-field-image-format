@@ -18,6 +18,7 @@ extern "C" {
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <filesystem>
 #include <new>
 
 #include <iostream>
@@ -200,16 +201,12 @@ int main(int argc, char *argv[]) {
     std::string filename = get_name_from_mask(output_file_mask, '#', view_counter);
     view_counter++;
 
-    if (create_directory(filename.c_str())) {
-      cerr << "ERROR: CANNOT OPEN " << filename << " FOR WRITING\n";
-      exit(1);
+    const std::filesystem::path output_path = filename;
+    if (!output_path.parent_path().empty()) {
+      std::filesystem::create_directories(output_path.parent_path());
     }
 
-    PPM ppm {};
-    if (ppm.createPPM(filename.c_str(), frame.stats.width, frame.stats.height, 255) < 0) {
-      cerr << "ERROR: CANNOT OPEN " << filename << " FOR WRITING" << endl;
-      exit(1);
-    }
+    PPM ppm = PPM::create(output_path, frame.stats.width, frame.stats.height, 255);
 
     for (size_t pixel = 0; pixel < ppm.width() * ppm.height(); ++pixel) {
       ppm.put(pixel, {
@@ -218,6 +215,7 @@ int main(int argc, char *argv[]) {
         rgb_frame[pixel * 3 + 2]
       });
     }
+    ppm.flush();
 
     sws_freeContext(out_convert_ctx);
   };

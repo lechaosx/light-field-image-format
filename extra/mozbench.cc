@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
   uint8_t q_last  {};
   bool append             {};
 
-  vector<uint8_t> rgb_data {};
+  vector<PPM> images       {};
 
   uint64_t width       {};
   uint64_t height      {};
@@ -151,7 +151,19 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (loadPPMGrid(input_file_mask, width, height, color_depth, image_count, rgb_data) < 0) {
+  try {
+    images = mapPPMs(input_file_mask);
+  } catch (const std::exception &error) {
+    cerr << error.what() << endl;
+    return 2;
+  }
+  width = images.front().width();
+  height = images.front().height();
+  color_depth = images.front().color_depth();
+  image_count = images.size();
+  const uint64_t view_side = std::sqrt(image_count);
+  if (view_side * view_side != image_count || color_depth > 255) {
+    cerr << "Input must be a square grid of 8-bit PPM images" << endl;
     return 2;
   }
 
@@ -201,7 +213,7 @@ int main(int argc, char *argv[]) {
     cinfo.comp_info[2].v_samp_factor = 1;
 
     for (size_t i = 0; i < image_count; i++) {
-      uint8_t *original = &rgb_data[i * width * height * 3];
+      const auto *original = images[i].pixels().data();
       vector<uint8_t>  decompressed_rgb_data(width * height * 3);
 
       auto close_file = [](FILE *file) { fclose(file); };
@@ -216,7 +228,8 @@ int main(int argc, char *argv[]) {
       jpeg_start_compress(&cinfo, TRUE);
 
       while (cinfo.next_scanline < cinfo.image_height) {
-        row_pointer[0] = &original[cinfo.next_scanline * row_stride];
+        row_pointer[0] =
+            const_cast<JSAMPROW>(&original[cinfo.next_scanline * row_stride]);
         jpeg_write_scanlines(&cinfo, row_pointer, 1);
       }
 

@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
   const char *first_bitrate     {};
   const char *last_bitrate     {};
 
-  vector<uint8_t> rgb_data  {};
+  vector<PPM> images        {};
 
   uint64_t width       {};
   uint64_t height      {};
@@ -185,7 +185,19 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (loadPPMGrid(input_file_mask, width, height, color_depth, image_count, rgb_data) < 0) {
+  try {
+    images = mapPPMs(input_file_mask);
+  } catch (const std::exception &error) {
+    cerr << error.what() << endl;
+    return 2;
+  }
+  width = images.front().width();
+  height = images.front().height();
+  color_depth = images.front().color_depth();
+  image_count = images.size();
+  const uint64_t view_side = std::sqrt(image_count);
+  if (view_side * view_side != image_count || color_depth > 255) {
+    cerr << "Input must be a square grid of 8-bit PPM images" << endl;
     return 2;
   }
 
@@ -315,17 +327,18 @@ int main(int argc, char *argv[]) {
     }
 
     double mse = 0;
-    size_t input_iterator = 0;
+    size_t input_image = 0;
 
     auto saveFrame = [&](AVFrame *frame) {
       int outLinesize[1] = { static_cast<int>(3 * width) };
       sws_scale(out_convert_ctx, frame->data, frame->linesize, 0, height, rgb_frame->data, outLinesize);
 
+      const auto *original = images[input_image].pixels().data();
       for (int pix = 0; pix < rgb_frame->width * rgb_frame->height * 3; pix++) {
-        double tmp = rgb_data[input_iterator] - rgb_frame->data[0][pix];
+        double tmp = original[pix] - rgb_frame->data[0][pix];
         mse += tmp * tmp;
-        input_iterator++;
       }
+      ++input_image;
     };
 
     auto decodePkt = [&](AVPacket *pkt) {
@@ -336,7 +349,7 @@ int main(int argc, char *argv[]) {
     };
 
     for (size_t image = 0; image < image_count; image++) {
-      uint8_t *inData[1] = { &rgb_data[image * width * height * 3] };
+      const uint8_t *inData[1] = {images[image].pixels().data()};
       int inLinesize[1] = { static_cast<int>(3 * width) };
       sws_scale(in_convert_ctx, inData, inLinesize, 0, height, in_frame->data, in_frame->linesize);
 

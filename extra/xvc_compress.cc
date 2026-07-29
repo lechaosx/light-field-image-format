@@ -13,6 +13,7 @@ extern "C" {
 
 #include <getopt.h>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -77,7 +78,7 @@ int main(int argc, char *argv[]) {
   const char *output_file_name    {};
   const char *s_qp                {};
 
-  vector<uint8_t> rgb_data        {};
+  vector<PPM> images              {};
   uint64_t width                  {};
   uint64_t height                 {};
   uint32_t color_depth            {};
@@ -145,7 +146,19 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (loadPPMGrid(input_file_mask, width, height, color_depth, image_count, rgb_data) < 0) {
+  try {
+    images = mapPPMs(input_file_mask);
+  } catch (const std::exception &error) {
+    cerr << error.what() << endl;
+    return 2;
+  }
+  width = images.front().width();
+  height = images.front().height();
+  color_depth = images.front().color_depth();
+  image_count = images.size();
+  const uint64_t view_side = std::sqrt(image_count);
+  if (view_side * view_side != image_count || color_depth > 255) {
+    cerr << "Input must be a square grid of 8-bit PPM images" << endl;
     return 2;
   }
 
@@ -200,9 +213,9 @@ int main(int argc, char *argv[]) {
     output.write(reinterpret_cast<const char *>(nal.bytes), nal.size);
   };
 
-  if (create_directory(output_file_name)) {
-    cerr << "ERROR: CANNON OPEN " << output_file_name << " FOR WRITING\n";
-    return 1;
+  const std::filesystem::path output_path = output_file_name;
+  if (!output_path.parent_path().empty()) {
+    std::filesystem::create_directories(output_path.parent_path());
   }
 
   output.open(output_file_name, ios::binary);
@@ -213,7 +226,7 @@ int main(int argc, char *argv[]) {
 
   bool encoded = true;
   for (size_t image = 0; image < image_count; image++) {
-    uint8_t *inData[1]  = { &rgb_data[image * width * height * 3] };
+    const uint8_t *inData[1] = {images[image].pixels().data()};
     uint8_t *outData[3] = { &yuv_frame[width * height * 0], &yuv_frame[width * height * 1], &yuv_frame[width * height * 2] };
     int inLineSize[1]   = { static_cast<int>(3 * width) };
     int outLineSize[3]  = { static_cast<int>(width), static_cast<int>(width), static_cast<int>(width) };

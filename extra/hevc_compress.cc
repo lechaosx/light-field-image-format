@@ -14,6 +14,7 @@ extern "C" {
 #include <getopt.h>
 #include <cmath>
 
+#include <filesystem>
 #include <iostream>
 #include <fstream>
 #include <functional>
@@ -63,7 +64,6 @@ int main(int argc, char *argv[]) {
   const char *s_bitrate        {};
 
   vector<PPM> images           {};
-  vector<uint8_t> rgb_data     {};
 
   uint64_t width               {};
   uint64_t height              {};
@@ -148,23 +148,20 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (mapPPMs(input_file_mask, width, height, color_depth, images) < 0 || images.empty()) {
-    cerr << "ERROR: NO IMAGE LOADED" << endl;
+  try {
+    images = mapPPMs(input_file_mask);
+  } catch (const std::exception &error) {
+    cerr << error.what() << endl;
     return 2;
   }
+  width = images.front().width();
+  height = images.front().height();
+  color_depth = images.front().color_depth();
 
   if (color_depth != 255) {
     cerr << "Unsupported color depth!" << endl;
     return 2;
   }
-
-  size_t rgb_size {};
-  if (!rgbDataSize(width, height, 1, rgb_size)) {
-    cerr << "Input image is too large" << endl;
-    return 2;
-  }
-  const size_t pixels_per_image = rgb_size / 3;
-  rgb_data.resize(rgb_size);
 
   pkt = av_packet_alloc();
   if (!pkt) {
@@ -237,9 +234,9 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  if (create_directory(output_file_name)) {
-    cerr << "ERROR: CANNON OPEN " << output_file_name << " FOR WRITING\n";
-    return 1;
+  const std::filesystem::path output_path = output_file_name;
+  if (!output_path.parent_path().empty()) {
+    std::filesystem::create_directories(output_path.parent_path());
   }
   
   output.open(output_file_name, ios::binary);
@@ -257,14 +254,7 @@ int main(int argc, char *argv[]) {
 
   bool encoded = true;
   for (size_t image = 0; image < images.size(); ++image) {
-    for (size_t pixel = 0; pixel < pixels_per_image; ++pixel) {
-      const auto rgb = images[image].get(pixel);
-      rgb_data[pixel * 3 + 0] = rgb[0];
-      rgb_data[pixel * 3 + 1] = rgb[1];
-      rgb_data[pixel * 3 + 2] = rgb[2];
-    }
-
-    uint8_t *inData[1]     = { &rgb_data[0] };
+    const uint8_t *inData[1] = {images[image].pixels().data()};
     int      inLinesize[1] = { static_cast<int>(3 * width) };
 
     sws_scale(in_convert_ctx, inData, inLinesize, 0, height, in_frame->data, in_frame->linesize);
