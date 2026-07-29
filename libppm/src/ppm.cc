@@ -10,6 +10,7 @@
 #include <cerrno>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -125,61 +126,57 @@ ParsedHeader parseHeader(std::span<const uint8_t> bytes) {
 }
 
 PPM PPM::map(const std::filesystem::path &file_name) {
-  const int descriptor = open(file_name.c_str(), O_RDONLY);
+  int descriptor = open(file_name.c_str(), O_RDONLY);
   if (descriptor < 0) {
     throw std::system_error(
         errno, std::generic_category(), "cannot open PPM " + file_name.string());
   }
+  const auto close_file = [](int *file) noexcept { close(*file); };
+  std::unique_ptr<int, decltype(close_file)> close_descriptor {
+    &descriptor, close_file
+  };
 
   struct stat file_stat {};
   if (fstat(descriptor, &file_stat) < 0) {
-    const int error = errno;
-    close(descriptor);
     throw std::system_error(
-        error, std::generic_category(), "cannot inspect PPM " + file_name.string());
+        errno, std::generic_category(), "cannot inspect PPM " + file_name.string());
   }
   if (file_stat.st_size <= 0
       || static_cast<uintmax_t>(file_stat.st_size)
           > std::numeric_limits<size_t>::max()) {
-    close(descriptor);
     throw std::runtime_error("invalid PPM file size: " + file_name.string());
   }
   const size_t map_size = static_cast<size_t>(file_stat.st_size);
 
   void *mapping = mmap(nullptr, map_size, PROT_READ, MAP_PRIVATE, descriptor, 0);
   const int mapping_error = errno;
-  if (close(descriptor) < 0) {
-    const int close_error = errno;
-    if (mapping != MAP_FAILED) {
-      munmap(mapping, map_size);
-    }
-    throw std::system_error(
-        close_error, std::generic_category(), "cannot close PPM " + file_name.string());
-  }
   if (mapping == MAP_FAILED) {
     throw std::system_error(
         mapping_error, std::generic_category(), "cannot map PPM " + file_name.string());
   }
-
-  ParsedHeader header {};
-  try {
-    header = parseHeader(std::span(static_cast<const uint8_t *>(mapping), map_size));
-  } catch (...) {
-    munmap(mapping, map_size);
-    throw;
+  const auto unmap_file = [map_size](void *file) noexcept { munmap(file, map_size); };
+  std::unique_ptr<void, decltype(unmap_file)> unmap {mapping, unmap_file};
+  const int close_status = close(descriptor);
+  const int close_error = errno;
+  close_descriptor.release();
+  if (close_status < 0) {
+    throw std::system_error(
+        close_error, std::generic_category(), "cannot close PPM " + file_name.string());
   }
+
+  const ParsedHeader header =
+      parseHeader(std::span(static_cast<const uint8_t *>(mapping), map_size));
 
   const std::optional<size_t> pixel_data_size =
       pixelDataSize(header.width, header.height, header.color_depth);
   if (!pixel_data_size
       || header.data_offset > map_size
       || *pixel_data_size > map_size - header.data_offset) {
-    munmap(mapping, map_size);
     throw std::runtime_error("truncated or oversized PPM pixel data: " + file_name.string());
   }
 
   PPM ppm;
-  ppm.m_file = mapping;
+  ppm.m_file = unmap.release();
   ppm.m_map_size = map_size;
   ppm.m_header_offset = header.data_offset;
   ppm.m_data_size = *pixel_data_size;
@@ -263,37 +260,40 @@ PPM PPM::create(
     throw std::length_error("PPM file is too large");
   }
 
-  const int descriptor = open(file_name.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+  int descriptor = open(file_name.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
   if (descriptor < 0) {
     throw std::system_error(
         errno, std::generic_category(), "cannot create PPM " + file_name.string());
   }
+  const auto close_file = [](int *file) noexcept { close(*file); };
+  std::unique_ptr<int, decltype(close_file)> close_descriptor {
+    &descriptor, close_file
+  };
   if (ftruncate(descriptor, static_cast<off_t>(map_size)) < 0) {
-    const int error = errno;
-    close(descriptor);
     throw std::system_error(
-        error, std::generic_category(), "cannot size PPM " + file_name.string());
+        errno, std::generic_category(), "cannot size PPM " + file_name.string());
   }
 
   void *mapping =
       mmap(nullptr, map_size, PROT_READ | PROT_WRITE, MAP_SHARED, descriptor, 0);
   const int mapping_error = errno;
-  if (close(descriptor) < 0) {
-    const int close_error = errno;
-    if (mapping != MAP_FAILED) {
-      munmap(mapping, map_size);
-    }
-    throw std::system_error(
-        close_error, std::generic_category(), "cannot close PPM " + file_name.string());
-  }
   if (mapping == MAP_FAILED) {
     throw std::system_error(
         mapping_error, std::generic_category(), "cannot map PPM " + file_name.string());
   }
+  const auto unmap_file = [map_size](void *file) noexcept { munmap(file, map_size); };
+  std::unique_ptr<void, decltype(unmap_file)> unmap {mapping, unmap_file};
+  const int close_status = close(descriptor);
+  const int close_error = errno;
+  close_descriptor.release();
+  if (close_status < 0) {
+    throw std::system_error(
+        close_error, std::generic_category(), "cannot close PPM " + file_name.string());
+  }
 
   std::memcpy(mapping, header.data(), header.size());
   PPM ppm;
-  ppm.m_file = mapping;
+  ppm.m_file = unmap.release();
   ppm.m_map_size = map_size;
   ppm.m_header_offset = header.size();
   ppm.m_data_size = *pixel_data_size;
