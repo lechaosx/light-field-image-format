@@ -108,6 +108,16 @@ target_link_libraries(
 
 if(BUILD_TESTING)
   add_test(NAME ExtraHelp.Av1Bench COMMAND $<TARGET_FILE:av1bench> -h)
+  add_test(
+    NAME ExtraInput.RejectsPathologicalMaskPromptly
+    COMMAND
+      ${CMAKE_COMMAND}
+      -P ${PROJECT_SOURCE_DIR}/tests/expect_failure.cmake
+      --
+      $<TARGET_FILE:av1bench>
+      -i "/tmp/lfif-no-such-##########.ppm"
+      -o /tmp/lfif-unused-av1.csv
+  )
   add_test(NAME ExtraHelp.HevcCompress COMMAND $<TARGET_FILE:hevc_compress> -h)
   add_test(NAME ExtraHelp.HevcDecompress COMMAND $<TARGET_FILE:hevc_decompress> -h)
   add_test(NAME ExtraHelp.MozBench COMMAND $<TARGET_FILE:mozbench> -h)
