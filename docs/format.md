@@ -34,6 +34,13 @@ Flag bit 0 enables block prediction. Bit 1 says disparity compensation was
 applied and makes the two shift fields meaningful. All other flag bits are zero
 in version 1.0. Shift fields must be zero when bit 1 is clear.
 
+Disparity compensation is defined only for four-dimensional data ordered as
+spatial X, spatial Y, view X, view Y. Before encoding, each view is circularly
+shifted by `(view_x - floor(view_width / 2)) * horizontal_shift` pixels in X
+and `(view_y - floor(view_height / 2)) * vertical_shift` pixels in Y. Positive
+values move the source toward lower output coordinates. Decoding applies the
+inverse permutation.
+
 The defined identifiers are:
 
 | Field | Value | Meaning |

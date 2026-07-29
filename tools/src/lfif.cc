@@ -3,6 +3,7 @@
 #include <ppm.h>
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <charconv>
 #include <cstdint>
@@ -26,6 +27,8 @@ struct CompressOptions {
   lfif::Transform transform {lfif::Transform::wavelet};
   uint8_t discarded_bits {};
   bool prediction {};
+  bool disparity_compensated {};
+  std::array<int64_t, 2> disparity_shift {};
 };
 
 void printUsage(std::ostream &output) {
@@ -33,6 +36,7 @@ void printUsage(std::ostream &output) {
       << "Usage:\n"
       << "  lfif compress INPUT OUTPUT [--shape EXTENTS] [--block EXTENTS]\n"
       << "      [--transform wavelet|dct] [--discarded-bits N] [--predict]\n"
+      << "      [--disparity XxY]\n"
       << "  lfif decompress INPUT OUTPUT_MASK\n"
       << "  lfif inspect INPUT\n";
 }
@@ -67,6 +71,29 @@ std::vector<uint64_t> parseExtents(std::string_view text, std::string_view name)
   }
   if (result.empty()) {
     throw std::invalid_argument("missing " + std::string(name));
+  }
+  return result;
+}
+
+std::array<int64_t, 2> parseDisparity(std::string_view text) {
+  const size_t separator = text.find('x');
+  if (separator == std::string_view::npos
+      || text.find('x', separator + 1) != std::string_view::npos) {
+    throw std::invalid_argument("disparity must contain two signed shifts");
+  }
+
+  std::array<int64_t, 2> result {};
+  const std::array<std::string_view, 2> values {
+      text.substr(0, separator),
+      text.substr(separator + 1),
+  };
+  for (size_t i = 0; i < result.size(); ++i) {
+    const auto parsed =
+        std::from_chars(values[i].data(), values[i].data() + values[i].size(), result[i]);
+    if (values[i].empty() || parsed.ec != std::errc {}
+        || parsed.ptr != values[i].data() + values[i].size()) {
+      throw std::invalid_argument("disparity must contain two signed shifts");
+    }
   }
   return result;
 }
@@ -143,6 +170,9 @@ CompressOptions parseCompressOptions(int argc, char *argv[]) {
         throw std::invalid_argument("discarded bits are too large");
       }
       options.discarded_bits = static_cast<uint8_t>(value);
+    } else if (option == "--disparity" && i + 1 < argc) {
+      options.disparity_compensated = true;
+      options.disparity_shift = parseDisparity(argv[++i]);
     } else if (option == "--transform" && i + 1 < argc) {
       const std::string_view transform = argv[++i];
       if (transform == "wavelet") {
@@ -158,6 +188,9 @@ CompressOptions parseCompressOptions(int argc, char *argv[]) {
   }
   if (options.view_shape.size() > 2) {
     throw std::invalid_argument("shape supports at most two view dimensions");
+  }
+  if (options.disparity_compensated && options.view_shape.size() != 2) {
+    throw std::invalid_argument("disparity requires two view dimensions");
   }
   if (!block.empty()) {
     options.block_extents = parseExtents(block, "block extents");
@@ -219,6 +252,8 @@ int compress(int argc, char *argv[]) {
       .color_space = lfif::ColorSpace::rgb,
       .discarded_bits = options.discarded_bits,
       .prediction = options.prediction,
+      .disparity_compensated = options.disparity_compensated,
+      .disparity_shift = options.disparity_shift,
   };
 
   std::ostringstream encoded(std::ios::binary);

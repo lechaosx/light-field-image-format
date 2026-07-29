@@ -16,6 +16,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace lfif {
 namespace {
@@ -115,6 +116,70 @@ std::vector<Pixel> decodePayload(const Header &header, std::istream &payload) {
   }
 }
 
+std::vector<Pixel> applyDisparity(
+    const Header &header, std::span<const Pixel> pixels, bool inverse) {
+  const std::array<size_t, 4> size = extents<4>(header.extents);
+  std::vector<Pixel> result(pixels.size());
+  const auto multiply = [](int64_t left, int64_t right) {
+    constexpr int64_t minimum = std::numeric_limits<int64_t>::min();
+    constexpr int64_t maximum = std::numeric_limits<int64_t>::max();
+    if (left == 0 || right == 0) {
+      return int64_t {0};
+    }
+    if ((left == -1 && right == minimum) || (right == -1 && left == minimum)
+        || (left > 0 && right > 0 && left > maximum / right)
+        || (left > 0 && right < 0 && right < minimum / left)
+        || (left < 0 && right > 0 && left < minimum / right)
+        || (left < 0 && right < 0 && left < maximum / right)) {
+      throw std::overflow_error("disparity shift overflow");
+    }
+    return left * right;
+  };
+  for (size_t view_y = 0; view_y < size[3]; ++view_y) {
+    for (size_t view_x = 0; view_x < size[2]; ++view_x) {
+      const int64_t horizontal_shift = multiply(
+          static_cast<int64_t>(view_x) - static_cast<int64_t>(size[2] / 2),
+          header.disparity_shift[0]);
+      const int64_t vertical_shift = multiply(
+          static_cast<int64_t>(view_y) - static_cast<int64_t>(size[3] / 2),
+          header.disparity_shift[1]);
+
+      const auto wrap = [](size_t coordinate, int64_t shift, size_t extent) {
+        const uint64_t magnitude = shift < 0
+            ? static_cast<uint64_t>(-(shift + 1)) + 1
+            : static_cast<uint64_t>(shift);
+        const size_t offset = magnitude % extent;
+        if (shift < 0) {
+          return coordinate >= offset
+              ? coordinate - offset
+              : extent - (offset - coordinate);
+        }
+        return coordinate >= extent - offset
+            ? coordinate - (extent - offset)
+            : coordinate + offset;
+      };
+
+      for (size_t y = 0; y < size[1]; ++y) {
+        for (size_t x = 0; x < size[0]; ++x) {
+          const std::array<size_t, 4> destination {x, y, view_x, view_y};
+          const std::array<size_t, 4> source {
+              wrap(x, horizontal_shift, size[0]),
+              wrap(y, vertical_shift, size[1]),
+              view_x,
+              view_y,
+          };
+          if (inverse) {
+            result[pixelIndex(source, size)] = pixels[pixelIndex(destination, size)];
+          } else {
+            result[pixelIndex(destination, size)] = pixels[pixelIndex(source, size)];
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
 }
 
 Header writeImage(std::ostream &output, Header header, std::span<const Pixel> pixels) {
@@ -137,6 +202,11 @@ Header writeImage(std::ostream &output, Header header, std::span<const Pixel> pi
     }
   }
 
+  std::vector<Pixel> compensated;
+  if (header.disparity_compensated) {
+    compensated = applyDisparity(header, pixels, false);
+    pixels = compensated;
+  }
   const std::string payload = encodePayload(header, pixels);
   header.payload_size = payload.size();
   const std::vector<uint8_t> encoded_header = serializeHeader(header);
@@ -177,7 +247,11 @@ DecodedImage readImage(std::istream &input) {
 
   std::istringstream payload(encoded_payload, std::ios::binary);
   try {
-    return {header, decodePayload(header, payload)};
+    std::vector<Pixel> pixels = decodePayload(header, payload);
+    if (header.disparity_compensated) {
+      pixels = applyDisparity(header, pixels, true);
+    }
+    return {header, std::move(pixels)};
   } catch (const std::bad_alloc &) {
     throw std::runtime_error("LFIF image is too large for memory");
   }

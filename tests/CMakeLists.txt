@@ -269,6 +269,27 @@ set_tests_properties(
   PROPERTIES DEPENDS OmniCli.FourDimensionalDecompress
 )
 
+add_test(
+  NAME OmniCli.DisparityCompress
+  COMMAND
+    $<TARGET_FILE:lfif_cli>
+    compress
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/grid-##.ppm"
+    ${CMAKE_CURRENT_BINARY_DIR}/omni-disparity.lfif
+    --shape 2x2
+    --disparity 1x-1
+)
+add_test(
+  NAME OmniCli.DisparityInspect
+  COMMAND $<TARGET_FILE:lfif_cli> inspect ${CMAKE_CURRENT_BINARY_DIR}/omni-disparity.lfif
+)
+set_tests_properties(
+  OmniCli.DisparityInspect
+  PROPERTIES
+    DEPENDS OmniCli.DisparityCompress
+    PASS_REGULAR_EXPRESSION "disparity compensation: yes[\r\n]+disparity shifts: 1, -1"
+)
+
 if(LFIF_BUILD_EXTRAS)
   add_executable(create_extra_test_ppm create_extra_test_ppm.cc)
   target_link_libraries(create_extra_test_ppm PRIVATE ppm)

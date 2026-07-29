@@ -38,6 +38,8 @@ The ``#`` characters are replaced with zero-padded sequential view numbers. The 
 
 Wavelet compression is the default. Use ``--transform dct`` to select DCT explicitly, ``--discarded-bits N`` for lossy transform-bit removal and ``--predict`` to enable intra prediction. If ``--block`` is omitted, each block extent is the smaller of 8 and the corresponding image extent.
 
+For four-dimensional input, ``--disparity XxY`` applies explicit signed horizontal and vertical disparity shifts before compression. The stored shifts are reversed during decompression.
+
 The decompression command writes one PPM for a two-dimensional image, or expands a mask for the higher-dimensional view axes:
 
     ./build/optimized/tools/lfif decompress path/to/input.lfif 'path/to/output-###.ppm'

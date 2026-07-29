@@ -63,6 +63,14 @@ void validate(const Header &header) {
       && (header.disparity_shift[0] != 0 || header.disparity_shift[1] != 0)) {
     throw std::invalid_argument("disparity shifts require disparity compensation");
   }
+  if (header.disparity_compensated && header.extents.size() != 4) {
+    throw std::invalid_argument("disparity compensation requires four dimensions");
+  }
+  if (header.disparity_compensated
+      && (header.extents[2] > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())
+          || header.extents[3] > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))) {
+    throw std::length_error("disparity view extents are too large");
+  }
 
   size_t image_values = 1;
   size_t block_values = 1;

@@ -142,6 +142,37 @@ TEST(ContainerCodec, WritesDeterministicCompleteWaveletContainers) {
   EXPECT_EQ(encode(), encode());
 }
 
+TEST(ContainerCodec, AppliesAndReversesFourDimensionalDisparity) {
+  auto metadata = header({3, 2, 3, 2}, {2, 2, 2, 2});
+  metadata.disparity_compensated = true;
+  metadata.disparity_shift = {1, -1};
+  const auto original = pixels(36);
+
+  std::stringstream compensated_stream;
+  lfif::writeImage(compensated_stream, metadata, original);
+  const std::string compensated = compensated_stream.str();
+
+  metadata.disparity_compensated = false;
+  metadata.disparity_shift = {0, 0};
+  std::stringstream unshifted_stream;
+  lfif::writeImage(unshifted_stream, metadata, original);
+  const std::string unshifted = unshifted_stream.str();
+
+  std::stringstream compensated_header(compensated);
+  std::stringstream unshifted_header(unshifted);
+  lfif::parseHeader(compensated_header);
+  lfif::parseHeader(unshifted_header);
+  ASSERT_GE(compensated_header.tellg(), 0);
+  ASSERT_GE(unshifted_header.tellg(), 0);
+  EXPECT_NE(
+      compensated.substr(static_cast<size_t>(compensated_header.tellg())),
+      unshifted.substr(static_cast<size_t>(unshifted_header.tellg())));
+
+  std::stringstream input(compensated);
+  const lfif::DecodedImage decoded = lfif::readImage(input);
+  EXPECT_EQ(decoded.pixels, original);
+}
+
 TEST(ContainerCodec, RoundTripsExplicitDctVariant) {
   const std::vector<lfif::Pixel> constant(16, {80, 120, 160});
   expectRoundTrip(header({2, 2, 2, 2}, {2, 2, 2, 2}, lfif::Transform::dct), constant);
