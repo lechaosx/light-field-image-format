@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -124,6 +125,10 @@ int main(int argc, char *argv[]) {
   }
 
   auto saveFrame = [&](AVFrame *frame) {
+    if (frame->width <= 0 || frame->height <= 0
+        || frame->width > std::numeric_limits<int>::max() / 3) {
+      throw std::runtime_error("decoded frame dimensions exceed codec limits");
+    }
     if (view_counter >= output_name_count) {
       throw std::runtime_error("file mask cannot represent frame " +
                                std::to_string(view_counter));
@@ -153,7 +158,7 @@ int main(int argc, char *argv[]) {
       throw std::runtime_error("could not create image conversion context");
     }
 
-    int outLinesize[1] = {static_cast<int>(3 * frame->width)};
+    int outLinesize[1] = {3 * frame->width};
     const int scale_status =
         sws_scale(convert_context.get(), frame->data, frame->linesize, 0,
                   frame->height, rgb_frame->data, outLinesize);

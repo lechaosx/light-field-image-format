@@ -59,8 +59,8 @@ int main(int argc, char *argv[]) {
 
   std::vector<PPM> images{};
 
-  uint64_t width{};
-  uint64_t height{};
+  int width{};
+  int height{};
   uint32_t color_depth{};
 
   double bitrate{};
@@ -131,8 +131,14 @@ int main(int argc, char *argv[]) {
   }
 
   images = mapPPMs(input_file_mask);
-  width = images.front().width();
-  height = images.front().height();
+  const uint64_t input_width = images.front().width();
+  const uint64_t input_height = images.front().height();
+  if (input_width > static_cast<uint64_t>(std::numeric_limits<int>::max()) / 3
+      || input_height > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
+    throw std::invalid_argument("PPM dimensions exceed codec limits");
+  }
+  width = static_cast<int>(input_width);
+  height = static_cast<int>(input_height);
   color_depth = images.front().color_depth();
 
   if (color_depth != 255) {
@@ -213,7 +219,7 @@ int main(int argc, char *argv[]) {
 
   for (size_t image = 0; image < images.size(); ++image) {
     const uint8_t *inData[1] = {images[image].pixels().data()};
-    int inLinesize[1] = {static_cast<int>(3 * width)};
+    int inLinesize[1] = {3 * width};
     const int scale_status =
         sws_scale(in_convert_ctx.get(), inData, inLinesize, 0, height,
                   in_frame->data, in_frame->linesize);

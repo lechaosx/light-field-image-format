@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <fstream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -73,6 +74,14 @@ int main(int argc, char *argv[]) {
     };
     output.write(bytes.data(), bytes.size());
     output.close();
+    return 0;
+  }
+  if (argc == 3 && std::string_view(argv[1]) == "--oversized-tool-width") {
+    [[maybe_unused]] PPM image = PPM::create(
+        argv[2],
+        static_cast<uint64_t>(std::numeric_limits<int>::max()) / 3 + 1,
+        1,
+        255);
     return 0;
   }
   if (argc != 2) {

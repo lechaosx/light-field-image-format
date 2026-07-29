@@ -13,6 +13,7 @@
 #include <fstream>
 #include <getopt.h>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -72,10 +73,10 @@ int main(int argc, char *argv[]) {
   const char *s_qp{};
 
   std::vector<PPM> images{};
-  uint64_t width{};
-  uint64_t height{};
+  int width{};
+  int height{};
   uint32_t color_depth{};
-  uint64_t image_count{};
+  size_t image_count{};
 
   double qp{};
 
@@ -132,17 +133,27 @@ int main(int argc, char *argv[]) {
   }
 
   images = mapPPMs(input_file_mask);
-  width = images.front().width();
-  height = images.front().height();
+  const uint64_t input_width = images.front().width();
+  const uint64_t input_height = images.front().height();
+  if (input_width > static_cast<uint64_t>(std::numeric_limits<int>::max()) / 3
+      || input_height > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
+    throw std::invalid_argument("PPM dimensions exceed codec limits");
+  }
+  width = static_cast<int>(input_width);
+  height = static_cast<int>(input_height);
   color_depth = images.front().color_depth();
   image_count = images.size();
-  const uint64_t view_side = std::sqrt(image_count);
+  const size_t view_side = std::sqrt(image_count);
   if (view_side * view_side != image_count || color_depth > 255) {
     throw std::invalid_argument(
         "input must be a square grid of 8-bit PPM images");
   }
 
-  yuv_frame.resize(width * height * 3 * 2);
+  const size_t frame_pixels = static_cast<size_t>(width) * height;
+  if (frame_pixels > std::numeric_limits<size_t>::max() / 6) {
+    throw std::length_error("PPM image is too large");
+  }
+  yuv_frame.resize(frame_pixels * 6);
 
   const xvc_encoder_api *xvc_api = xvc_encoder_api_get();
   const auto delete_parameters =
@@ -219,12 +230,11 @@ int main(int argc, char *argv[]) {
 
   for (size_t image = 0; image < image_count; image++) {
     const uint8_t *inData[1] = {images[image].pixels().data()};
-    uint8_t *outData[3] = {&yuv_frame[width * height * 0],
-                           &yuv_frame[width * height * 1],
-                           &yuv_frame[width * height * 2]};
-    int inLineSize[1] = {static_cast<int>(3 * width)};
-    int outLineSize[3] = {static_cast<int>(width), static_cast<int>(width),
-                          static_cast<int>(width)};
+    uint8_t *outData[3] = {&yuv_frame[frame_pixels * 0],
+                           &yuv_frame[frame_pixels * 1],
+                           &yuv_frame[frame_pixels * 2]};
+    int inLineSize[1] = {3 * width};
+    int outLineSize[3] = {width, width, width};
 
     if (sws_scale(in_convert_ctx.get(), inData, inLineSize, 0, height, outData,
                   outLineSize) < 0) {

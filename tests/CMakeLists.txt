@@ -302,6 +302,33 @@ if(LFIF_BUILD_EXTRAS)
   set_tests_properties(ExtraSmoke.CreateInput PROPERTIES FIXTURES_SETUP ExtraSmokeInput)
 
   add_test(
+    NAME ExtraInput.CreateOversizedWidth
+    COMMAND
+      $<TARGET_FILE:create_extra_test_ppm>
+      --oversized-tool-width
+      ${CMAKE_CURRENT_BINARY_DIR}/oversized-width.ppm
+  )
+  set_tests_properties(
+    ExtraInput.CreateOversizedWidth
+    PROPERTIES FIXTURES_SETUP ExtraOversizedWidth
+  )
+  add_test(
+    NAME ExtraInput.RejectsOversizedWidthPromptly
+    COMMAND
+      ${expect_failure}
+      $<TARGET_FILE:av1bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/oversized-width.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/oversized-width.txt
+      -f 1 -l 1
+  )
+  set_tests_properties(
+    ExtraInput.RejectsOversizedWidthPromptly
+    PROPERTIES
+      FIXTURES_REQUIRED ExtraOversizedWidth
+      PASS_REGULAR_EXPRESSION "PPM dimensions exceed codec limits"
+  )
+
+  add_test(
     NAME ExtraIo.CreateDirectoryCandidate
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/ppm-directory
   )

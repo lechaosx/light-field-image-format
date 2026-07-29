@@ -12,6 +12,7 @@
 #include <fstream>
 #include <getopt.h>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -33,10 +34,10 @@ int main(int argc, char *argv[]) {
 
   std::vector<PPM> images{};
 
-  uint64_t width{};
-  uint64_t height{};
+  int width{};
+  int height{};
   uint32_t color_depth{};
-  uint64_t image_count{};
+  size_t image_count{};
 
   size_t image_pixels{};
 
@@ -121,17 +122,28 @@ int main(int argc, char *argv[]) {
   }
 
   images = mapPPMs(input_file_mask);
-  width = images.front().width();
-  height = images.front().height();
+  const uint64_t input_width = images.front().width();
+  const uint64_t input_height = images.front().height();
+  if (input_width > static_cast<uint64_t>(std::numeric_limits<int>::max()) / 3
+      || input_height > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
+    throw std::invalid_argument("PPM dimensions exceed codec limits");
+  }
+  width = static_cast<int>(input_width);
+  height = static_cast<int>(input_height);
   color_depth = images.front().color_depth();
   image_count = images.size();
-  const uint64_t view_side = std::sqrt(image_count);
+  const size_t view_side = std::sqrt(image_count);
   if (view_side * view_side != image_count || color_depth > 255) {
     throw std::invalid_argument(
         "input must be a square grid of 8-bit PPM images");
   }
 
-  image_pixels = width * height * image_count;
+  const size_t frame_pixels = static_cast<size_t>(width) * height;
+  if (image_count > std::numeric_limits<size_t>::max() / 3
+      || frame_pixels > std::numeric_limits<size_t>::max() / (image_count * 3)) {
+    throw std::length_error("PPM grid is too large");
+  }
+  image_pixels = frame_pixels * image_count;
 
   std::ofstream output{};
   if (append) {
@@ -172,7 +184,7 @@ int main(int argc, char *argv[]) {
     throw std::runtime_error("could not get image conversion context");
   }
 
-  std::vector<uint8_t> yuv_frame(width * height * 3);
+  std::vector<uint8_t> yuv_frame(frame_pixels * 3);
 
   for (int qp = qp_first; qp <= qp_last; ++qp) {
     params->qp = qp;
@@ -210,13 +222,11 @@ int main(int argc, char *argv[]) {
 
     for (size_t image = 0; image < image_count; ++image) {
       const uint8_t *source_data[1] = {images[image].pixels().data()};
-      int source_lines[1] = {static_cast<int>(width * 3)};
+      int source_lines[1] = {width * 3};
       uint8_t *destination_data[3] = {yuv_frame.data(),
-                                      yuv_frame.data() + width * height,
-                                      yuv_frame.data() + width * height * 2};
-      int destination_lines[3] = {static_cast<int>(width),
-                                  static_cast<int>(width),
-                                  static_cast<int>(width)};
+                                      yuv_frame.data() + frame_pixels,
+                                      yuv_frame.data() + frame_pixels * 2};
+      int destination_lines[3] = {width, width, width};
       if (sws_scale(in_convert_ctx.get(), source_data, source_lines, 0, height,
                     destination_data, destination_lines) < 0) {
         throw std::runtime_error("RGB to YUV conversion failed");

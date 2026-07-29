@@ -183,13 +183,15 @@ PPM PPM::map(const std::filesystem::path &file_name) {
   ppm.m_width = header.width;
   ppm.m_height = header.height;
   ppm.m_color_depth = header.color_depth;
-  const size_t pixel_count =
-      *pixel_data_size / ((ppm.m_color_depth > 255 ? 2U : 1U) * 3U);
-  for (size_t pixel = 0; pixel < pixel_count; ++pixel) {
-    const auto samples = ppm.get(pixel);
-    if (samples[0] > ppm.m_color_depth || samples[1] > ppm.m_color_depth
-        || samples[2] > ppm.m_color_depth) {
-      throw std::runtime_error("PPM sample exceeds maxval: " + file_name.string());
+  if (ppm.m_color_depth != 255 && ppm.m_color_depth != 65535) {
+    const size_t pixel_count =
+        *pixel_data_size / ((ppm.m_color_depth > 255 ? 2U : 1U) * 3U);
+    for (size_t pixel = 0; pixel < pixel_count; ++pixel) {
+      const auto samples = ppm.get(pixel);
+      if (samples[0] > ppm.m_color_depth || samples[1] > ppm.m_color_depth
+          || samples[2] > ppm.m_color_depth) {
+        throw std::runtime_error("PPM sample exceeds maxval: " + file_name.string());
+      }
     }
   }
   return ppm;

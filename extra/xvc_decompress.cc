@@ -17,6 +17,7 @@
 #include <fstream>
 #include <getopt.h>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <new>
 #include <stdexcept>
@@ -153,12 +154,21 @@ int main(int argc, char *argv[]) {
   }
 
   auto saveFrame = [&](xvc_decoded_picture &frame) {
-    std::vector<uint8_t> rgb_frame(frame.stats.width * frame.stats.height * 3);
+    if (frame.stats.width <= 0 || frame.stats.height <= 0
+        || frame.stats.width > std::numeric_limits<int>::max() / 3) {
+      throw std::runtime_error("decoded frame dimensions exceed codec limits");
+    }
+    const int width = static_cast<int>(frame.stats.width);
+    const int height = static_cast<int>(frame.stats.height);
+    const size_t frame_pixels = static_cast<size_t>(width) * height;
+    if (frame_pixels > std::numeric_limits<size_t>::max() / 3) {
+      throw std::length_error("decoded frame is too large");
+    }
+    std::vector<uint8_t> rgb_frame(frame_pixels * 3);
 
     ffmpeg::ScaleContext out_convert_ctx{
-        sws_getContext(frame.stats.width, frame.stats.height,
-                       AV_PIX_FMT_YUV444P, frame.stats.width,
-                       frame.stats.height, AV_PIX_FMT_RGB24, 0, nullptr,
+        sws_getContext(width, height, AV_PIX_FMT_YUV444P, width,
+                       height, AV_PIX_FMT_RGB24, 0, nullptr,
                        nullptr, nullptr),
         sws_freeContext};
     if (!out_convert_ctx) {
@@ -166,11 +176,11 @@ int main(int argc, char *argv[]) {
     }
 
     uint8_t *outData[1] = {rgb_frame.data()};
-    int outLineSize[1] = {static_cast<int>(3 * frame.stats.width)};
+    int outLineSize[1] = {3 * width};
 
     if (sws_scale(out_convert_ctx.get(),
                   reinterpret_cast<const uint8_t *const *>(frame.planes),
-                  frame.stride, 0, frame.stats.height, outData,
+                  frame.stride, 0, height, outData,
                   outLineSize) < 0) {
       throw std::runtime_error("YUV to RGB conversion failed");
     }
@@ -189,7 +199,7 @@ int main(int argc, char *argv[]) {
     }
 
     PPM ppm =
-        PPM::create(output_path, frame.stats.width, frame.stats.height, 255);
+        PPM::create(output_path, width, height, 255);
 
     for (size_t pixel = 0; pixel < ppm.width() * ppm.height(); ++pixel) {
       ppm.put(pixel, {rgb_frame[pixel * 3 + 0], rgb_frame[pixel * 3 + 1],

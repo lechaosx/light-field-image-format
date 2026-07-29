@@ -16,6 +16,7 @@ extern "C" {
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -81,10 +82,10 @@ int main(int argc, char *argv[]) {
 
   std::vector<PPM> images{};
 
-  uint64_t width{};
-  uint64_t height{};
+  int width{};
+  int height{};
   uint32_t color_depth{};
-  uint64_t image_count{};
+  size_t image_count{};
 
   size_t image_pixels{};
 
@@ -181,17 +182,28 @@ int main(int argc, char *argv[]) {
   }
 
   images = mapPPMs(input_file_mask);
-  width = images.front().width();
-  height = images.front().height();
+  const uint64_t input_width = images.front().width();
+  const uint64_t input_height = images.front().height();
+  if (input_width > static_cast<uint64_t>(std::numeric_limits<int>::max()) / 3
+      || input_height > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
+    throw std::invalid_argument("PPM dimensions exceed codec limits");
+  }
+  width = static_cast<int>(input_width);
+  height = static_cast<int>(input_height);
   color_depth = images.front().color_depth();
   image_count = images.size();
-  const uint64_t view_side = std::sqrt(image_count);
+  const size_t view_side = std::sqrt(image_count);
   if (view_side * view_side != image_count || color_depth > 255) {
     throw std::invalid_argument(
         "input must be a square grid of 8-bit PPM images");
   }
 
-  image_pixels = width * height * image_count;
+  const size_t frame_pixels = static_cast<size_t>(width) * height;
+  if (image_count > std::numeric_limits<size_t>::max() / 3
+      || frame_pixels > std::numeric_limits<size_t>::max() / (image_count * 3)) {
+    throw std::length_error("PPM grid is too large");
+  }
+  image_pixels = frame_pixels * image_count;
 
   ffmpeg::Packet pkt{av_packet_alloc()};
   ffmpeg::Frame out_frame{av_frame_alloc()};
@@ -260,10 +272,17 @@ int main(int argc, char *argv[]) {
 
     in_context->width = width;
     in_context->height = height;
-    in_context->time_base = {1, int(image_count)};
-    in_context->framerate = {int(image_count), 1};
+    if (image_count > static_cast<size_t>(std::numeric_limits<int>::max())) {
+      throw std::length_error("PPM grid contains too many images");
+    }
+    in_context->time_base = {1, static_cast<int>(image_count)};
+    in_context->framerate = {static_cast<int>(image_count), 1};
     in_context->pix_fmt = AV_PIX_FMT_YUV444P;
-    in_context->bit_rate = bpp * image_pixels;
+    const double bitrate = bpp * image_pixels;
+    if (bitrate > static_cast<double>(std::numeric_limits<int64_t>::max())) {
+      throw std::length_error("requested bitrate exceeds codec limits");
+    }
+    in_context->bit_rate = static_cast<int64_t>(bitrate);
 
     const int tune_status =
         av_opt_set(in_context->priv_data, "tune", "psnr", 0);
@@ -294,7 +313,7 @@ int main(int argc, char *argv[]) {
         throw std::runtime_error(
             "decoder produced more frames than the input contains");
       }
-      int outLinesize[1] = {static_cast<int>(3 * width)};
+      int outLinesize[1] = {3 * width};
       const int scale_status =
           sws_scale(out_convert_ctx.get(), frame->data, frame->linesize, 0,
                     height, rgb_frame->data, outLinesize);
@@ -304,7 +323,7 @@ int main(int argc, char *argv[]) {
       }
 
       const auto *original = images[input_image].pixels().data();
-      for (int pix = 0; pix < rgb_frame->width * rgb_frame->height * 3; pix++) {
+      for (size_t pix = 0; pix < frame_pixels * 3; ++pix) {
         double tmp = original[pix] - rgb_frame->data[0][pix];
         mse += tmp * tmp;
       }
@@ -320,7 +339,7 @@ int main(int argc, char *argv[]) {
 
     for (size_t image = 0; image < image_count; image++) {
       const uint8_t *inData[1] = {images[image].pixels().data()};
-      int inLinesize[1] = {static_cast<int>(3 * width)};
+      int inLinesize[1] = {3 * width};
       const int scale_status =
           sws_scale(in_convert_ctx.get(), inData, inLinesize, 0, height,
                     in_frame->data, in_frame->linesize);
@@ -341,7 +360,7 @@ int main(int argc, char *argv[]) {
     encode(in_context.get(), nullptr, pkt.get(), decodePkt);
     decodePkt(nullptr);
 
-    mse /= image_count * width * height * 3;
+    mse /= image_pixels * 3;
 
     double out_bpp = compressed_size * 8.0 / image_pixels;
     double psnr = 10 * log10((255 * 255) / mse);

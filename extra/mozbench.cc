@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -54,10 +55,10 @@ int main(int argc, char *argv[]) {
 
   std::vector<PPM> images{};
 
-  uint64_t width{};
-  uint64_t height{};
+  JDIMENSION width{};
+  JDIMENSION height{};
   uint32_t color_depth{};
-  uint64_t image_count{};
+  size_t image_count{};
 
   jpeg_compress_struct cinfo{};
   jpeg_decompress_struct dinfo{};
@@ -146,11 +147,17 @@ int main(int argc, char *argv[]) {
   }
 
   images = mapPPMs(input_file_mask);
-  width = images.front().width();
-  height = images.front().height();
+  const uint64_t input_width = images.front().width();
+  const uint64_t input_height = images.front().height();
+  if (input_width > static_cast<uint64_t>(std::numeric_limits<int>::max()) / 3
+      || input_height > std::numeric_limits<JDIMENSION>::max()) {
+    throw std::invalid_argument("PPM dimensions exceed codec limits");
+  }
+  width = static_cast<JDIMENSION>(input_width);
+  height = static_cast<JDIMENSION>(input_height);
   color_depth = images.front().color_depth();
   image_count = images.size();
-  const uint64_t view_side = std::sqrt(image_count);
+  const size_t view_side = std::sqrt(image_count);
   if (view_side * view_side != image_count || color_depth > 255) {
     throw std::invalid_argument(
         "input must be a square grid of 8-bit PPM images");
@@ -173,7 +180,7 @@ int main(int argc, char *argv[]) {
 
   jpeg_set_defaults(&cinfo);
 
-  row_stride = width * 3;
+  row_stride = static_cast<int>(width * 3);
 
   std::ofstream output{};
   if (append) {
@@ -187,7 +194,12 @@ int main(int argc, char *argv[]) {
                                  " for writing");
   }
 
-  size_t image_pixels = width * height * image_count;
+  const size_t frame_pixels = static_cast<size_t>(width) * height;
+  if (image_count > std::numeric_limits<size_t>::max() / 3
+      || frame_pixels > std::numeric_limits<size_t>::max() / (image_count * 3)) {
+    throw std::length_error("PPM grid is too large");
+  }
+  const size_t image_pixels = frame_pixels * image_count;
 
   for (size_t quality = q_first; quality <= q_last; quality += q_step) {
     std::cerr << "Q" << quality << " STARTED" << std::endl;
@@ -206,7 +218,7 @@ int main(int argc, char *argv[]) {
 
     for (size_t i = 0; i < image_count; i++) {
       const auto *original = images[i].pixels().data();
-      std::vector<uint8_t> decompressed_rgb_data(width * height * 3);
+      std::vector<uint8_t> decompressed_rgb_data(frame_pixels * 3);
 
       std::unique_ptr<FILE, int (*)(FILE *)> compressed(std::tmpfile(), &fclose);
       if (!compressed) {
@@ -254,7 +266,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    mse /= image_count * width * height * 3;
+    mse /= image_pixels * 3;
 
     double bpp = compressed_size * 8.0 / image_pixels;
     double psnr = 10 * log10((255 * 255) / mse);
