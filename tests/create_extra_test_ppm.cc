@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <fstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -48,19 +49,22 @@ int main(int argc, char *argv[]) {
   }
   if (argc == 3 && std::string_view(argv[1]) == "--truncated-xvc-size") {
     std::ofstream output(argv[2], std::ios::binary);
+    output.exceptions(std::ios::badbit | std::ios::failbit);
     output.write("xvc", 3);
     output.close();
-    return output ? 0 : 1;
+    return 0;
   }
   if (argc == 3 && std::string_view(argv[1]) == "--malformed-xvc") {
     std::ofstream output(argv[2], std::ios::binary);
+    output.exceptions(std::ios::badbit | std::ios::failbit);
     const std::array<char, 5> bytes {1, 0, 0, 0, static_cast<char>(0xff)};
     output.write(bytes.data(), bytes.size());
     output.close();
-    return output ? 0 : 1;
+    return 0;
   }
   if (argc == 3 && std::string_view(argv[1]) == "--oversized-xvc-nal") {
     std::ofstream output(argv[2], std::ios::binary);
+    output.exceptions(std::ios::badbit | std::ios::failbit);
     const std::array<char, 4> bytes {
         static_cast<char>(0xff),
         static_cast<char>(0xff),
@@ -69,10 +73,10 @@ int main(int argc, char *argv[]) {
     };
     output.write(bytes.data(), bytes.size());
     output.close();
-    return output ? 0 : 1;
+    return 0;
   }
   if (argc != 2) {
-    return 1;
+    throw std::invalid_argument("invalid arguments");
   }
 
   createImage(argv[1], 0);

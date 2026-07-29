@@ -1,10 +1,11 @@
 #include <lfif/format.h>
 
 #include <fstream>
+#include <stdexcept>
 
 int main(int argc, char *argv[]) {
   if (argc != 2) {
-    return 1;
+    throw std::invalid_argument("invalid arguments");
   }
 
   lfif::Header header {
@@ -20,7 +21,7 @@ int main(int argc, char *argv[]) {
   };
   const std::vector<uint8_t> bytes = lfif::serializeHeader(header);
   std::ofstream output(argv[1], std::ios::binary);
+  output.exceptions(std::ios::badbit | std::ios::failbit);
   output.write(reinterpret_cast<const char *>(bytes.data()), bytes.size());
   output.close();
-  return output ? 0 : 1;
 }

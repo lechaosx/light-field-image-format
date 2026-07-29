@@ -2,12 +2,13 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <string_view>
 
 int main(int argc, char *argv[]) {
   const bool within_one = argc == 4 && std::string_view(argv[3]) == "--within-one";
   if (argc != 3 && !within_one) {
-    return 1;
+    throw std::invalid_argument("invalid arguments");
   }
 
   PPM expected = PPM::map(argv[1]);
@@ -15,7 +16,7 @@ int main(int argc, char *argv[]) {
   if (expected.width() != actual.width()
       || expected.height() != actual.height()
       || expected.color_depth() != actual.color_depth()) {
-    return 1;
+    throw std::runtime_error("PPM metadata differs");
   }
 
   const size_t pixel_count = static_cast<size_t>(expected.width() * expected.height());
@@ -27,7 +28,7 @@ int main(int argc, char *argv[]) {
           ? expected_pixel[channel] - actual_pixel[channel]
           : actual_pixel[channel] - expected_pixel[channel];
       if (difference > static_cast<uint16_t>(within_one)) {
-        return 1;
+        throw std::runtime_error("PPM samples differ");
       }
     }
   }
