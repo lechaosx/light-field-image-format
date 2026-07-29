@@ -14,11 +14,11 @@ extern "C" {
 #include <getopt.h>
 #include <cmath>
 
-#include <iostream>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <stdexcept>
+#include <string>
 
 
 void print_usage(char *argv0) {
@@ -27,20 +27,18 @@ void print_usage(char *argv0) {
 }
 
 void encode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, const std::function<void(AVPacket *)> &callback) {
-  if (avcodec_send_frame(context, frame) < 0) {
-    std::cerr << "Error sending a frame for encoding" << std::endl;
-    exit(1);
+  const int send_status = avcodec_send_frame(context, frame);
+  if (send_status < 0) {
+    throw std::runtime_error("error sending a frame for encoding: " + std::to_string(send_status));
   }
 
-  int ret = 0;
-  while (ret >= 0) {
-    ret = avcodec_receive_packet(context, pkt);
-    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+  while (true) {
+    const int receive_status = avcodec_receive_packet(context, pkt);
+    if (receive_status == AVERROR(EAGAIN) || receive_status == AVERROR_EOF) {
       return;
     }
-    else if (ret < 0) {
-      std::cerr << "Error during encoding" << std::endl;
-      exit(1);
+    if (receive_status < 0) {
+      throw std::runtime_error("error during encoding: " + std::to_string(receive_status));
     }
 
     callback(pkt);
@@ -50,27 +48,25 @@ void encode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, const std::f
 }
 
 void decode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt, const std::function<void(AVFrame *)> &callback) {
-  if (avcodec_send_packet(context, pkt) < 0) {
-    std::cerr << "Error sending a packet for decoding" << std::endl;
-    exit(1);
+  const int send_status = avcodec_send_packet(context, pkt);
+  if (send_status < 0) {
+    throw std::runtime_error("error sending a packet for decoding: " + std::to_string(send_status));
   }
 
-  int ret = 0;
-  while (ret >= 0) {
-    ret = avcodec_receive_frame(context, frame);
-    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+  while (true) {
+    const int receive_status = avcodec_receive_frame(context, frame);
+    if (receive_status == AVERROR(EAGAIN) || receive_status == AVERROR_EOF) {
       return;
     }
-    else if (ret < 0) {
-      std::cerr << "Error during decoding" << std::endl;
-      exit(1);
+    if (receive_status < 0) {
+      throw std::runtime_error("error during decoding: " + std::to_string(receive_status));
     }
 
     callback(frame);
   }
 }
 
-int main(int argc, char *argv[]) {
+void run(int argc, char *argv[]) {
   const char *input_file_mask {};
   const char *output_file     {};
   const char *first_bitrate     {};
@@ -96,7 +92,7 @@ int main(int argc, char *argv[]) {
     switch (opt) {
       case 'h':
         print_usage(argv[0]);
-        return 0;
+        return;
 
       case 'i':
         if (!input_file_mask) {
@@ -142,14 +138,14 @@ int main(int argc, char *argv[]) {
 
       default:
         print_usage(argv[0]);
-        return 1;
+        throw std::invalid_argument("invalid arguments");
       break;
     }
   }
 
   if (!input_file_mask || !output_file) {
     print_usage(argv[0]);
-    return 1;
+    throw std::invalid_argument("input and output are required");
   }
 
   f_b = 0.1;
@@ -170,28 +166,20 @@ int main(int argc, char *argv[]) {
       }
     }
   } catch (const std::exception &) {
-    std::cerr << "Bitrates must be numbers" << std::endl;
-    return 1;
+    throw std::invalid_argument("bitrates must be numbers");
   }
   if (!std::isfinite(f_b) || !std::isfinite(l_b) || f_b <= 0 || f_b > l_b) {
-    std::cerr << "Bitrates must be positive and ordered from first to last" << std::endl;
-    return 1;
+    throw std::invalid_argument("bitrates must be positive and ordered from first to last");
   }
 
-  try {
-    images = mapPPMs(input_file_mask);
-  } catch (const std::exception &error) {
-    std::cerr << error.what() << std::endl;
-    return 2;
-  }
+  images = mapPPMs(input_file_mask);
   width = images.front().width();
   height = images.front().height();
   color_depth = images.front().color_depth();
   image_count = images.size();
   const uint64_t view_side = std::sqrt(image_count);
   if (view_side * view_side != image_count || color_depth > 255) {
-    std::cerr << "Input must be a square grid of 8-bit PPM images" << std::endl;
-    return 2;
+    throw std::invalid_argument("input must be a square grid of 8-bit PPM images");
   }
 
   image_pixels = width * height * image_count;
@@ -210,187 +198,183 @@ int main(int argc, char *argv[]) {
 
   AVFrame *rgb_frame          {};
 
-  pkt = av_packet_alloc();
-  if (!pkt) {
-    exit(1);
-  }
-
-  out_frame = av_frame_alloc();
-  if (!out_frame) {
-    std::cerr << "Could not allocate video frame" << std::endl;
-    exit(1);
-  }
-
-  in_frame = av_frame_alloc();
-  if (!in_frame) {
-    std::cerr << "Could not allocate video frame" << std::endl;
-    exit(1);
-  }
-
-  in_frame->format = AV_PIX_FMT_YUV444P;
-  in_frame->width  = width;
-  in_frame->height = height;
-
-  if (av_frame_get_buffer(in_frame, 32) < 0) {
-    std::cerr << "Could not allocate the video frame data" << std::endl;
-    exit(1);
-  }
-
-  rgb_frame = av_frame_alloc();
-  if (!rgb_frame) {
-    std::cerr << "Could not allocate video frame" << std::endl;
-    exit(1);
-  }
-
-  rgb_frame->format = AV_PIX_FMT_RGB24;
-  rgb_frame->width  = width;
-  rgb_frame->height = height;
-
-  if (av_frame_get_buffer(rgb_frame, 32) < 0) {
-    std::cerr << "Could not allocate the video frame data" << std::endl;
-    exit(1);
-  }
-
-  decoder = avcodec_find_decoder(AV_CODEC_ID_H265);
-  if (!decoder) {
-    std::cerr << "decoder AV_CODEC_ID_H265 not found" << std::endl;
-    exit(1);
-  }
-
-  coder = avcodec_find_encoder(AV_CODEC_ID_H265);
-  if (!coder) {
-    std::cerr << "coder AV_CODEC_ID_H265 not found" << std::endl;
-    exit(1);
-  }
-
-  in_convert_ctx = sws_getContext(width, height, AV_PIX_FMT_RGB24, width, height, AV_PIX_FMT_YUV444P, 0, 0, 0, 0);
-  if (!in_convert_ctx) {
-    std::cerr << "Could not get image conversion context" << std::endl;
-    exit(1);
-  }
-
-  out_convert_ctx = sws_getContext(width, height, AV_PIX_FMT_YUV444P, width, height, AV_PIX_FMT_RGB24, 0, 0, 0, 0);
-  if (!out_convert_ctx) {
-    std::cerr << "Could not get image conversion context" << std::endl;
-    exit(1);
-  }
-
-  std::ofstream output {};
-  if (append) {
-    output.open(output_file, std::fstream::app);
-  }
-  else {
-    output.open(output_file, std::fstream::trunc);
-    output << "'x265' 'PSNR [dB]' 'bitrate [bpp]'" << std::endl;
-  }
-  if (!output) {
-    std::cerr << "Could not open " << output_file << " for writing" << std::endl;
-    return 1;
-  }
-
-  for (double bpp = f_b; bpp <= l_b; bpp *= 1.25893) {
-    std::vector<uint8_t> out_rgb_data {};
-    size_t compressed_size = 0;
-
-    in_context = avcodec_alloc_context3(coder);
-    out_context = avcodec_alloc_context3(decoder);
-    if (!in_context || !out_context) {
-      std::cerr << "Could not allocate video codec context" << std::endl;
-      exit(1);
-    }
-
-    in_context->width = width;
-    in_context->height = height;
-    in_context->time_base = {1, int(image_count)};
-    in_context->framerate = {int(image_count), 1};
-    in_context->pix_fmt = AV_PIX_FMT_YUV444P;
-    in_context->bit_rate = bpp * image_pixels;
-
-	  av_opt_set(in_context->priv_data, "tune", "psnr", 0);
-    av_opt_set(in_context->priv_data, "preset", "placebo", 0);
-
-    if (avcodec_open2(in_context, coder, nullptr) < 0) {
-      std::cerr << "Could not open coder" << std::endl;
-      exit(1);
-    }
-
-    if (avcodec_open2(out_context, decoder, nullptr) < 0) {
-      std::cerr << "Could not open decoder" << std::endl;
-      exit(1);
-    }
-
-    double mse = 0;
-    size_t input_image = 0;
-
-    auto saveFrame = [&](AVFrame *frame) {
-      int outLinesize[1] = { static_cast<int>(3 * width) };
-      sws_scale(out_convert_ctx, frame->data, frame->linesize, 0, height, rgb_frame->data, outLinesize);
-
-      const auto *original = images[input_image].pixels().data();
-      for (int pix = 0; pix < rgb_frame->width * rgb_frame->height * 3; pix++) {
-        double tmp = original[pix] - rgb_frame->data[0][pix];
-        mse += tmp * tmp;
-      }
-      ++input_image;
-    };
-
-    auto decodePkt = [&](AVPacket *pkt) {
-      if (pkt) {
-        compressed_size += pkt->size;
-      }
-      decode(out_context, out_frame, pkt, saveFrame);
-    };
-
-    for (size_t image = 0; image < image_count; image++) {
-      const uint8_t *inData[1] = {images[image].pixels().data()};
-      int inLinesize[1] = { static_cast<int>(3 * width) };
-      sws_scale(in_convert_ctx, inData, inLinesize, 0, height, in_frame->data, in_frame->linesize);
-
-      if (intra_only) {
-        in_frame->pict_type = AV_PICTURE_TYPE_I;
-      }
-
-      in_frame->pts = image;
-
-      encode(in_context, in_frame, pkt, decodePkt);
-    }
-
-    encode(in_context, nullptr, pkt, decodePkt);
-
-    decodePkt(nullptr);
-
+  auto cleanup = [&] {
     avcodec_free_context(&in_context);
     avcodec_free_context(&out_context);
+    av_frame_free(&in_frame);
+    av_frame_free(&out_frame);
+    av_frame_free(&rgb_frame);
+    av_packet_free(&pkt);
+    sws_freeContext(in_convert_ctx);
+    sws_freeContext(out_convert_ctx);
+  };
 
-
-    mse /= image_count * width * height * 3;
-
-    double out_bpp = compressed_size * 8.0 / image_pixels;
-    double psnr = 10 * log10((255 * 255) / mse);
-
-    std::cerr << bpp << " " << psnr << " " << out_bpp << std::endl;
-    output << bpp << " " << psnr << " " << out_bpp << std::endl;
-
-    if (std::abs(bpp - out_bpp) > 2) {
-      break;
+  std::ofstream output {};
+  try {
+    pkt = av_packet_alloc();
+    out_frame = av_frame_alloc();
+    in_frame = av_frame_alloc();
+    rgb_frame = av_frame_alloc();
+    if (!pkt || !out_frame || !in_frame || !rgb_frame) {
+      throw std::runtime_error("could not allocate FFmpeg frame or packet");
     }
+
+    in_frame->format = AV_PIX_FMT_YUV444P;
+    in_frame->width  = width;
+    in_frame->height = height;
+    const int input_buffer_status = av_frame_get_buffer(in_frame, 32);
+    if (input_buffer_status < 0) {
+      throw std::runtime_error("could not allocate input frame data: " + std::to_string(input_buffer_status));
+    }
+
+    rgb_frame->format = AV_PIX_FMT_RGB24;
+    rgb_frame->width  = width;
+    rgb_frame->height = height;
+    const int rgb_buffer_status = av_frame_get_buffer(rgb_frame, 32);
+    if (rgb_buffer_status < 0) {
+      throw std::runtime_error("could not allocate RGB frame data: " + std::to_string(rgb_buffer_status));
+    }
+
+    decoder = avcodec_find_decoder(AV_CODEC_ID_H265);
+    coder = avcodec_find_encoder(AV_CODEC_ID_H265);
+    if (!decoder || !coder) {
+      throw std::runtime_error("H.265 encoder or decoder not found");
+    }
+
+    in_convert_ctx = sws_getContext(width, height, AV_PIX_FMT_RGB24, width, height, AV_PIX_FMT_YUV444P, 0, 0, 0, 0);
+    out_convert_ctx = sws_getContext(width, height, AV_PIX_FMT_YUV444P, width, height, AV_PIX_FMT_RGB24, 0, 0, 0, 0);
+    if (!in_convert_ctx || !out_convert_ctx) {
+      throw std::runtime_error("could not create image conversion context");
+    }
+
+    if (append) {
+      output.open(output_file, std::fstream::app);
+    }
+    else {
+      output.open(output_file, std::fstream::trunc);
+      output << "'x265' 'PSNR [dB]' 'bitrate [bpp]'" << std::endl;
+    }
+    if (!output) {
+      throw std::runtime_error("could not open " + std::string(output_file) + " for writing");
+    }
+
+    for (double bpp = f_b; bpp <= l_b; bpp *= 1.25893) {
+      size_t compressed_size = 0;
+
+      in_context = avcodec_alloc_context3(coder);
+      out_context = avcodec_alloc_context3(decoder);
+      if (!in_context || !out_context) {
+        throw std::runtime_error("could not allocate video codec context");
+      }
+
+      in_context->width = width;
+      in_context->height = height;
+      in_context->time_base = {1, int(image_count)};
+      in_context->framerate = {int(image_count), 1};
+      in_context->pix_fmt = AV_PIX_FMT_YUV444P;
+      in_context->bit_rate = bpp * image_pixels;
+
+      const int tune_status = av_opt_set(in_context->priv_data, "tune", "psnr", 0);
+      const int preset_status = av_opt_set(in_context->priv_data, "preset", "placebo", 0);
+      if (tune_status < 0 || preset_status < 0) {
+        throw std::runtime_error("could not configure x265 encoder");
+      }
+
+      const int encoder_status = avcodec_open2(in_context, coder, nullptr);
+      if (encoder_status < 0) {
+        throw std::runtime_error("could not open encoder: " + std::to_string(encoder_status));
+      }
+
+      const int decoder_status = avcodec_open2(out_context, decoder, nullptr);
+      if (decoder_status < 0) {
+        throw std::runtime_error("could not open decoder: " + std::to_string(decoder_status));
+      }
+
+      double mse = 0;
+      size_t input_image = 0;
+
+      auto saveFrame = [&](AVFrame *frame) {
+        if (input_image >= images.size()) {
+          throw std::runtime_error("decoder produced more frames than the input contains");
+        }
+        int outLinesize[1] = { static_cast<int>(3 * width) };
+        const int scale_status = sws_scale(
+          out_convert_ctx, frame->data, frame->linesize, 0, height, rgb_frame->data, outLinesize);
+        if (scale_status < 0) {
+          throw std::runtime_error("could not convert decoded frame: " + std::to_string(scale_status));
+        }
+
+        const auto *original = images[input_image].pixels().data();
+        for (int pix = 0; pix < rgb_frame->width * rgb_frame->height * 3; pix++) {
+          double tmp = original[pix] - rgb_frame->data[0][pix];
+          mse += tmp * tmp;
+        }
+        ++input_image;
+      };
+
+      auto decodePkt = [&](AVPacket *pkt) {
+        if (pkt) {
+          compressed_size += pkt->size;
+        }
+        decode(out_context, out_frame, pkt, saveFrame);
+      };
+
+      for (size_t image = 0; image < image_count; image++) {
+        const uint8_t *inData[1] = {images[image].pixels().data()};
+        int inLinesize[1] = { static_cast<int>(3 * width) };
+        const int scale_status = sws_scale(
+          in_convert_ctx, inData, inLinesize, 0, height, in_frame->data, in_frame->linesize);
+        if (scale_status < 0) {
+          throw std::runtime_error("could not convert input frame: " + std::to_string(scale_status));
+        }
+
+        if (intra_only) {
+          in_frame->pict_type = AV_PICTURE_TYPE_I;
+        }
+
+        in_frame->pts = image;
+
+        encode(in_context, in_frame, pkt, decodePkt);
+      }
+
+      encode(in_context, nullptr, pkt, decodePkt);
+      decodePkt(nullptr);
+
+      avcodec_free_context(&in_context);
+      avcodec_free_context(&out_context);
+
+      mse /= image_count * width * height * 3;
+
+      double out_bpp = compressed_size * 8.0 / image_pixels;
+      double psnr = 10 * log10((255 * 255) / mse);
+
+      std::cerr << bpp << " " << psnr << " " << out_bpp << std::endl;
+      output << bpp << " " << psnr << " " << out_bpp << std::endl;
+
+      if (std::abs(bpp - out_bpp) > 2) {
+        break;
+      }
+    }
+
+    output.flush();
+    output.close();
+    if (!output) {
+      throw std::runtime_error("could not write " + std::string(output_file));
+    }
+  } catch (...) {
+    cleanup();
+    throw;
   }
 
-  avcodec_free_context(&in_context);
-  avcodec_free_context(&out_context);
-  av_frame_free(&in_frame);
-  av_frame_free(&out_frame);
-  av_frame_free(&rgb_frame);
-  av_packet_free(&pkt);
-  sws_freeContext(in_convert_ctx);
-  sws_freeContext(out_convert_ctx);
+  cleanup();
+}
 
-  output.flush();
-  output.close();
-  if (!output) {
-    std::cerr << "Could not write " << output_file << std::endl;
+int main(int argc, char *argv[]) {
+  try {
+    run(argc, argv);
+    return 0;
+  } catch (const std::exception &error) {
+    std::cerr << error.what() << std::endl;
     return 1;
   }
-
-  return 0;
 }
