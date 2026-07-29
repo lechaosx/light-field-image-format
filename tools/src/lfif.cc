@@ -21,7 +21,7 @@ namespace {
 
 struct CompressOptions {
   std::string input;
-  std::string output;
+  std::filesystem::path output;
   std::vector<uint64_t> view_shape;
   std::vector<uint64_t> block_extents;
   lfif::Transform transform {lfif::Transform::wavelet};
@@ -110,7 +110,7 @@ size_t checkedProduct(const std::vector<uint64_t> &values) {
   return product;
 }
 
-std::string expandMask(const std::string &mask, size_t index, size_t count) {
+std::string expandMask(std::string_view mask, size_t index, size_t count) {
   std::vector<size_t> positions;
   for (size_t i = 0; i < mask.size(); ++i) {
     if (mask[i] == '#') {
@@ -118,7 +118,7 @@ std::string expandMask(const std::string &mask, size_t index, size_t count) {
     }
   }
   if (count == 1 && positions.empty()) {
-    return mask;
+    return std::string(mask);
   }
   if (positions.empty()) {
     throw std::invalid_argument("multiple images require a # output or input mask");
@@ -129,15 +129,15 @@ std::string expandMask(const std::string &mask, size_t index, size_t count) {
     throw std::invalid_argument("file mask has too few # characters");
   }
   digits.insert(digits.begin(), positions.size() - digits.size(), '0');
-  std::string result = mask;
+  std::string result {mask};
   for (size_t i = 0; i < positions.size(); ++i) {
     result[positions[i]] = digits[i];
   }
   return result;
 }
 
-void createParentDirectory(const std::string &file_name) {
-  const std::filesystem::path parent = std::filesystem::path(file_name).parent_path();
+void createParentDirectory(const std::filesystem::path &file_name) {
+  const std::filesystem::path parent = file_name.parent_path();
   if (parent.empty()) {
     return;
   }
@@ -265,14 +265,15 @@ void compress(int argc, char *argv[]) {
   output.flush();
   output.close();
   if (!output) {
-    throw std::runtime_error("cannot write output: " + options.output);
+    throw std::runtime_error("cannot write output: " + options.output.string());
   }
 }
 
-void decompress(const std::string &input_name, const std::string &output_mask) {
+void decompress(
+    const std::filesystem::path &input_name, std::string_view output_mask) {
   std::ifstream input(input_name, std::ios::binary);
   if (!input) {
-    throw std::runtime_error("cannot read input: " + input_name);
+    throw std::runtime_error("cannot read input: " + input_name.string());
   }
   const lfif::DecodedImage image = lfif::readImage(input);
   const size_t image_count = checkedProduct(
@@ -295,10 +296,6 @@ void decompress(const std::string &input_name, const std::string &output_mask) {
   }
 }
 
-const char *transformName(lfif::Transform transform) {
-  return transform == lfif::Transform::wavelet ? "wavelet" : "dct";
-}
-
 void printExtents(const std::vector<uint64_t> &extents) {
   for (size_t i = 0; i < extents.size(); ++i) {
     if (i != 0) {
@@ -309,10 +306,10 @@ void printExtents(const std::vector<uint64_t> &extents) {
   std::cout << '\n';
 }
 
-void inspect(const std::string &input_name) {
+void inspect(const std::filesystem::path &input_name) {
   std::ifstream input(input_name, std::ios::binary);
   if (!input) {
-    throw std::runtime_error("cannot read input: " + input_name);
+    throw std::runtime_error("cannot read input: " + input_name.string());
   }
   const lfif::Header header = lfif::parseHeader(input);
   const std::streampos payload_position = input.tellg();
@@ -330,7 +327,9 @@ void inspect(const std::string &input_name) {
   std::cout << "sample depth: " << static_cast<unsigned>(header.sample_depth) << '\n';
   std::cout << "channels: " << static_cast<unsigned>(header.channels) << '\n';
   std::cout << "sample format: unsigned integer\n";
-  std::cout << "transform: " << transformName(header.transform) << '\n';
+  std::cout << "transform: "
+            << (header.transform == lfif::Transform::wavelet ? "wavelet" : "dct")
+            << '\n';
   std::cout << "entropy codec: CABAC\n";
   std::cout << "color space: RGB\n";
   std::cout << "prediction: " << (header.prediction ? "yes" : "no") << '\n';
