@@ -38,6 +38,20 @@ TEST(Huffman, RoundTripsSymbolStream) {
   EXPECT_EQ(decoded, expected);
 }
 
+TEST(Huffman, RoundTripsSingleSymbolAlphabet) {
+  HuffmanEncoder encoder;
+  encoder.generateFromWeights({{42, 4}});
+  std::stringstream table;
+  encoder.writeToStream(table);
+
+  HuffmanDecoder decoder;
+  decoder.readFromStream(table);
+
+  std::istringstream encoded;
+  IBitstream input(encoded);
+  EXPECT_EQ(decoder.decodeSymbolFromStream(input), 42);
+}
+
 TEST(Huffman, RejectsUnmatchedCodeword) {
   std::stringstream table;
   writeValueToStream<HuffmanCodelength>(1, table);
@@ -51,4 +65,27 @@ TEST(Huffman, RejectsUnmatchedCodeword) {
   std::istringstream encoded(std::string(1, '\1'));
   IBitstream input(encoded);
   EXPECT_THROW(decoder.decodeSymbolFromStream(input), std::runtime_error);
+}
+
+TEST(Huffman, RejectsOversubscribedCodeLengths) {
+  std::stringstream table;
+  writeValueToStream<HuffmanCodelength>(1, table);
+  writeValueToStream<HuffmanCodelength>(0, table);
+  writeValueToStream<HuffmanCodelength>(3, table);
+  writeValueToStream<HuffmanSymbol>(1, table);
+  writeValueToStream<HuffmanSymbol>(2, table);
+  writeValueToStream<HuffmanSymbol>(3, table);
+
+  HuffmanDecoder decoder;
+  EXPECT_THROW(decoder.readFromStream(table), std::runtime_error);
+}
+
+TEST(Huffman, RejectsAlphabetLargerThanSymbolType) {
+  std::stringstream table;
+  writeValueToStream<HuffmanCodelength>(1, table);
+  writeValueToStream<HuffmanCodelength>(65535, table);
+  writeValueToStream<HuffmanCodelength>(2, table);
+
+  HuffmanDecoder decoder;
+  EXPECT_THROW(decoder.readFromStream(table), std::length_error);
 }

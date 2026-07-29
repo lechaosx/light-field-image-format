@@ -8,8 +8,9 @@
 #include "components/endian.h"
 
 #include <algorithm>
-#include <fstream>
-#include <numeric>
+#include <istream>
+#include <limits>
+#include <ostream>
 #include <stdexcept>
 
 
@@ -140,19 +141,48 @@ void HuffmanEncoder::generateHuffmanMap() {
 }
 
 void HuffmanDecoder::readFromStream(std::istream &stream) {
-  size_t max_codelength = readValueFromStream<HuffmanCodelength>(stream);
-  m_huffman_counts.resize(max_codelength + 1);
+  const size_t max_codelength = readValueFromStream<HuffmanCodelength>(stream);
+  if (max_codelength > 64) {
+    throw std::length_error("Huffman code length exceeds decoder width");
+  }
+  std::vector<HuffmanCodelength> counts(max_codelength + 1);
 
   for (size_t i = 0; i <= max_codelength; i++) {
-    m_huffman_counts[i] = readValueFromStream<HuffmanCodelength>(stream);
+    counts[i] = readValueFromStream<HuffmanCodelength>(stream);
   }
 
-  size_t symbols_cnt = std::accumulate(m_huffman_counts.begin(), m_huffman_counts.end(), 0, std::plus<size_t>());
-  m_huffman_symbols.resize(symbols_cnt);
+  constexpr size_t alphabet_size =
+      static_cast<size_t>(std::numeric_limits<HuffmanSymbol>::max()) + 1;
+  size_t symbols_cnt = 0;
+  for (const HuffmanCodelength count : counts) {
+    if (count > alphabet_size - symbols_cnt) {
+      throw std::length_error("Huffman alphabet exceeds symbol type");
+    }
+    symbols_cnt += count;
+  }
+  if (symbols_cnt == 0
+      || (counts[0] != 0 && (counts[0] != 1 || symbols_cnt != 1))) {
+    throw std::runtime_error("invalid zero-length Huffman code");
+  }
+
+  uint64_t available = 1;
+  for (size_t length = 1; length < counts.size(); ++length) {
+    available = available > std::numeric_limits<uint64_t>::max() / 2
+        ? std::numeric_limits<uint64_t>::max()
+        : available * 2;
+    if (counts[length] > available) {
+      throw std::runtime_error("oversubscribed Huffman code lengths");
+    }
+    available -= counts[length];
+  }
+
+  std::vector<HuffmanSymbol> symbols(symbols_cnt);
 
   for (size_t i = 0; i < symbols_cnt; i++) {
-    m_huffman_symbols[i] = readValueFromStream<HuffmanSymbol>(stream);
+    symbols[i] = readValueFromStream<HuffmanSymbol>(stream);
   }
+  m_huffman_counts = std::move(counts);
+  m_huffman_symbols = std::move(symbols);
 }
 
 HuffmanSymbol HuffmanDecoder::decodeSymbolFromStream(IBitstream &stream) const {
@@ -164,16 +194,20 @@ HuffmanSymbol HuffmanDecoder::decodeSymbolFromStream(IBitstream &stream) const {
 }
 
 size_t HuffmanDecoder::decodeOneHuffmanSymbolIndex(IBitstream &stream) const {
-  int64_t code  = 0;
-  int64_t first = 0;
+  if (m_huffman_counts.size() == 1 && m_huffman_counts[0] == 1) {
+    return 0;
+  }
+
+  uint64_t code  = 0;
+  uint64_t first = 0;
   size_t  index = 0;
   HuffmanCodelength count = 0;
 
   for (size_t len = 1; len < m_huffman_counts.size(); len++) {
     code |= stream.readBit();
     count = m_huffman_counts[len];
-    if (code - count < first) {
-      return index + code - first;
+    if (code >= first && code - first < count) {
+      return index + static_cast<size_t>(code - first);
     }
     index += count;
     first += count;
