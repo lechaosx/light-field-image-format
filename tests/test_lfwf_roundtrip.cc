@@ -20,11 +20,19 @@ void expectWaveletRoundTrip(
     Pixels pixels) {
   std::stringstream stream;
   LFWFEncoder<D> encoder;
-  encoder.create(stream, image_size, block_size, depth_bits, 0, predicted);
+  encoder.size = image_size;
+  encoder.block_size = block_size;
+  encoder.depth_bits = depth_bits;
+  encoder.discarded_bits = 0;
+  encoder.predicted = predicted;
   encoder.encodeStream(pixels, stream);
 
   LFWFDecoder<D> decoder;
-  decoder.open(stream);
+  decoder.size = image_size;
+  decoder.block_size = block_size;
+  decoder.depth_bits = depth_bits;
+  decoder.discarded_bits = 0;
+  decoder.predicted = predicted;
   std::map<std::array<size_t, D>, std::array<uint16_t, 3>> decoded;
   decoder.decodeStream(stream, [&](const auto &position, const auto &rgb) {
     decoded[position] = rgb;
@@ -49,7 +57,11 @@ std::string compressWavelet(
     Pixels pixels) {
   std::stringstream stream;
   LFWFEncoder<D> encoder;
-  encoder.create(stream, image_size, block_size, depth_bits, 0, predicted);
+  encoder.size = image_size;
+  encoder.block_size = block_size;
+  encoder.depth_bits = depth_bits;
+  encoder.discarded_bits = 0;
+  encoder.predicted = predicted;
   encoder.encodeStream(pixels, stream);
   return stream.str();
 }

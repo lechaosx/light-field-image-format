@@ -10,10 +10,8 @@
 
 #include "components/bitstream.h"
 #include "components/colorspace.h"
-#include "components/endian.h"
 
 #include "block_predictor.h"
-#include "codec_parameters.h"
 #include "dct_block_stream.h"
 #include "dct_block_transformer.h"
 #include "prediction_type_stream.h"
@@ -23,22 +21,6 @@
 
 template <size_t D>
 struct LFIFDecoder: public LFIF<D> {
-  void open(std::istream &input) {
-    this->depth_bits     = readValueFromStream<uint8_t>(input);
-    this->discarded_bits = readValueFromStream<uint8_t>(input);
-    this->predicted      = readValueFromStream<bool>(input);
-
-    for (size_t i = 0; i < D; i++) {
-      this->size[i] = readValueFromStream<uint64_t>(input);
-    }
-
-    for (size_t i = 0; i < D; i++) {
-      this->block_size[i] = readValueFromStream<uint64_t>(input);
-    }
-
-    validateCodecParameters(this->size, this->block_size, this->depth_bits);
-  }
-
   template<typename F>
   void decodeStream(std::istream &input, F &&pusher) {
     DynamicBlock<float, D> block_Y(this->block_size);

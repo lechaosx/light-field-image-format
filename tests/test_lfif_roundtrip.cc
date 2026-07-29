@@ -17,11 +17,19 @@ TEST(LfifRoundTrip, ReconstructsConstantFourDimensionalImage) {
 
   std::stringstream stream;
   LFIFEncoder<4> encoder;
-  encoder.create(stream, image_size, block_size, 8, 0, false);
+  encoder.size = image_size;
+  encoder.block_size = block_size;
+  encoder.depth_bits = 8;
+  encoder.discarded_bits = 0;
+  encoder.predicted = false;
   encoder.encodeStream(pixels, stream);
 
   LFIFDecoder<4> decoder;
-  decoder.open(stream);
+  decoder.size = image_size;
+  decoder.block_size = block_size;
+  decoder.depth_bits = 8;
+  decoder.discarded_bits = 0;
+  decoder.predicted = false;
   std::map<std::array<size_t, 4>, std::array<uint16_t, 3>> decoded;
   decoder.decodeStream(stream, [&](const auto &position, const auto &rgb) {
     decoded[position] = rgb;

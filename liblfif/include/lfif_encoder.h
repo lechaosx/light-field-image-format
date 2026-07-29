@@ -10,7 +10,6 @@
 
 #include "components/bitstream.h"
 #include "components/colorspace.h"
-#include "components/endian.h"
 
 #include "block_predictor.h"
 #include "dct_block_stream.h"
@@ -25,33 +24,6 @@
 
 template <size_t D>
 struct LFIFEncoder: public LFIF<D> {
-  void create(
-            std::ostream          &output,
-      const std::array<size_t, D> &size,
-      const std::array<size_t, D> &block_size,
-            uint8_t                depth_bits,
-            uint8_t                discarded_bits,
-            bool                   predicted) {
-
-    this->size = size;
-    this->block_size = block_size;
-    this->depth_bits = depth_bits;
-    this->discarded_bits = discarded_bits;
-    this->predicted = predicted;
-
-    writeValueToStream<uint8_t>(depth_bits, output);
-    writeValueToStream<uint8_t>(discarded_bits, output);
-    writeValueToStream<bool>(predicted, output);
-
-    for (size_t i = 0; i < D; i++) {
-      writeValueToStream<uint64_t>(size[i], output);
-    }
-
-    for (size_t i = 0; i < D; i++) {
-      writeValueToStream<uint64_t>(block_size[i], output);
-    }
-  }
-
   template <typename F>
   void encodeStream(F &&puller, std::ostream &output) {
     DynamicBlock<float, D> block_Y(this->block_size);
