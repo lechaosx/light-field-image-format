@@ -208,9 +208,7 @@ int main(int argc, char *argv[]) {
       const auto *original = images[i].pixels().data();
       std::vector<uint8_t> decompressed_rgb_data(width * height * 3);
 
-      auto close_file = [](FILE *file) { fclose(file); };
-      std::unique_ptr<FILE, decltype(close_file)> compressed(std::tmpfile(),
-                                                             close_file);
+      std::unique_ptr<FILE, int (*)(FILE *)> compressed(std::tmpfile(), &fclose);
       if (!compressed) {
         throw std::runtime_error("could not create temporary JPEG file");
       }
