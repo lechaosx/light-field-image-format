@@ -8,6 +8,7 @@
 #include "components/endian.h"
 
 #include <algorithm>
+#include <cassert>
 #include <istream>
 #include <limits>
 #include <ostream>
@@ -15,6 +16,7 @@
 
 
 void HuffmanEncoder::generateFromWeights(const HuffmanWeights &huffman_weights) {
+  assert(!huffman_weights.empty());
   generateHuffmanCodelengths(huffman_weights);
   generateHuffmanMap();
 }
