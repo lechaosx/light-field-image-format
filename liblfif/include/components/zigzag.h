@@ -99,7 +99,6 @@ DynamicBlock<size_t, D> zigzagTable(const std::array<size_t, D> &size) {
 }
 
 template <typename F>
-[[deprecated]]
 void zigzagScan2D(const size_t size[2], F &&callback) {
   std::array<size_t, 2> rot { 0, 1 };
   std::array<size_t, 2> pos {};
@@ -132,7 +131,6 @@ void zigzagScan2D(const size_t size[2], F &&callback) {
 }
 
 template <typename F>
-[[deprecated]]
 void zigzagScan3D(const size_t size[3], F &&callback) {
   std::array<size_t, 3> rot { 0, 1, 2 };
   std::array<size_t, 3> pos {};
@@ -184,7 +182,6 @@ void zigzagScan3D(const size_t size[3], F &&callback) {
 }
 
 template <typename F>
-[[deprecated]]
 void zigzagScan4D(const size_t size[4], F &&callback) {
   std::array<size_t, 4> rot { 0, 1, 2, 3 };
   std::array<size_t, 4> pos {};

@@ -72,3 +72,19 @@ TEST(Zigzag, VisitsEveryThreeDimensionalPositionOnce) {
   EXPECT_EQ(order.size(), 24U);
   EXPECT_EQ(positions.size(), 24U);
 }
+
+TEST(Zigzag, SkipFirstVisitsEveryPositionExceptDc) {
+  const auto full = zigzagOrder<2>({8, 8});
+  const std::array<size_t, 2> size {8, 8};
+  std::vector<std::array<size_t, 2>> skipped;
+  zigzagScanSkipFirst<2>(size.data(), [&](const size_t position[2]) {
+    skipped.push_back({position[0], position[1]});
+  });
+
+  std::set<std::array<size_t, 2>> expected(full.begin(), full.end());
+  expected.erase({0, 0});
+  const std::set<std::array<size_t, 2>> visited(skipped.begin(), skipped.end());
+
+  EXPECT_EQ(skipped.size(), full.size() - 1);
+  EXPECT_EQ(visited, expected);
+}
