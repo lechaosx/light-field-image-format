@@ -113,12 +113,9 @@ int main(int argc, char *argv[]) {
   }
 
   const xvc_decoder_api *xvc_api = xvc_decoder_api_get();
-  const auto delete_parameters =
-      [xvc_api](xvc_decoder_parameters *parameters) noexcept {
-        xvc_api->parameters_destroy(parameters);
-      };
-  std::unique_ptr<xvc_decoder_parameters, decltype(delete_parameters)> params{
-      xvc_api->parameters_create(), delete_parameters};
+  std::unique_ptr<xvc_decoder_parameters,
+                  decltype(xvc_api->parameters_destroy)> params {
+      xvc_api->parameters_create(), xvc_api->parameters_destroy};
   if (!params) {
     throw std::runtime_error("xvc parameter creation failed");
   }
@@ -131,11 +128,8 @@ int main(int argc, char *argv[]) {
                              xvc_api->xvc_dec_get_error_text(parameter_result));
   }
 
-  const auto delete_decoder = [xvc_api](xvc_decoder *decoder) noexcept {
-    xvc_api->decoder_destroy(decoder);
-  };
-  std::unique_ptr<xvc_decoder, decltype(delete_decoder)> decoder{
-      xvc_api->decoder_create(params.get()), delete_decoder};
+  std::unique_ptr<xvc_decoder, decltype(xvc_api->decoder_destroy)> decoder {
+      xvc_api->decoder_create(params.get()), xvc_api->decoder_destroy};
   if (!decoder) {
     throw std::runtime_error("xvc decoder creation failed");
   }

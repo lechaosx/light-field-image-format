@@ -150,7 +150,8 @@ int main(int argc, char *argv[]) {
     }
 
     ffmpeg::ScaleContext convert_context{
-        sws_getContext(frame->width, frame->height, AV_PIX_FMT_YUV444P,
+        sws_getContext(frame->width, frame->height,
+                       static_cast<AVPixelFormat>(frame->format),
                        rgb_frame->width, rgb_frame->height, AV_PIX_FMT_RGB24, 0,
                        nullptr, nullptr, nullptr),
         sws_freeContext};

@@ -277,7 +277,7 @@ int main(int argc, char *argv[]) {
     in_context->framerate = {static_cast<int>(image_count), 1};
     in_context->pix_fmt = AV_PIX_FMT_YUV444P;
     const double bitrate = bpp * image_pixels;
-    if (bitrate > static_cast<double>(std::numeric_limits<int64_t>::max())) {
+    if (bitrate >= static_cast<double>(std::numeric_limits<int64_t>::max())) {
       throw std::length_error("requested bitrate exceeds codec limits");
     }
     in_context->bit_rate = static_cast<int64_t>(bitrate);

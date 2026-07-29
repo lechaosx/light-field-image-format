@@ -125,9 +125,11 @@ int main(int argc, char *argv[]) {
   } catch (const std::exception &) {
     throw std::invalid_argument("bitrate must be a number");
   }
-  if (!std::isfinite(bitrate) || bitrate <= 0 ||
-      bitrate > static_cast<double>(std::numeric_limits<int64_t>::max())) {
+  if (!std::isfinite(bitrate) || bitrate <= 0) {
     throw std::invalid_argument("bitrate must be positive and finite");
+  }
+  if (bitrate >= static_cast<double>(std::numeric_limits<int64_t>::max())) {
+    throw std::invalid_argument("bitrate exceeds codec limits");
   }
 
   images = mapPPMs(input_file_mask);

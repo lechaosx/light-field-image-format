@@ -292,6 +292,8 @@ set_tests_properties(
 )
 
 if(LFIF_BUILD_EXTRAS)
+  find_program(FFMPEG_EXECUTABLE NAMES ffmpeg REQUIRED)
+
   add_executable(create_extra_test_ppm create_extra_test_ppm.cc)
   target_link_libraries(create_extra_test_ppm PRIVATE ppm)
 
@@ -481,6 +483,47 @@ if(LFIF_BUILD_EXTRAS)
       --check ${CMAKE_CURRENT_BINARY_DIR}/hevc-0.ppm
   )
   set_tests_properties(ExtraSmoke.HevcOutput PROPERTIES DEPENDS ExtraSmoke.HevcDecompress)
+
+  add_test(
+    NAME ExtraHevc.Create420Stream
+    COMMAND
+      ${FFMPEG_EXECUTABLE}
+      -y -loglevel error
+      -f lavfi -i color=c=red:size=64x64:rate=1
+      -frames:v 1
+      -pix_fmt yuv420p
+      -c:v libx265
+      -f hevc
+      ${CMAKE_CURRENT_BINARY_DIR}/external-420.hevc
+  )
+  set_tests_properties(
+    ExtraHevc.Create420Stream
+    PROPERTIES FIXTURES_SETUP ExtraHevc420Stream
+  )
+  add_test(
+    NAME ExtraHevc.Decompress420Stream
+    COMMAND
+      $<TARGET_FILE:hevc_decompress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/external-420.hevc
+      -o "${CMAKE_CURRENT_BINARY_DIR}/hevc-420-#.ppm"
+  )
+  set_tests_properties(
+    ExtraHevc.Decompress420Stream
+    PROPERTIES
+      FIXTURES_REQUIRED ExtraHevc420Stream
+      FIXTURES_SETUP ExtraHevc420Output
+  )
+  add_test(
+    NAME ExtraHevc.Check420Output
+    COMMAND
+      $<TARGET_FILE:create_extra_test_ppm>
+      --check-red
+      ${CMAKE_CURRENT_BINARY_DIR}/hevc-420-0.ppm
+  )
+  set_tests_properties(
+    ExtraHevc.Check420Output
+    PROPERTIES FIXTURES_REQUIRED ExtraHevc420Output
+  )
 
   add_test(
     NAME ExtraSmoke.XvcCompress
@@ -688,6 +731,41 @@ if(LFIF_BUILD_EXTRAS)
       -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
       -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-x265.txt
       -f 2 -l 1
+  )
+  add_test(
+    NAME ExtraArgs.Av1RejectsInt64BoundaryBitrate
+    COMMAND
+      ${expect_failure}
+      $<TARGET_FILE:av1bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-av1-boundary.txt
+      -f 2251799813685248 -l 2251799813685248
+  )
+  add_test(
+    NAME ExtraArgs.X265RejectsInt64BoundaryBitrate
+    COMMAND
+      ${expect_failure}
+      $<TARGET_FILE:x265bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-x265-boundary.txt
+      -f 2251799813685248 -l 2251799813685248
+  )
+  add_test(
+    NAME ExtraArgs.HevcRejectsInt64BoundaryBitrate
+    COMMAND
+      ${expect_failure}
+      $<TARGET_FILE:hevc_compress>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/extra-input.ppm
+      -o ${CMAKE_CURRENT_BINARY_DIR}/invalid-hevc-boundary.hevc
+      -b 9223372036854775808
+  )
+  set_tests_properties(
+    ExtraArgs.Av1RejectsInt64BoundaryBitrate
+    ExtraArgs.X265RejectsInt64BoundaryBitrate
+    ExtraArgs.HevcRejectsInt64BoundaryBitrate
+    PROPERTIES
+      FIXTURES_REQUIRED ExtraSmokeInput
+      PASS_REGULAR_EXPRESSION "bitrate exceeds codec limits"
   )
   add_test(
     NAME ExtraArgs.MozBenchRejectsDescendingQualities

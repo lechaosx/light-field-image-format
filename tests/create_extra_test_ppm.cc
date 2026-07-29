@@ -25,6 +25,16 @@ int main(int argc, char *argv[]) {
     PPM image = PPM::map(argv[2]);
     return 0;
   }
+  if (argc == 3 && std::string_view(argv[1]) == "--check-red") {
+    PPM image = PPM::map(argv[2]);
+    for (size_t pixel {}; pixel < image.width() * image.height(); ++pixel) {
+      const auto sample = image.get(pixel);
+      if (sample[0] < 200 || sample[1] > 50 || sample[2] > 50) {
+        throw std::runtime_error("PPM is not red");
+      }
+    }
+    return 0;
+  }
   if (argc == 4 && std::string_view(argv[1]) == "--grid") {
     size_t count = std::stoul(argv[3]);
     for (size_t image = 0; image < count; ++image) {
