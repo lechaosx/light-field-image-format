@@ -7,8 +7,6 @@
 #include "components/dct.h"
 #include "components/diag_scan.h"
 
-#include "lfif.h"
-
 #include <cstdint>
 #include <cstddef>
 

@@ -15,12 +15,19 @@
 #include "dwt_block_transformer.h"
 #include "dwt_block_stream.h"
 #include "prediction_type_stream.h"
-#include "lfwf.h"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 
 template <size_t D>
-struct LFWFDecoder: public LFWF<D> {
+struct LFWFDecoder {
+  std::array<size_t, D> size;
+  std::array<size_t, D> block_size;
+  uint8_t depth_bits;
+  uint8_t discarded_bits;
+  bool predicted;
+
   template<typename F>
   void decodeStream(std::istream &input, F &&pusher) {
     DynamicBlock<int32_t, D> block_Y(this->block_size);
