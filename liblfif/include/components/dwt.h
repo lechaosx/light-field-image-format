@@ -11,12 +11,13 @@
 #include "block.h"
 #include "meta.h"
 
-#include <cmath>
-
 #include <array>
+#include <cstdint>
+#include <limits>
+#include <stdexcept>
 
-static inline int shift_right_and_round(int32_t a, int32_t b) {
-   return (a + (1 << (b - 1))) >> b;
+static inline int64_t shift_right_and_round(int64_t a, unsigned b) {
+   return (a + (int64_t {1} << (b - 1))) >> b;
 }
 
 template <size_t D>
@@ -59,17 +60,31 @@ struct fdwt<1> {
     }
 
     for (size_t x = 1; x < block_size[0]; x += 2) {
-      int32_t left  = inputs[x - 1];
-      int32_t right = x >= block_size[0] - 1 ? 0 : inputs[x + 1];
-
-      inputs[x] -= shift_right_and_round(left + right, 1);
+      const int64_t left = inputs[x - 1];
+      const int64_t right =
+          x >= block_size[0] - 1 ? 0 : inputs[x + 1];
+      const int64_t value =
+          static_cast<int64_t>(inputs[x])
+          - shift_right_and_round(left + right, 1);
+      if (value < std::numeric_limits<int32_t>::min()
+          || value > std::numeric_limits<int32_t>::max()) {
+        throw std::overflow_error("wavelet coefficient overflow");
+      }
+      inputs[x] = static_cast<int32_t>(value);
     }
 
     for (size_t x = 0; x < block_size[0]; x += 2) {
-      int32_t left  = x ? inputs[x - 1] : 0;
-      int32_t right = x >= block_size[0] - 1 ? 0 : inputs[x + 1];
-
-      inputs[x] += shift_right_and_round(left + right, 2);
+      const int64_t left = x ? inputs[x - 1] : 0;
+      const int64_t right =
+          x >= block_size[0] - 1 ? 0 : inputs[x + 1];
+      const int64_t value =
+          static_cast<int64_t>(inputs[x])
+          + shift_right_and_round(left + right, 2);
+      if (value < std::numeric_limits<int32_t>::min()
+          || value > std::numeric_limits<int32_t>::max()) {
+        throw std::overflow_error("wavelet coefficient overflow");
+      }
+      inputs[x] = static_cast<int32_t>(value);
     }
 
     size_t bigger_half = (block_size[0] + 1) >> 1;
@@ -136,17 +151,31 @@ struct idwt<1> {
     }
 
     for (size_t x = 0; x < block_size[0]; x += 2) {
-      int32_t left  = x ? inputs[x - 1] : 0;
-      int32_t right = x >= block_size[0] - 1 ? 0 : inputs[x + 1];
-
-      inputs[x] -= shift_right_and_round(left + right, 2);
+      const int64_t left = x ? inputs[x - 1] : 0;
+      const int64_t right =
+          x >= block_size[0] - 1 ? 0 : inputs[x + 1];
+      const int64_t value =
+          static_cast<int64_t>(inputs[x])
+          - shift_right_and_round(left + right, 2);
+      if (value < std::numeric_limits<int32_t>::min()
+          || value > std::numeric_limits<int32_t>::max()) {
+        throw std::overflow_error("inverse wavelet overflow");
+      }
+      inputs[x] = static_cast<int32_t>(value);
     }
 
     for (size_t x = 1; x < block_size[0]; x += 2) {
-      int32_t left  = inputs[x - 1];
-      int32_t right = x >= block_size[0] - 1 ? 0 : inputs[x + 1];
-
-      inputs[x] += shift_right_and_round(left + right, 1);
+      const int64_t left = inputs[x - 1];
+      const int64_t right =
+          x >= block_size[0] - 1 ? 0 : inputs[x + 1];
+      const int64_t value =
+          static_cast<int64_t>(inputs[x])
+          + shift_right_and_round(left + right, 1);
+      if (value < std::numeric_limits<int32_t>::min()
+          || value > std::numeric_limits<int32_t>::max()) {
+        throw std::overflow_error("inverse wavelet overflow");
+      }
+      inputs[x] = static_cast<int32_t>(value);
     }
 
     for (size_t x = 0; x < block_size[0]; x++) {

@@ -63,12 +63,18 @@ syntax incompatibly therefore requires a new container major version.
 The arithmetic codec is currently defined by the reference implementation and
 is not presented as an external standardized codec. Independent container
 parsers need only treat exactly `payload_size` bytes as the payload.
+Transform coefficients use signed magnitude and are limited to
+`INT32_MAX`. The first three magnitude levels use context-coded flags. Any
+remaining magnitude is coded as order-0 Exp-Golomb: its prefix uses the
+coefficient context and its suffix uses bypass bins. The sign is one bypass bin.
 
 Version 1 supports three unsigned RGB channels with sample depths from 1 to 16
 bits. Dimension and block counts match, every extent is nonzero, and all extent
 products and block alignment calculations fit the implementation's `size_t`.
-The number of discarded transform bits does not exceed the sample depth. The
-payload contains exactly `payload_size` bytes.
+Each block extent is at most its image extent. DCT block extents are at most 64
+and their product is at most 65,536 samples. The number of discarded transform
+bits does not exceed the sample depth. The payload contains exactly
+`payload_size` bytes.
 
 ## Version and extension rules
 

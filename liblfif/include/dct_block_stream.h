@@ -11,6 +11,9 @@
 #include <cstddef>
 
 #include <array>
+#include <cmath>
+#include <limits>
+#include <stdexcept>
 
 template<size_t D>
 class DCTCompressedBlockStreamState {
@@ -92,7 +95,21 @@ public:
 
       if (nonzero_diags[diag]) {
         diagonalScan(this->block_size, diag, [&](std::array<size_t, D> pos) {
-          int32_t coef = block[pos];
+          const double coefficient = block[pos];
+          constexpr double maximum_coefficient =
+              std::numeric_limits<int32_t>::max();
+          if (!std::isfinite(coefficient)
+              || coefficient < -maximum_coefficient
+              || coefficient > maximum_coefficient) {
+            throw std::overflow_error(
+                "coefficient magnitude exceeds codec limit");
+          }
+          const int32_t integer_coefficient =
+              static_cast<int32_t>(coefficient);
+          const int64_t signed_magnitude = integer_coefficient;
+          const uint64_t magnitude = signed_magnitude < 0
+              ? static_cast<uint64_t>(-signed_magnitude)
+              : static_cast<uint64_t>(signed_magnitude);
 
           size_t nonzero_neighbours_cnt = 0;
 
@@ -105,39 +122,36 @@ public:
           }
 
           if (diag < this->threshold) {
-            encoder.encodeBit(this->significant_coef_flag_high_ctx[nonzero_neighbours_cnt], coef);
+            encoder.encodeBit(
+                this->significant_coef_flag_high_ctx[nonzero_neighbours_cnt],
+                magnitude != 0);
           }
           else {
-            encoder.encodeBit(this->significant_coef_flag_low_ctx[nonzero_neighbours_cnt], coef);
+            encoder.encodeBit(
+                this->significant_coef_flag_low_ctx[nonzero_neighbours_cnt],
+                magnitude != 0);
           }
 
-          if (!coef) {
+          if (!magnitude) {
             zero_coef_distr++;
           }
           else {
             zero_coef_distr--;
 
-            bool sign {};
+            encoder.encodeBit(
+                this->coef_greater_one_ctx[diag], magnitude > 1);
 
-            if (coef > 0) {
-              sign = 0;
-            }
-            else {
-              sign = 1;
-              coef = -coef;
-            }
+            if (magnitude > 1) {
+              encoder.encodeBit(
+                  this->coef_greater_two_ctx[diag], magnitude > 2);
 
-            encoder.encodeBit(this->coef_greater_one_ctx[diag], coef > 1);
-
-            if (coef > 1) {
-              encoder.encodeBit(this->coef_greater_two_ctx[diag], coef > 2);
-
-              if (coef > 2) {
-                encoder.encodeU(this->coef_abs_level_ctx[diag], coef - 3);
+              if (magnitude > 2) {
+                encoder.encodeEG(
+                    0, this->coef_abs_level_ctx[diag], magnitude - 3);
               }
             }
 
-            encoder.encodeBitBypass(sign);
+            encoder.encodeBitBypass(integer_coefficient < 0);
           }
         });
       }
@@ -160,6 +174,9 @@ public:
   DCTBlockStreamDecoder(const std::array<size_t, D> &block_size): DCTCompressedBlockStreamState<D>(block_size) {}
 
   void decodeBlock(CABACDecoder &decoder, DynamicBlock<float, D> &block) {
+    constexpr uint64_t maximum_coefficient =
+        static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+
     block.fill(0.f);
     std::vector<bool> nonzero_diags(this->diagonals);
 
@@ -179,7 +196,8 @@ public:
 
       if (nonzero_diags[diag]) {
         diagonalScan<D>(this->block_size, diag, [&](std::array<size_t, D> pos) {
-          int32_t coef = 0.f;
+          uint64_t magnitude {};
+          bool negative {};
 
           size_t nonzero_neighbours_cnt = 0;
 
@@ -192,34 +210,43 @@ public:
           }
 
           if (diag < this->threshold) {
-            coef = decoder.decodeBit(this->significant_coef_flag_high_ctx[nonzero_neighbours_cnt]);
+            magnitude = decoder.decodeBit(
+                this->significant_coef_flag_high_ctx[nonzero_neighbours_cnt]);
           }
           else {
-            coef = decoder.decodeBit(this->significant_coef_flag_low_ctx[nonzero_neighbours_cnt]);
+            magnitude = decoder.decodeBit(
+                this->significant_coef_flag_low_ctx[nonzero_neighbours_cnt]);
           }
 
-          if (!coef) {
+          if (!magnitude) {
             zero_coef_distr++;
           }
           else {
             zero_coef_distr--;
 
-            coef += decoder.decodeBit(this->coef_greater_one_ctx[diag]);
+            magnitude += decoder.decodeBit(this->coef_greater_one_ctx[diag]);
+            if (magnitude > maximum_coefficient) {
+              throw std::runtime_error("coefficient magnitude exceeds codec limit");
+            }
 
-            if (coef > 1) {
-              coef += decoder.decodeBit(this->coef_greater_two_ctx[diag]);
+            if (magnitude > 1) {
+              magnitude += decoder.decodeBit(this->coef_greater_two_ctx[diag]);
+              if (magnitude > maximum_coefficient) {
+                throw std::runtime_error("coefficient magnitude exceeds codec limit");
+              }
 
-              if (coef > 2) {
-                coef += decoder.decodeU(this->coef_abs_level_ctx[diag]);
+              if (magnitude > 2) {
+                magnitude += decoder.decodeEG(
+                    0, this->coef_abs_level_ctx[diag],
+                    maximum_coefficient - magnitude);
               }
             }
 
-            if (decoder.decodeBitBypass()) {
-              coef = -coef;
-            }
+            negative = decoder.decodeBitBypass();
           }
 
-          block[pos] = coef;
+          const int32_t coefficient = static_cast<int32_t>(magnitude);
+          block[pos] = negative ? -coefficient : coefficient;
         });
       }
 

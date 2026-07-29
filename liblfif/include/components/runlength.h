@@ -14,9 +14,8 @@
 #include "cabac.h"
 #include "endian.h"
 
+#include <bit>
 #include <cstdint>
-#include <cmath>
-#include <algorithm>
 
 using RLAMPUNIT = int64_t;    /**< @brief Unit intended to contain amplitude value in un-length pair.*/
 using HuffmanClass = uint8_t; /**< @brief Unit intended to contain number of bits of amplitude.*/
@@ -77,22 +76,14 @@ public:
    * @return Minimum number of bits needed to contain the maximum possible amplitude size.
    */
   static size_t classBits(size_t amp_bits) {
-    return ceil(log2(amp_bits + 1));
+    return std::bit_width(amp_bits);
   }
 
   HuffmanClass huffmanClass() const {
-    RLAMPUNIT amp = amplitude;
-    if (amp < 0) {
-      amp = -amp;
-    }
-
-    HuffmanClass huff_class = 0;
-    while (amp) {
-      amp >>= 1;
-      huff_class++;
-    }
-
-    return huff_class;
+    const uint64_t magnitude = amplitude < 0
+        ? static_cast<uint64_t>(-(amplitude + 1)) + 1
+        : static_cast<uint64_t>(amplitude);
+    return static_cast<HuffmanClass>(std::bit_width(magnitude));
   }
 
   HuffmanSymbol huffmanSymbol(size_t class_bits) const {

@@ -94,14 +94,27 @@ struct low_pass_sum<1> {
 
 template <size_t D, typename T>
 void low_pass_filter(DynamicBlock<T, D> &main_ref) {
-  auto inputF = [&](size_t index) -> auto & {
-    return main_ref[index];
-  };
-
-  low_pass_sum<D>(main_ref.size().data(), inputF);
-
-  for (size_t i { 0 }; i < get_stride<D>(main_ref.size()); i++) {
-    main_ref[i] /= constpow(4, D);
+  if constexpr (std::is_integral_v<T>) {
+    DynamicBlock<int64_t, D> values(main_ref.size());
+    for (size_t i {}; i < main_ref.stride(D); ++i) {
+      values[i] = main_ref[i];
+    }
+    auto inputF = [&](size_t index) -> auto & {
+      return values[index];
+    };
+    low_pass_sum<D>(values.size().data(), inputF);
+    for (size_t i {}; i < values.stride(D); ++i) {
+      main_ref[i] = static_cast<T>(values[i] / constpow(4, D));
+    }
+  }
+  else {
+    auto inputF = [&](size_t index) -> auto & {
+      return main_ref[index];
+    };
+    low_pass_sum<D>(main_ref.size().data(), inputF);
+    for (size_t i {}; i < main_ref.stride(D); ++i) {
+      main_ref[i] /= constpow(4, D);
+    }
   }
 }
 
@@ -288,7 +301,8 @@ T predict_DC(const std::array<size_t, D> &size, F &inputF) {
 
 template<size_t D, typename T, typename F>
 void predict_planar(DynamicBlock<T, D> &output, F &inputF) {
-  output.fill(0);
+  using Sum = std::conditional_t<std::is_integral_v<T>, int64_t, T>;
+  DynamicBlock<Sum, D> sum(output.size());
 
   for (size_t neighbour_idx { 0 }; neighbour_idx < D; neighbour_idx++) {
     DynamicBlock<T, D> tmp_prediction(output.size());
@@ -299,11 +313,11 @@ void predict_planar(DynamicBlock<T, D> &output, F &inputF) {
     predict_direction<D>(tmp_prediction, direction, inputF);
 
     for (size_t i { 0 }; i < get_stride<D>(tmp_prediction.size()); i++) {
-      output[i] += tmp_prediction[i];
+      sum[i] += static_cast<Sum>(tmp_prediction[i]);
     }
   }
 
   for (size_t i { 0 }; i < output.stride(D); i++) {
-    output[i] /= D;
+    output[i] = static_cast<T>(sum[i] / static_cast<Sum>(D));
   }
 }

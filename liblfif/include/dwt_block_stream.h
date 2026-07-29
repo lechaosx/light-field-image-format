@@ -7,6 +7,8 @@
 #include <cstddef>
 
 #include <array>
+#include <limits>
+#include <stdexcept>
 
 template<size_t D>
 class DWTCompressedBlockStreamState {
@@ -23,32 +25,30 @@ public:
 
   void encodeBlock(const DynamicBlock<int32_t, D> &block, CABACEncoder &encoder) {
     iterate_dimensions<D>(block.size(), [&](const auto &pos) {
-      int32_t coef = block[pos];
+      const int64_t coefficient = block[pos];
+      const uint64_t magnitude = coefficient < 0
+          ? static_cast<uint64_t>(-coefficient)
+          : static_cast<uint64_t>(coefficient);
+      if (magnitude > static_cast<uint64_t>(
+              std::numeric_limits<int32_t>::max())) {
+        throw std::overflow_error("coefficient magnitude exceeds codec limit");
+      }
 
-      encoder.encodeBit(this->significant_coef_flag_ctx, coef);
+      encoder.encodeBit(this->significant_coef_flag_ctx, magnitude != 0);
 
-      if (coef) {
-        bool sign {};
+      if (magnitude) {
+        encoder.encodeBit(this->coef_greater_one_ctx, magnitude > 1);
 
-        if (coef > 0) {
-          sign = 0;
-        }
-        else {
-          sign = 1;
-          coef = -coef;
-        }
+        if (magnitude > 1) {
+          encoder.encodeBit(this->coef_greater_two_ctx, magnitude > 2);
 
-        encoder.encodeBit(this->coef_greater_one_ctx, coef > 1);
-
-        if (coef > 1) {
-          encoder.encodeBit(this->coef_greater_two_ctx, coef > 2);
-
-          if (coef > 2) {
-            encoder.encodeU(this->coef_abs_level_ctx, coef - 3);
+          if (magnitude > 2) {
+            encoder.encodeEG(
+                0, this->coef_abs_level_ctx, magnitude - 3);
           }
         }
 
-        encoder.encodeBitBypass(sign);
+        encoder.encodeBitBypass(coefficient < 0);
       }
     });
   }
@@ -60,26 +60,38 @@ class DWTBlockStreamDecoder: public DWTCompressedBlockStreamState<D> {
 public:
 
   void decodeBlock(CABACDecoder &decoder, DynamicBlock<int32_t, D> &block) {
+    constexpr uint64_t maximum_coefficient =
+        static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+
     iterate_dimensions<D>(block.size(), [&](const auto &pos) {
-      int32_t coef = decoder.decodeBit(this->significant_coef_flag_ctx);
+      uint64_t magnitude =
+          decoder.decodeBit(this->significant_coef_flag_ctx);
+      bool negative {};
 
-      if (coef) {
-        coef += decoder.decodeBit(this->coef_greater_one_ctx);
+      if (magnitude) {
+        magnitude += decoder.decodeBit(this->coef_greater_one_ctx);
+        if (magnitude > maximum_coefficient) {
+          throw std::runtime_error("coefficient magnitude exceeds codec limit");
+        }
 
-        if (coef > 1) {
-          coef += decoder.decodeBit(this->coef_greater_two_ctx);
+        if (magnitude > 1) {
+          magnitude += decoder.decodeBit(this->coef_greater_two_ctx);
+          if (magnitude > maximum_coefficient) {
+            throw std::runtime_error("coefficient magnitude exceeds codec limit");
+          }
 
-          if (coef > 2) {
-            coef += decoder.decodeU(this->coef_abs_level_ctx);
+          if (magnitude > 2) {
+            magnitude += decoder.decodeEG(
+                0, this->coef_abs_level_ctx,
+                maximum_coefficient - magnitude);
           }
         }
 
-        if (decoder.decodeBitBypass()) {
-          coef = -coef;
-        }
+        negative = decoder.decodeBitBypass();
       }
 
-      block[pos] = coef;
+      const int32_t coefficient = static_cast<int32_t>(magnitude);
+      block[pos] = negative ? -coefficient : coefficient;
     });
   }
 };

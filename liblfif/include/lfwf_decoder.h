@@ -82,13 +82,20 @@ struct LFWFDecoder {
       }
 
       moveBlock<D>([&](const auto &pos) {
-                     int32_t Y  = block_Y[pos] + (1 << (this->depth_bits - 1));
-                     int32_t U = block_U[pos];
-                     int32_t V = block_V[pos];
+                     const int64_t Y =
+                         static_cast<int64_t>(block_Y[pos])
+                         + (int64_t {1} << (this->depth_bits - 1));
+                     const int64_t U = block_U[pos];
+                     const int64_t V = block_V[pos];
+                     const int64_t maximum =
+                         (int64_t {1} << this->depth_bits) - 1;
 
-                     uint16_t G = std::clamp<int32_t>(Y - ((U + V) >> 2), 0, (1 << this->depth_bits) - 1);
-                     uint16_t R = std::clamp<int32_t>(V + G,              0, (1 << this->depth_bits) - 1);
-                     uint16_t B = std::clamp<int32_t>(U + G,              0, (1 << this->depth_bits) - 1);
+                     uint16_t G = std::clamp<int64_t>(
+                         Y - ((U + V) >> 2), 0, maximum);
+                     uint16_t R = std::clamp<int64_t>(
+                         V + G, 0, maximum);
+                     uint16_t B = std::clamp<int64_t>(
+                         U + G, 0, maximum);
 
                      return std::array<uint16_t, 3>({R, G, B});
                    }, this->block_size, {},

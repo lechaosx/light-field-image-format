@@ -18,6 +18,8 @@ constexpr size_t fixed_header_size = 48;
 constexpr uint32_t prediction_flag = 1U << 0;
 constexpr uint32_t disparity_flag = 1U << 1;
 constexpr uint32_t known_flags = prediction_flag | disparity_flag;
+constexpr uint64_t maximum_dct_block_extent = 64;
+constexpr size_t maximum_dct_block_values = 65536;
 
 void append(std::vector<uint8_t> &output, uint64_t value, size_t bytes) {
   for (size_t i = bytes; i > 0; --i) {
@@ -81,6 +83,14 @@ void validate(const Header &header) {
     if (extent64 == 0 || block_extent64 == 0) {
       throw std::invalid_argument("image and block extents must be nonzero");
     }
+    if (block_extent64 > extent64) {
+      throw std::invalid_argument(
+          "block extent must not exceed image extent");
+    }
+    if (header.transform == Transform::dct
+        && block_extent64 > maximum_dct_block_extent) {
+      throw std::invalid_argument("DCT block extent exceeds codec limit");
+    }
     if (extent64 > std::numeric_limits<size_t>::max()
         || block_extent64 > std::numeric_limits<size_t>::max()) {
       throw std::length_error("LFIF extents do not fit size_t");
@@ -101,6 +111,10 @@ void validate(const Header &header) {
     image_values *= extent;
     block_values *= block_extent;
     aligned_values *= aligned_extent;
+  }
+  if (header.transform == Transform::dct
+      && block_values > maximum_dct_block_values) {
+    throw std::invalid_argument("DCT block contains too many samples");
   }
 }
 

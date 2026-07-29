@@ -10,6 +10,9 @@
 
 #include "bitstream.h"
 
+#include <limits>
+#include <stdexcept>
+
 /**
 * @brief Base CABAC state class.
 */
@@ -197,6 +200,8 @@ public:
   inline uint64_t decodeU(ContextModel &context);
   inline uint64_t decodeUEG0(uint64_t u_bits, ContextModel &context);
   inline uint64_t decodeEG(uint64_t k);
+  inline uint64_t decodeEG(
+      uint64_t k, ContextModel &context, uint64_t maximum);
 
 private:
   IBitstream *m_stream;
@@ -311,10 +316,20 @@ void CABACEncoder::encodeU(ContextModel &context, uint64_t value) {
 }
 
 void CABACEncoder::encodeEG(uint64_t k, ContextModel &context, uint64_t value) {
-  while (value >= (uint64_t { 1 } << k)) {
+  if (k > 64) {
+    throw std::overflow_error("CABAC Exp-Golomb order exceeds codec width");
+  }
+  while (value != 0) {
+    if (k >= 64) {
+      throw std::overflow_error("CABAC Exp-Golomb value exceeds codec width");
+    }
+    const uint64_t increment = uint64_t {1} << k;
+    if (value < increment) {
+      break;
+    }
     encodeBit(context, 1);
-    value -= uint64_t { 1 } << k;
-    k++;
+    value -= increment;
+    ++k;
   }
 
   encodeBit(context, 0);
@@ -325,10 +340,20 @@ void CABACEncoder::encodeEG(uint64_t k, ContextModel &context, uint64_t value) {
 }
 
 void CABACEncoder::encodeEGBypass(uint64_t k, uint64_t value) {
-  while (value >= (uint64_t { 1 } << k)) {
+  if (k > 64) {
+    throw std::overflow_error("CABAC Exp-Golomb order exceeds codec width");
+  }
+  while (value != 0) {
+    if (k >= 64) {
+      throw std::overflow_error("CABAC Exp-Golomb value exceeds codec width");
+    }
+    const uint64_t increment = uint64_t {1} << k;
+    if (value < increment) {
+      break;
+    }
     encodeBitBypass(1);
-    value -= uint64_t { 1 } << k;
-    k++;
+    value -= increment;
+    ++k;
   }
 
   encodeBitBypass(0);
@@ -449,19 +474,64 @@ uint64_t CABACDecoder::decodeUEG0(uint64_t u_bits, ContextModel &context) {
 }
 
 uint64_t CABACDecoder::decodeEG(uint64_t k) {
-  uint64_t value      { 0 };
-  uint64_t bin_symbol { 0 };
+  if (k > 64) {
+    throw std::runtime_error("CABAC Exp-Golomb order exceeds codec width");
+  }
+  uint64_t value {};
 
   for (bool bit = decodeBitBypass(); bit; bit = decodeBitBypass()) {
-    value += uint64_t { 1 } << k;
+    if (k >= 64) {
+      throw std::runtime_error("CABAC Exp-Golomb value exceeds limit");
+    }
+    const uint64_t increment = uint64_t { 1 } << k;
+    if (value > std::numeric_limits<uint64_t>::max() - increment) {
+      throw std::runtime_error("CABAC Exp-Golomb value exceeds limit");
+    }
+    value += increment;
     k++;
   }
 
   while (k--) {
-    bin_symbol |= uint64_t { decodeBitBypass() } << k;
+    if (decodeBitBypass()) {
+      const uint64_t increment = uint64_t {1} << k;
+      if (value > std::numeric_limits<uint64_t>::max() - increment) {
+        throw std::runtime_error("CABAC Exp-Golomb value exceeds limit");
+      }
+      value += increment;
+    }
   };
 
-  value += bin_symbol;
+  return value;
+}
+
+uint64_t CABACDecoder::decodeEG(
+    uint64_t k, ContextModel &context, uint64_t maximum) {
+  if (k > 64) {
+    throw std::runtime_error("CABAC Exp-Golomb order exceeds codec width");
+  }
+  uint64_t value {};
+
+  for (bool bit = decodeBit(context); bit; bit = decodeBit(context)) {
+    if (k >= 64) {
+      throw std::runtime_error("CABAC Exp-Golomb value exceeds limit");
+    }
+    const uint64_t increment = uint64_t {1} << k;
+    if (increment > maximum - value) {
+      throw std::runtime_error("CABAC Exp-Golomb value exceeds limit");
+    }
+    value += increment;
+    ++k;
+  }
+
+  while (k--) {
+    if (decodeBitBypass()) {
+      const uint64_t increment = uint64_t {1} << k;
+      if (increment > maximum - value) {
+        throw std::runtime_error("CABAC Exp-Golomb value exceeds limit");
+      }
+      value += increment;
+    }
+  }
 
   return value;
 }

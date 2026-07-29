@@ -4,15 +4,28 @@
 #include <components/huffman.h>
 #include <components/runlength.h>
 
+#include <cstdint>
+#include <limits>
 #include <sstream>
 #include <utility>
 #include <vector>
 
 TEST(RunLength, RoundTripsSignedAmplitudes) {
   const std::vector<RunLengthPair> expected {
-    {0, 5}, {3, -12}, {0, 1}, {7, -1}, {15, 100}, {0, -100}, {2, 0}, {0, 0}
+    {0, 5},
+    {3, -12},
+    {0, 1},
+    {7, -1},
+    {15, 100},
+    {0, -100},
+    {2, std::numeric_limits<int32_t>::max()},
+    {1, -static_cast<int64_t>(std::numeric_limits<int32_t>::max())},
+    {0, std::numeric_limits<int64_t>::max()},
+    {0, std::numeric_limits<int64_t>::min()},
+    {2, 0},
+    {0, 0},
   };
-  constexpr size_t amplitude_bits = 8;
+  constexpr size_t amplitude_bits = 64;
   const size_t class_bits = RunLengthPair::classBits(amplitude_bits);
 
   HuffmanWeights weights;

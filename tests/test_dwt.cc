@@ -3,10 +3,13 @@
 #include <components/bitstream.h>
 #include <components/dwt.h>
 #include <dwt_block_stream.h>
+#include <dwt_block_transformer.h>
 
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <sstream>
+#include <stdexcept>
 #include <vector>
 
 TEST(Dwt, RoundTripsOddLengthSignal) {
@@ -65,5 +68,40 @@ TEST(DwtBlockStream, RoundTripsLargeSignedCoefficients) {
 
   for (size_t i = 0; i < coefficients.size(); ++i) {
     EXPECT_EQ(decoded[i], expected[i]);
+  }
+}
+
+TEST(DwtBlockStream, RejectsUnrepresentableSignedMagnitude) {
+  DynamicBlock<int32_t, 1> block({1});
+  block[0] = std::numeric_limits<int32_t>::min();
+  std::stringstream stream;
+  OBitstream output(stream);
+  CABACEncoder encoder;
+  encoder.init(output);
+  DWTBlockStreamEncoder<1> block_encoder;
+
+  EXPECT_THROW(block_encoder.encodeBlock(block, encoder), std::overflow_error);
+}
+
+TEST(Dwt, RejectsInverseArithmeticOverflow) {
+  const std::array<size_t, 1> size {2};
+  std::array<int32_t, 2> values {
+      std::numeric_limits<int32_t>::max(),
+      std::numeric_limits<int32_t>::max(),
+  };
+  auto sample = [&](size_t index) -> int32_t & { return values[index]; };
+
+  EXPECT_THROW(idwt<1>(size, sample), std::overflow_error);
+}
+
+TEST(DwtBlockTransformer, RejectsInverseBitRestorationOverflow) {
+  DWTBlockTransformer<1> transformer(1);
+  for (const int32_t coefficient : {
+           std::numeric_limits<int32_t>::max(),
+           std::numeric_limits<int32_t>::min(),
+       }) {
+    DynamicBlock<int32_t, 1> block({1});
+    block[0] = coefficient;
+    EXPECT_THROW(transformer.inversePass(block), std::overflow_error);
   }
 }

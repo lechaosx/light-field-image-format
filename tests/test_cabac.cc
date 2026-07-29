@@ -3,6 +3,8 @@
 #include <components/bitstream.h>
 #include <components/cabac.h>
 
+#include <cstdint>
+#include <limits>
 #include <sstream>
 #include <vector>
 
@@ -97,4 +99,40 @@ TEST(Cabac, RoundTripsLargeUnaryValues) {
     decoded.push_back(decoder.decodeU(decode_context));
   }
   EXPECT_EQ(decoded, expected);
+}
+
+TEST(Cabac, RejectsExpGolombValueAboveCallerLimit) {
+  std::stringstream stream;
+  OBitstream output(stream);
+  CABACEncoder encoder;
+  encoder.init(output);
+  CABAC::ContextModel encode_context {};
+  encoder.encodeEG(0, encode_context, 5);
+  encoder.terminate();
+
+  IBitstream input(stream);
+  CABACDecoder decoder;
+  decoder.init(input);
+  CABAC::ContextModel decode_context {};
+  EXPECT_THROW(decoder.decodeEG(0, decode_context, 4), std::runtime_error);
+}
+
+TEST(Cabac, RoundTripsMaximumExpGolombValue) {
+  std::stringstream stream;
+  OBitstream output(stream);
+  CABACEncoder encoder;
+  encoder.init(output);
+  CABAC::ContextModel encode_context {};
+  encoder.encodeEG(
+      0, encode_context, std::numeric_limits<uint64_t>::max());
+  encoder.terminate();
+
+  IBitstream input(stream);
+  CABACDecoder decoder;
+  decoder.init(input);
+  CABAC::ContextModel decode_context {};
+  EXPECT_EQ(
+      decoder.decodeEG(
+          0, decode_context, std::numeric_limits<uint64_t>::max()),
+      std::numeric_limits<uint64_t>::max());
 }

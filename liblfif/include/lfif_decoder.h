@@ -17,8 +17,10 @@
 #include "prediction_type_stream.h"
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 
 template <size_t D>
 struct LFIFDecoder {
@@ -86,9 +88,21 @@ struct LFIFDecoder {
                      float Cb = block_U[pos];
                      float Cr = block_V[pos];
 
-                     uint16_t R = std::clamp<float>(std::round(YCbCr::YCbCrToR(Y, Cb, Cr)), 0, std::pow(2, this->depth_bits) - 1);
-                     uint16_t G = std::clamp<float>(std::round(YCbCr::YCbCrToG(Y, Cb, Cr)), 0, std::pow(2, this->depth_bits) - 1);
-                     uint16_t B = std::clamp<float>(std::round(YCbCr::YCbCrToB(Y, Cb, Cr)), 0, std::pow(2, this->depth_bits) - 1);
+                     const float R_value =
+                         std::round(YCbCr::YCbCrToR(Y, Cb, Cr));
+                     const float G_value =
+                         std::round(YCbCr::YCbCrToG(Y, Cb, Cr));
+                     const float B_value =
+                         std::round(YCbCr::YCbCrToB(Y, Cb, Cr));
+                     if (!std::isfinite(R_value)
+                         || !std::isfinite(G_value)
+                         || !std::isfinite(B_value)) {
+                       throw std::runtime_error(
+                           "decoded color component is not finite");
+                     }
+                     uint16_t R = std::clamp<float>(R_value, 0, std::pow(2, this->depth_bits) - 1);
+                     uint16_t G = std::clamp<float>(G_value, 0, std::pow(2, this->depth_bits) - 1);
+                     uint16_t B = std::clamp<float>(B_value, 0, std::pow(2, this->depth_bits) - 1);
 
                      return std::array<uint16_t, 3>({R, G, B});
                    }, this->block_size, {},

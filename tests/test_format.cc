@@ -181,3 +181,29 @@ TEST(Format, RejectsInvalidMetadataBeforeSerialization) {
   header.discarded_bits = 9;
   EXPECT_THROW(lfif::serializeHeader(header), std::invalid_argument);
 }
+
+TEST(Format, RejectsBlockExtentAboveImageExtent) {
+  auto header = twoDimensionalWaveletHeader();
+  header.extents = {1, 1};
+  header.block_extents = {2, 1};
+
+  EXPECT_THROW(lfif::serializeHeader(header), std::invalid_argument);
+}
+
+TEST(Format, RejectsDctBlockExtentAboveSupportedLimit) {
+  auto header = twoDimensionalWaveletHeader();
+  header.transform = lfif::Transform::dct;
+  header.extents = {65, 1};
+  header.block_extents = header.extents;
+
+  EXPECT_THROW(lfif::serializeHeader(header), std::invalid_argument);
+}
+
+TEST(Format, RejectsDctBlockWithTooManySamples) {
+  auto header = twoDimensionalWaveletHeader();
+  header.transform = lfif::Transform::dct;
+  header.extents = {64, 64, 17};
+  header.block_extents = header.extents;
+
+  EXPECT_THROW(lfif::serializeHeader(header), std::invalid_argument);
+}

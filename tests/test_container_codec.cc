@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <components/bitstream.h>
+#include <components/cabac.h>
 #include <lfif/codec.h>
 
 #include <cstdint>
@@ -317,5 +319,124 @@ TEST(ContainerCodec, RejectsMissingLargePayloadBeforeAllocatingItsDeclaredSize) 
     FAIL() << "missing payload was accepted";
   } catch (const std::runtime_error &error) {
     EXPECT_STREQ(error.what(), "truncated LFIF payload");
+  }
+}
+
+TEST(ContainerCodec, RejectsWaveletCoefficientOutsideSignedMagnitudeRange) {
+  std::stringstream payload;
+  OBitstream bits(payload);
+  CABACEncoder encoder;
+  encoder.init(bits);
+  CABAC::ContextModel y_significant {};
+  CABAC::ContextModel y_greater_one {};
+  CABAC::ContextModel y_greater_two {};
+  CABAC::ContextModel y_absolute {};
+  CABAC::ContextModel uv_significant {};
+
+  encoder.encodeBit(y_significant, true);
+  encoder.encodeBit(y_greater_one, true);
+  encoder.encodeBit(y_greater_two, true);
+  encoder.encodeEG(
+      0, y_absolute,
+      static_cast<uint64_t>(std::numeric_limits<int32_t>::max()) - 2);
+  encoder.encodeBitBypass(false);
+  encoder.encodeBit(uv_significant, false);
+  encoder.encodeBit(uv_significant, false);
+  encoder.terminate();
+  bits.flush();
+
+  auto metadata = header({1, 1}, {1, 1});
+  metadata.payload_size = payload.str().size();
+  const std::vector<uint8_t> encoded_header = lfif::serializeHeader(metadata);
+  std::stringstream input(
+      std::string(encoded_header.begin(), encoded_header.end()) + payload.str());
+
+  try {
+    static_cast<void>(lfif::readImage(input));
+    FAIL() << "out-of-range coefficient was accepted";
+  } catch (const std::runtime_error &error) {
+    EXPECT_STREQ(
+        error.what(), "CABAC Exp-Golomb value exceeds limit");
+  }
+}
+
+TEST(ContainerCodec, ClampsFullRangeWaveletReconstructionWithoutOverflow) {
+  std::stringstream payload;
+  OBitstream bits(payload);
+  CABACEncoder encoder;
+  encoder.init(bits);
+  CABAC::ContextModel y_significant {};
+  CABAC::ContextModel y_greater_one {};
+  CABAC::ContextModel y_greater_two {};
+  CABAC::ContextModel y_absolute {};
+  CABAC::ContextModel uv_significant {};
+
+  encoder.encodeBit(y_significant, true);
+  encoder.encodeBit(y_greater_one, true);
+  encoder.encodeBit(y_greater_two, true);
+  encoder.encodeEG(
+      0, y_absolute,
+      static_cast<uint64_t>(std::numeric_limits<int32_t>::max()) - 3);
+  encoder.encodeBitBypass(false);
+  encoder.encodeBit(uv_significant, false);
+  encoder.encodeBit(uv_significant, false);
+  encoder.terminate();
+  bits.flush();
+
+  auto metadata = header({1, 1}, {1, 1});
+  metadata.payload_size = payload.str().size();
+  const std::vector<uint8_t> encoded_header = lfif::serializeHeader(metadata);
+  std::stringstream input(
+      std::string(encoded_header.begin(), encoded_header.end()) + payload.str());
+
+  const lfif::DecodedImage decoded = lfif::readImage(input);
+
+  EXPECT_EQ(
+      decoded.pixels.front(),
+      (lfif::Pixel {
+          std::numeric_limits<uint8_t>::max(),
+          std::numeric_limits<uint8_t>::max(),
+          std::numeric_limits<uint8_t>::max()}));
+}
+
+TEST(ContainerCodec, RejectsDctCoefficientOutsideSignedMagnitudeRange) {
+  std::stringstream payload;
+  OBitstream bits(payload);
+  CABACEncoder encoder;
+  encoder.init(bits);
+  CABAC::ContextModel y_coded_diagonal {};
+  CABAC::ContextModel y_last_diagonal {};
+  CABAC::ContextModel y_significant {};
+  CABAC::ContextModel y_greater_one {};
+  CABAC::ContextModel y_greater_two {};
+  CABAC::ContextModel y_absolute {};
+  CABAC::ContextModel uv_coded_diagonal {};
+
+  encoder.encodeBit(y_coded_diagonal, true);
+  encoder.encodeBit(y_last_diagonal, true);
+  encoder.encodeBit(y_significant, true);
+  encoder.encodeBit(y_greater_one, true);
+  encoder.encodeBit(y_greater_two, true);
+  encoder.encodeEG(
+      0, y_absolute,
+      static_cast<uint64_t>(std::numeric_limits<int32_t>::max()) - 2);
+  encoder.encodeBitBypass(false);
+  encoder.encodeBit(uv_coded_diagonal, false);
+  encoder.encodeBit(uv_coded_diagonal, false);
+  encoder.terminate();
+  bits.flush();
+
+  auto metadata = header({1, 1}, {1, 1}, lfif::Transform::dct);
+  metadata.payload_size = payload.str().size();
+  const std::vector<uint8_t> encoded_header = lfif::serializeHeader(metadata);
+  std::stringstream input(
+      std::string(encoded_header.begin(), encoded_header.end()) + payload.str());
+
+  try {
+    static_cast<void>(lfif::readImage(input));
+    FAIL() << "out-of-range coefficient was accepted";
+  } catch (const std::runtime_error &error) {
+    EXPECT_STREQ(
+        error.what(), "CABAC Exp-Golomb value exceeds limit");
   }
 }

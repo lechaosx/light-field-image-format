@@ -1,10 +1,15 @@
 #include <gtest/gtest.h>
 
+#include <components/bitstream.h>
 #include <components/dct.h>
+#include <dct_block_stream.h>
 #include <dct_block_transformer.h>
 
 #include <array>
 #include <cmath>
+#include <limits>
+#include <sstream>
+#include <stdexcept>
 #include <vector>
 
 TEST(Dct, OneDimensionalRoundTrip) {
@@ -38,4 +43,16 @@ TEST(Dct, PreservesRoundingAtHalfBoundary) {
 
     EXPECT_EQ(block[7], 39);
   }
+}
+
+TEST(DctBlockStream, RejectsNonfiniteCoefficient) {
+  DynamicBlock<float, 1> block({1});
+  block[0] = std::numeric_limits<float>::infinity();
+  std::stringstream stream;
+  OBitstream output(stream);
+  CABACEncoder encoder;
+  encoder.init(output);
+  DCTBlockStreamEncoder<1> block_encoder({1});
+
+  EXPECT_THROW(block_encoder.encodeBlock(block, encoder), std::overflow_error);
 }

@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
+#include <stdexcept>
 #include <type_traits>
 
 
@@ -156,7 +158,19 @@ public:
     predict(prediction_block, offset, type);
 
     iterate_dimensions<D>(block.size(), [&](const auto &pos) {
-      block[pos] -= prediction_block[pos];
+      if constexpr (std::is_integral_v<T>) {
+        const int64_t value =
+            static_cast<int64_t>(block[pos])
+            - static_cast<int64_t>(prediction_block[pos]);
+        if (value < std::numeric_limits<T>::min()
+            || value > std::numeric_limits<T>::max()) {
+          throw std::overflow_error("prediction residual overflow");
+        }
+        block[pos] = static_cast<T>(value);
+      }
+      else {
+        block[pos] -= prediction_block[pos];
+      }
     });
   }
 
@@ -166,7 +180,19 @@ public:
     predict(prediction_block, offset, type);
 
     iterate_dimensions<D>(block.size(), [&](const auto &pos) {
-      block[pos] += prediction_block[pos];
+      if constexpr (std::is_integral_v<T>) {
+        const int64_t value =
+            static_cast<int64_t>(block[pos])
+            + static_cast<int64_t>(prediction_block[pos]);
+        if (value < std::numeric_limits<T>::min()
+            || value > std::numeric_limits<T>::max()) {
+          throw std::overflow_error("prediction reconstruction overflow");
+        }
+        block[pos] = static_cast<T>(value);
+      }
+      else {
+        block[pos] += prediction_block[pos];
+      }
     });
 
     moveBlock<D>([&](const auto &pos) { return block[pos]; }, block.size(), {},

@@ -114,29 +114,33 @@ void HuffmanEncoder::generateHuffmanCodelengths(const HuffmanWeights &huffman_we
 
 void HuffmanEncoder::generateHuffmanMap() {
   std::unordered_map<HuffmanSymbol, HuffmanCodeword> map {};
+  uint64_t code {};
+  size_t previous_length {};
+  bool first = true;
 
-  size_t  prefix_ones      {};
-  int64_t huffman_codeword {};
-
-  for (auto &pair: m_huffman_codelengths) {
-    // A single-symbol alphabet has a zero-length codeword.
-    map.try_emplace(pair.second);
-
-    for (size_t i = 0; i < prefix_ones; i++) {
-      map[pair.second].push_back(1);
+  for (const auto &[length, symbol] : m_huffman_codelengths) {
+    if (length > std::numeric_limits<uint64_t>::digits) {
+      throw std::length_error("Huffman code length exceeds encoder width");
+    }
+    if (!first) {
+      if (code == std::numeric_limits<uint64_t>::max()) {
+        throw std::length_error("Huffman code exceeds encoder width");
+      }
+      ++code;
+      const size_t shift = length - previous_length;
+      if (shift != 0
+          && code > std::numeric_limits<uint64_t>::max() >> shift) {
+        throw std::length_error("Huffman code exceeds encoder width");
+      }
+      code <<= shift;
     }
 
-    size_t len = pair.first - prefix_ones;
-
-    for (size_t k = 0; k < len; k++) {
-      map[pair.second].push_back((huffman_codeword >> (63 - k)) & 1);
+    HuffmanCodeword &codeword = map.try_emplace(symbol).first->second;
+    for (size_t bit = length; bit > 0; --bit) {
+      codeword.push_back((code >> (bit - 1)) & 1);
     }
-
-    huffman_codeword = ((huffman_codeword >> (64 - len)) + 1) << (64 - len);
-    while (huffman_codeword < 0) {
-      prefix_ones++;
-      huffman_codeword <<= 1;
-    }
+    previous_length = length;
+    first = false;
   }
 
   m_huffman_map = map;
