@@ -345,28 +345,23 @@ void inspect(const std::string &input_name) {
 }
 
 int main(int argc, char *argv[]) {
-  try {
-    if (argc < 2 || std::string_view(argv[1]) == "--help" || std::string_view(argv[1]) == "-h") {
-      printUsage(argc < 2 ? std::cerr : std::cout);
-      return argc < 2 ? 1 : 0;
-    }
-
-    const std::string_view command = argv[1];
-    if (command == "compress") {
-      compress(argc, argv);
-      return 0;
-    }
-    if (command == "decompress" && argc == 4) {
-      decompress(argv[2], argv[3]);
-      return 0;
-    }
-    if (command == "inspect" && argc == 3) {
-      inspect(argv[2]);
-      return 0;
-    }
-    throw std::invalid_argument("invalid command or argument count");
-  } catch (const std::exception &error) {
-    std::cerr << "error: " << error.what() << '\n';
-    return 1;
+  if (argc < 2 || std::string_view(argv[1]) == "--help" || std::string_view(argv[1]) == "-h") {
+    printUsage(argc < 2 ? std::cerr : std::cout);
+    return argc < 2 ? 1 : 0;
   }
+
+  const std::string_view command = argv[1];
+  if (command == "compress") {
+    compress(argc, argv);
+    return 0;
+  }
+  if (command == "decompress" && argc == 4) {
+    decompress(argv[2], argv[3]);
+    return 0;
+  }
+  if (command == "inspect" && argc == 3) {
+    inspect(argv[2]);
+    return 0;
+  }
+  throw std::invalid_argument("invalid command or argument count");
 }
