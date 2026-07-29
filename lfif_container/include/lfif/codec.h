@@ -3,7 +3,9 @@
 #include "format.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <iosfwd>
 #include <span>
 #include <vector>
@@ -18,6 +20,11 @@ struct DecodedImage {
 };
 
 Header writeImage(std::ostream &output, Header header, std::span<const Pixel> pixels);
+Header writeImage(
+    std::ostream &output,
+    Header header,
+    size_t pixel_count,
+    const std::function<Pixel(size_t)> &pixels);
 DecodedImage readImage(std::istream &input);
 
 }

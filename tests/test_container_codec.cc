@@ -82,6 +82,20 @@ TEST(ContainerCodec, RoundTripsWaveletImagesAcrossSupportedDimensions) {
   expectRoundTrip(header({3, 2, 2, 2}, {2, 2, 2, 2}), pixels(24));
 }
 
+TEST(ContainerCodec, ReadsPixelsLazilyWithoutDuplicatingTheImage) {
+  const auto metadata = header({4, 4}, {2, 2});
+  const auto expected = pixels(16);
+  size_t reads = 0;
+  std::stringstream stream;
+  lfif::writeImage(stream, metadata, expected.size(), [&](size_t index) {
+    ++reads;
+    return expected[index];
+  });
+
+  EXPECT_EQ(reads, expected.size());
+  EXPECT_EQ(lfif::readImage(stream).pixels, expected);
+}
+
 TEST(ContainerCodec, RoundTripsPredictedWaveletImagesAcrossSupportedDimensions) {
   auto two_dimensions = header({2, 2}, {2, 2});
   two_dimensions.prediction = true;

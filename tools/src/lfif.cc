@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -207,7 +208,7 @@ void compress(int argc, char *argv[]) {
   uint64_t height = 0;
   uint32_t color_depth = 0;
   size_t pixels_per_image = 0;
-  std::vector<lfif::Pixel> pixels;
+  std::vector<PPM> images;
   for (size_t image = 0; image < image_count; ++image) {
     const std::string file_name = expandMask(options.input, image, image_count);
     PPM ppm = PPM::map(file_name);
@@ -220,14 +221,11 @@ void compress(int argc, char *argv[]) {
       color_depth = ppm.color_depth();
       std::vector<uint64_t> image_extents {width, height};
       image_extents.insert(image_extents.end(), options.view_shape.begin(), options.view_shape.end());
-      pixels.reserve(checkedProduct(image_extents));
       pixels_per_image = checkedProduct({width, height});
     } else if (ppm.width() != width || ppm.height() != height || ppm.color_depth() != color_depth) {
       throw std::runtime_error("PPM dimensions or sample depths do not match");
     }
-    for (size_t pixel = 0; pixel < pixels_per_image; ++pixel) {
-      pixels.push_back(ppm.get(pixel));
-    }
+    images.push_back(std::move(ppm));
   }
 
   std::vector<uint64_t> image_extents {width, height};
@@ -257,7 +255,13 @@ void compress(int argc, char *argv[]) {
   };
 
   std::ostringstream encoded(std::ios::binary);
-  lfif::writeImage(encoded, header, pixels);
+  lfif::writeImage(
+      encoded,
+      header,
+      checkedProduct(image_extents),
+      [&](size_t index) {
+        return images[index / pixels_per_image].get(index % pixels_per_image);
+      });
   createParentDirectory(options.output);
   std::ofstream output(options.output, std::ios::binary);
   const std::string bytes = encoded.str();

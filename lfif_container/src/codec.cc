@@ -48,8 +48,8 @@ size_t pixelIndex(const std::array<size_t, D> &position, const std::array<size_t
   return index;
 }
 
-template <size_t D, typename Encoder>
-std::string encodePayload(const Header &header, std::span<const Pixel> pixels) {
+template <size_t D, typename Encoder, typename PixelReader>
+std::string encodePayload(const Header &header, PixelReader &pixels) {
   const auto image_size = extents<D>(header.extents);
   Encoder encoder;
   encoder.size = image_size;
@@ -60,13 +60,16 @@ std::string encodePayload(const Header &header, std::span<const Pixel> pixels) {
 
   std::ostringstream payload(std::ios::binary);
   encoder.encodeStream(
-      [&](const std::array<size_t, D> &position) { return pixels[pixelIndex(position, image_size)]; },
+      [&](const std::array<size_t, D> &position) {
+        return pixels(pixelIndex(position, image_size));
+      },
       payload);
   return payload.str();
 }
 
 template <size_t D>
-std::string encodePayload(const Header &header, std::span<const Pixel> pixels) {
+std::string encodePayload(
+    const Header &header, const std::function<Pixel(size_t)> &pixels) {
   if (header.transform == Transform::wavelet) {
     return encodePayload<D, LFWFEncoder<D>>(header, pixels);
   }
@@ -98,7 +101,8 @@ std::vector<Pixel> decodePayload(const Header &header, std::istream &payload) {
   return decodePayload<D, LFIFDecoder<D>>(header, payload);
 }
 
-std::string encodePayload(const Header &header, std::span<const Pixel> pixels) {
+std::string encodePayload(
+    const Header &header, const std::function<Pixel(size_t)> &pixels) {
   switch (header.extents.size()) {
     case 2: return encodePayload<2>(header, pixels);
     case 3: return encodePayload<3>(header, pixels);
@@ -116,10 +120,11 @@ std::vector<Pixel> decodePayload(const Header &header, std::istream &payload) {
   }
 }
 
+template <typename PixelReader>
 std::vector<Pixel> applyDisparity(
-    const Header &header, std::span<const Pixel> pixels, bool inverse) {
+    const Header &header, PixelReader &pixels, bool inverse) {
   const std::array<size_t, 4> size = extents<4>(header.extents);
-  std::vector<Pixel> result(pixels.size());
+  std::vector<Pixel> result(pixelCount(header));
   const auto multiply = [](int64_t left, int64_t right) {
     constexpr int64_t minimum = std::numeric_limits<int64_t>::min();
     constexpr int64_t maximum = std::numeric_limits<int64_t>::max();
@@ -169,9 +174,9 @@ std::vector<Pixel> applyDisparity(
               view_y,
           };
           if (inverse) {
-            result[pixelIndex(source, size)] = pixels[pixelIndex(destination, size)];
+            result[pixelIndex(source, size)] = pixels(pixelIndex(destination, size));
           } else {
-            result[pixelIndex(destination, size)] = pixels[pixelIndex(source, size)];
+            result[pixelIndex(destination, size)] = pixels(pixelIndex(source, size));
           }
         }
       }
@@ -183,31 +188,48 @@ std::vector<Pixel> applyDisparity(
 }
 
 Header writeImage(std::ostream &output, Header header, std::span<const Pixel> pixels) {
+  const std::function<Pixel(size_t)> source =
+      [pixels](size_t index) { return pixels[index]; };
+  return writeImage(output, std::move(header), pixels.size(), source);
+}
+
+Header writeImage(
+    std::ostream &output,
+    Header header,
+    size_t input_pixel_count,
+    const std::function<Pixel(size_t)> &pixels) {
   header.payload_size = 0;
   serializeHeader(header);
   if (header.extents.size() < 2 || header.extents.size() > 4) {
     throw std::invalid_argument("codec supports two to four dimensions");
   }
-  if (pixels.size() != pixelCount(header)) {
+  if (input_pixel_count != pixelCount(header)) {
     throw std::invalid_argument("pixel count does not match image extents");
   }
   const uint16_t maximum_sample = header.sample_depth == 16
       ? std::numeric_limits<uint16_t>::max()
       : static_cast<uint16_t>((uint32_t {1} << header.sample_depth) - 1);
-  for (const Pixel &pixel : pixels) {
+  const auto checked_pixels = [&](size_t index) {
+    const Pixel pixel = pixels(index);
     if (std::any_of(pixel.begin(), pixel.end(), [maximum_sample](uint16_t sample) {
           return sample > maximum_sample;
         })) {
       throw std::invalid_argument("pixel sample exceeds declared depth");
     }
-  }
+    return pixel;
+  };
 
-  std::vector<Pixel> compensated;
+  std::string payload;
   if (header.disparity_compensated) {
-    compensated = applyDisparity(header, pixels, false);
-    pixels = compensated;
+    const std::vector<Pixel> compensated =
+        applyDisparity(header, checked_pixels, false);
+    const std::function<Pixel(size_t)> compensated_pixels =
+        [&compensated](size_t index) { return compensated[index]; };
+    payload = encodePayload(header, compensated_pixels);
+  } else {
+    const std::function<Pixel(size_t)> source = checked_pixels;
+    payload = encodePayload(header, source);
   }
-  const std::string payload = encodePayload(header, pixels);
   header.payload_size = payload.size();
   const std::vector<uint8_t> encoded_header = serializeHeader(header);
   output.write(reinterpret_cast<const char *>(encoded_header.data()), encoded_header.size());
@@ -249,7 +271,8 @@ DecodedImage readImage(std::istream &input) {
   try {
     std::vector<Pixel> pixels = decodePayload(header, payload);
     if (header.disparity_compensated) {
-      pixels = applyDisparity(header, pixels, true);
+      const auto source = [&pixels](size_t index) { return pixels[index]; };
+      pixels = applyDisparity(header, source, true);
     }
     return {header, std::move(pixels)};
   } catch (const std::bad_alloc &) {
