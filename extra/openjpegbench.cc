@@ -8,6 +8,7 @@
 #include <getopt.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -16,6 +17,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #include <openjpeg.h>
@@ -24,7 +26,7 @@
 namespace {
 
 struct TemporaryFile {
-  std::string path;
+  std::filesystem::path path;
 
   TemporaryFile() {
     const std::filesystem::path pattern =
@@ -37,8 +39,25 @@ struct TemporaryFile {
     if (descriptor < 0) {
       throw std::runtime_error("Could not create temporary OpenJPEG file");
     }
-    close(descriptor);
+    const auto rollback = [&writable_pattern](int *file) noexcept {
+      if (*file >= 0) {
+        close(*file);
+      }
+      unlink(writable_pattern.data());
+    };
+    int owned_descriptor = descriptor;
+    std::unique_ptr<int, decltype(rollback)> temporary_file {
+      &owned_descriptor, rollback
+    };
     path = writable_pattern.data();
+    const int close_status = close(owned_descriptor);
+    const int close_error = errno;
+    owned_descriptor = -1;
+    if (close_status < 0) {
+      throw std::system_error(
+          close_error, std::generic_category(), "could not close temporary OpenJPEG file");
+    }
+    temporary_file.release();
   }
 
   ~TemporaryFile() {

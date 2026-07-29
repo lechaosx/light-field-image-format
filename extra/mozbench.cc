@@ -230,7 +230,9 @@ int main(int argc, char *argv[]) {
         throw std::runtime_error("could not determine temporary JPEG size");
       }
       compressed_size += static_cast<size_t>(jpeg_size);
-      rewind(compressed.get());
+      if (fseek(compressed.get(), 0, SEEK_SET) != 0) {
+        throw std::runtime_error("could not rewind temporary JPEG file");
+      }
 
       jpeg_stdio_src(&dinfo, compressed.get());
 
