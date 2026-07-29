@@ -28,8 +28,11 @@ std::vector<PPM> mapPPMs(std::string_view input_file_mask) {
         throw std::runtime_error("PPM dimensions or maxvals do not match");
       }
       images.push_back(std::move(ppm));
-    } catch (const std::system_error &) {
-      continue;
+    } catch (const std::system_error &error) {
+      if (error.code() == std::errc::no_such_file_or_directory) {
+        continue;
+      }
+      throw;
     }
   }
 

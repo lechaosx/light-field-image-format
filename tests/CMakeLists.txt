@@ -303,6 +303,30 @@ if(LFIF_BUILD_EXTRAS)
   set_tests_properties(ExtraSmoke.CreateInput PROPERTIES FIXTURES_SETUP ExtraSmokeInput)
 
   add_test(
+    NAME ExtraIo.CreateDirectoryCandidate
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/ppm-directory
+  )
+  set_tests_properties(
+    ExtraIo.CreateDirectoryCandidate
+    PROPERTIES FIXTURES_SETUP ExtraIoDirectoryCandidate
+  )
+  add_test(
+    NAME ExtraIo.ReportsDirectoryCandidate
+    COMMAND
+      ${expect_failure}
+      $<TARGET_FILE:av1bench>
+      -i ${CMAKE_CURRENT_BINARY_DIR}/ppm-directory
+      -o ${CMAKE_CURRENT_BINARY_DIR}/unreadable-input.txt
+      -f 1 -l 1
+  )
+  set_tests_properties(
+    ExtraIo.ReportsDirectoryCandidate
+    PROPERTIES
+      FIXTURES_REQUIRED ExtraIoDirectoryCandidate
+      PASS_REGULAR_EXPRESSION "cannot map PPM"
+  )
+
+  add_test(
     NAME ExtraSmoke.Av1Bench
     COMMAND
       $<TARGET_FILE:av1bench>
