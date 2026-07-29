@@ -93,6 +93,11 @@ TEST(Format, RejectsMalformedAndUnsupportedHeaders) {
   auto bad_flags_stream = streamFor(bad_flags);
   EXPECT_THROW(lfif::parseHeader(bad_flags_stream), std::runtime_error);
 
+  auto bad_sample_depth = valid;
+  bad_sample_depth[18] = 0;
+  auto bad_sample_depth_stream = streamFor(bad_sample_depth);
+  EXPECT_THROW(lfif::parseHeader(bad_sample_depth_stream), std::runtime_error);
+
   auto truncated = valid;
   truncated.resize(31);
   auto truncated_stream = streamFor(truncated);
@@ -162,6 +167,10 @@ TEST(Format, RejectsInvalidMetadataBeforeSerialization) {
 
   header = twoDimensionalWaveletHeader();
   header.block_extents.pop_back();
+  EXPECT_THROW(lfif::serializeHeader(header), std::invalid_argument);
+
+  header = twoDimensionalWaveletHeader();
+  header.sample_depth = 0;
   EXPECT_THROW(lfif::serializeHeader(header), std::invalid_argument);
 
   header = twoDimensionalWaveletHeader();
