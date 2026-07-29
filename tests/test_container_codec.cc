@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -249,6 +250,36 @@ TEST(ContainerCodec, RejectsPixelCountMismatchBeforeWriting) {
   std::stringstream stream;
   EXPECT_THROW(lfif::writeImage(stream, header({4, 4}, {2, 2}), pixels(15)), std::invalid_argument);
   EXPECT_TRUE(stream.str().empty());
+}
+
+TEST(ContainerCodec, RejectsImageLargerThanAddressablePixelStorageBeforeWriting) {
+  const size_t extent = std::numeric_limits<size_t>::max();
+  std::stringstream stream;
+  bool read_pixel {};
+
+  EXPECT_THROW(
+      lfif::writeImage(
+          stream,
+          header({extent, 1}, {3, 1}),
+          extent,
+          [&](size_t) {
+            read_pixel = true;
+            return lfif::Pixel {};
+          }),
+      std::length_error);
+  EXPECT_FALSE(read_pixel);
+  EXPECT_TRUE(stream.str().empty());
+}
+
+TEST(ContainerCodec, RejectsImageLargerThanAddressablePixelStorageBeforeReadingPayload) {
+  auto metadata = header(
+      {std::numeric_limits<size_t>::max(), 1},
+      {3, 1});
+  metadata.payload_size = 1;
+  const std::vector<uint8_t> encoded = lfif::serializeHeader(metadata);
+  std::stringstream input(std::string(encoded.begin(), encoded.end()));
+
+  EXPECT_THROW(lfif::readImage(input), std::length_error);
 }
 
 TEST(ContainerCodec, RejectsSamplesOutsideDeclaredDepthBeforeWriting) {

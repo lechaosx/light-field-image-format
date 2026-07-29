@@ -203,7 +203,11 @@ Header writeImage(
   if (header.extents.size() < 2 || header.extents.size() > 4) {
     throw std::invalid_argument("codec supports two to four dimensions");
   }
-  if (input_pixel_count != pixelCount(header)) {
+  const size_t image_pixel_count = pixelCount(header);
+  if (image_pixel_count > std::vector<Pixel>().max_size()) {
+    throw std::length_error("image is too large for pixel storage");
+  }
+  if (input_pixel_count != image_pixel_count) {
     throw std::invalid_argument("pixel count does not match image extents");
   }
   const uint16_t maximum_sample = header.sample_depth == 16
@@ -244,6 +248,9 @@ DecodedImage readImage(std::istream &input) {
   Header header = parseHeader(input);
   if (header.extents.size() < 2 || header.extents.size() > 4) {
     throw std::runtime_error("codec supports two to four dimensions");
+  }
+  if (pixelCount(header) > std::vector<Pixel>().max_size()) {
+    throw std::length_error("image is too large for pixel storage");
   }
   if (header.payload_size > std::numeric_limits<size_t>::max()
       || header.payload_size > static_cast<uint64_t>(std::numeric_limits<std::streamsize>::max())) {

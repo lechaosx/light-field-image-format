@@ -36,7 +36,10 @@ struct LFWFDecoder {
 
     std::array<size_t, D> aligned_image_size {};
     for (size_t i = 0; i < D; i++) {
-      aligned_image_size[i] = (this->size[i] + this->block_size[i] - 1) / this->block_size[i] * this->block_size[i];
+      const size_t blocks =
+          this->size[i] / this->block_size[i]
+          + (this->size[i] % this->block_size[i] != 0);
+      aligned_image_size[i] = blocks * this->block_size[i];
     }
 
     IBitstream   bitstream {};
