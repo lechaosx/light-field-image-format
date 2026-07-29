@@ -198,7 +198,7 @@ CompressOptions parseCompressOptions(int argc, char *argv[]) {
   return options;
 }
 
-int compress(int argc, char *argv[]) {
+void compress(int argc, char *argv[]) {
   CompressOptions options = parseCompressOptions(argc, argv);
   const size_t image_count = checkedProduct(options.view_shape);
   expandMask(options.input, image_count - 1, image_count);
@@ -267,10 +267,9 @@ int compress(int argc, char *argv[]) {
   if (!output) {
     throw std::runtime_error("cannot write output: " + options.output);
   }
-  return 0;
 }
 
-int decompress(const std::string &input_name, const std::string &output_mask) {
+void decompress(const std::string &input_name, const std::string &output_mask) {
   std::ifstream input(input_name, std::ios::binary);
   if (!input) {
     throw std::runtime_error("cannot read input: " + input_name);
@@ -294,7 +293,6 @@ int decompress(const std::string &input_name, const std::string &output_mask) {
     }
     ppm.flush();
   }
-  return 0;
 }
 
 const char *transformName(lfif::Transform transform) {
@@ -311,7 +309,7 @@ void printExtents(const std::vector<uint64_t> &extents) {
   std::cout << '\n';
 }
 
-int inspect(const std::string &input_name) {
+void inspect(const std::string &input_name) {
   std::ifstream input(input_name, std::ios::binary);
   if (!input) {
     throw std::runtime_error("cannot read input: " + input_name);
@@ -342,7 +340,6 @@ int inspect(const std::string &input_name) {
   std::cout << "disparity shifts: " << header.disparity_shift[0]
             << ", " << header.disparity_shift[1] << '\n';
   std::cout << "payload bytes: " << header.payload_size << '\n';
-  return 0;
 }
 
 }
@@ -356,13 +353,16 @@ int main(int argc, char *argv[]) {
 
     const std::string_view command = argv[1];
     if (command == "compress") {
-      return compress(argc, argv);
+      compress(argc, argv);
+      return 0;
     }
     if (command == "decompress" && argc == 4) {
-      return decompress(argv[2], argv[3]);
+      decompress(argv[2], argv[3]);
+      return 0;
     }
     if (command == "inspect" && argc == 3) {
-      return inspect(argv[2]);
+      inspect(argv[2]);
+      return 0;
     }
     throw std::invalid_argument("invalid command or argument count");
   } catch (const std::exception &error) {

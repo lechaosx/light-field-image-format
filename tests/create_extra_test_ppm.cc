@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-int createImage(const std::string &path, size_t seed) {
+void createImage(const std::string &path, size_t seed) {
   PPM image = PPM::create(path, 64, 64, 255);
   for (size_t pixel = 0; pixel < 64 * 64; ++pixel) {
     image.put(pixel, std::array<uint16_t, 3> {
@@ -16,7 +16,6 @@ int createImage(const std::string &path, size_t seed) {
     });
   }
   image.flush();
-  return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -31,9 +30,7 @@ int main(int argc, char *argv[]) {
       if (index.size() < 2) {
         index.insert(index.begin(), 2 - index.size(), '0');
       }
-      if (createImage(std::string(argv[2]) + index + ".ppm", image) != 0) {
-        return 1;
-      }
+      createImage(std::string(argv[2]) + index + ".ppm", image);
     }
     return 0;
   }
@@ -78,5 +75,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  return createImage(argv[1], 0);
+  createImage(argv[1], 0);
+  return 0;
 }
