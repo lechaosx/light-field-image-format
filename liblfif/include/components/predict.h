@@ -120,7 +120,12 @@ void low_pass_filter(DynamicBlock<T, D> &main_ref) {
 }
 
 template <size_t D, typename T, typename F>
-void project_neighbours_to_main_ref(const std::array<size_t, D> &BS, DynamicBlock<T, D - 1> &main_ref, const int8_t direction[D], size_t main_ref_idx, F &&inputF) {
+void project_neighbours_to_main_ref(
+    const std::array<size_t, D> &BS,
+    DynamicBlock<T, D - 1> &main_ref,
+    std::span<const int8_t, D> direction,
+    size_t main_ref_idx,
+    F &&inputF) {
   std::array<int64_t, D> start_offsets {};
   std::array<int64_t, D> end_offsets   {};
 
@@ -188,7 +193,11 @@ void project_neighbours_to_main_ref(const std::array<size_t, D> &BS, DynamicBloc
 }
 
 template <size_t D, typename T>
-void predict_from_main_ref(DynamicBlock<T, D> &output, const int8_t direction[D], const DynamicBlock<T, D - 1> &main_ref, size_t main_ref_idx) {
+void predict_from_main_ref(
+    DynamicBlock<T, D> &output,
+    std::span<const int8_t, D> direction,
+    const DynamicBlock<T, D - 1> &main_ref,
+    size_t main_ref_idx) {
   std::array<int64_t, D> offsets {};
 
   for (size_t i = 0; i < D; i++) {
@@ -212,7 +221,7 @@ void predict_from_main_ref(DynamicBlock<T, D> &output, const int8_t direction[D]
   for (const auto &pos : iterate_dimensions<D>(output.size())) {
     int64_t distance = pos[main_ref_idx] + offsets[main_ref_idx];
 
-    int64_t main_ref_pos[D - 1] {};
+    std::array<int64_t, D - 1> main_ref_pos {};
     for (size_t i { 0 }; i < D - 1; i++) {
       size_t idx = i < main_ref_idx ? i : i + 1;
       main_ref_pos[i] = pos[idx] + offsets[idx];
@@ -235,7 +244,10 @@ void predict_from_main_ref(DynamicBlock<T, D> &output, const int8_t direction[D]
 }
 
 template <size_t D, typename T, typename F>
-void predict_direction(DynamicBlock<T, D> &output, const int8_t direction[D], F &&inputF) {
+void predict_direction(
+    DynamicBlock<T, D> &output,
+    std::span<const int8_t, D> direction,
+    F &&inputF) {
   size_t  main_ref_idx { 0 };
 
   auto positive = [&]() {
@@ -257,7 +269,7 @@ void predict_direction(DynamicBlock<T, D> &output, const int8_t direction[D], F 
     }
   }
 
-  size_t ref_size[D - 1] {};
+  std::array<size_t, D - 1> ref_size {};
 
   for (size_t i {}; i < D - 1; i++) {
     size_t idx = i < main_ref_idx ? i : i + 1;
@@ -313,7 +325,7 @@ void predict_planar(DynamicBlock<T, D> &output, F &inputF) {
   for (size_t neighbour_idx { 0 }; neighbour_idx < D; neighbour_idx++) {
     DynamicBlock<T, D> tmp_prediction(output.size());
 
-    int8_t direction[D] {};
+    std::array<int8_t, D> direction {};
     direction[neighbour_idx] = 1;
 
     predict_direction<D>(tmp_prediction, direction, inputF);

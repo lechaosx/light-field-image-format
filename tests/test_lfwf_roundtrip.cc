@@ -92,6 +92,14 @@ TEST(LfwfRoundTrip, ReconstructsFourDimensionalImage) {
   expectWaveletRoundTrip<4>({3, 2, 2, 2}, {2, 2, 2, 2}, 8, false, pixels);
 }
 
+TEST(LfwfRoundTrip, ReconstructsNonAlignedFourDimensionalImage) {
+  const auto pixels = [](const std::array<size_t, 4> &position) {
+    const uint16_t value = (position[0] * 7 + position[1] * 13 + position[2] * 29 + position[3] * 53) % 256;
+    return std::array<uint16_t, 3> {value, static_cast<uint16_t>(255 - value), static_cast<uint16_t>((position[2] + position[3]) * 17)};
+  };
+  expectWaveletRoundTrip<4>({6, 5, 3, 3}, {4, 4, 2, 2}, 8, false, pixels);
+}
+
 TEST(LfwfRoundTrip, ReconstructsPredictedImage) {
   const auto pixels = [](const std::array<size_t, 2> &position) {
     const uint16_t value = (position[0] * 17 + position[1] * 5) % 256;

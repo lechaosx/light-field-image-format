@@ -63,8 +63,8 @@ TEST(BlockPredictor, RejectsReconstructionOverflow) {
 }
 
 TEST(Prediction, InterpolatesFullRangeValuesWithoutOverflow) {
-  const size_t size[] {2};
-  const int64_t position[] {1};
+  const std::array<size_t, 1> size {2};
+  const std::array<int64_t, 1> position {1};
   const auto input = [](size_t) {
     return std::numeric_limits<int32_t>::max();
   };

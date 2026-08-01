@@ -49,11 +49,11 @@ void encodeDctBlock(
     std::vector<bool> nonzero_diags(stream.diagonals);
 
     for (size_t diag = 0; diag < stream.diagonals; diag++) {
-      diagonalScan(stream.block_size, diag, [&](const std::array<size_t, D> &pos) {
+      for (const auto &pos : diagonalScan(stream.block_size, diag)) {
         if (block[pos]) {
           nonzero_diags[diag] = true;
         }
-      });
+      }
     }
 
     size_t diags_cnt = 0;
@@ -84,7 +84,7 @@ void encodeDctBlock(
       int64_t zero_coef_distr = 0;
 
       if (nonzero_diags[diag]) {
-        diagonalScan(stream.block_size, diag, [&](std::array<size_t, D> pos) {
+        for (auto pos : diagonalScan(stream.block_size, diag)) {
           const double coefficient = block[pos];
           constexpr double maximum_coefficient =
               std::numeric_limits<int32_t>::max();
@@ -143,7 +143,7 @@ void encodeDctBlock(
 
             encoder.encodeBitBypass(integer_coefficient < 0);
           }
-        });
+        }
       }
 
       if ((zero_coef_distr > 0) && (stream.threshold > diag)) {
@@ -182,7 +182,7 @@ void decodeDctBlock(
       int64_t zero_coef_distr = 0;
 
       if (nonzero_diags[diag]) {
-        diagonalScan<D>(stream.block_size, diag, [&](std::array<size_t, D> pos) {
+        for (auto pos : diagonalScan(stream.block_size, diag)) {
           uint64_t magnitude {};
           bool negative {};
 
@@ -234,7 +234,7 @@ void decodeDctBlock(
 
           const int32_t coefficient = static_cast<int32_t>(magnitude);
           block[pos] = negative ? -coefficient : coefficient;
-        });
+        }
       }
 
       if ((zero_coef_distr > 0) && (stream.threshold > diag)) {

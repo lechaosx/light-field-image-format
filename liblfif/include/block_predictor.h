@@ -77,7 +77,7 @@ class BlockPredictor {
       predict_planar<D>(block, inputF);
     }
     else if (type.type == 3) {
-      predict_direction<D>(block, type.direction.data(), inputF);
+      predict_direction<D>(block, type.direction, inputF);
     }
   }
 

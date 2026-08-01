@@ -10,9 +10,9 @@ TEST(DiagonalScan, PreservesOrderWithinEachDiagonal) {
   std::vector<std::array<size_t, 2>> positions;
 
   for (size_t diagonal {}; diagonal < 4; ++diagonal) {
-    diagonalScan(size, diagonal, [&](const auto &position) {
+    for (const auto &position : diagonalScan(size, diagonal)) {
       positions.push_back(position);
-    });
+    }
   }
 
   EXPECT_EQ(positions, (std::vector<std::array<size_t, 2>> {

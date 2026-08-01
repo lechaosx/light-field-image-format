@@ -6,13 +6,18 @@
 #include <cstdint>
 #include <map>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace {
 
 template <typename UpdateFactory>
-void expectRoundTrip(const std::vector<int64_t> &input, UpdateFactory make_update) {
+void expectRoundTrip(
+    std::string_view name,
+    const std::vector<int64_t> &input,
+    UpdateFactory make_update) {
+  SCOPED_TRACE(name);
   std::vector<uint64_t> encode_dictionary;
   std::vector<int64_t> encoded = input;
   auto encode_update = make_update();
@@ -41,9 +46,9 @@ TEST(Mtf, BaseTransformMatchesInitializedDictionaryVector) {
 }
 
 TEST(Mtf, HandlesEmptyRepeatedAndGrowingDictionaries) {
-  expectRoundTrip({}, [] { return updateBase; });
-  expectRoundTrip({5, 5, 5, 5}, [] { return updateBase; });
-  expectRoundTrip({0, 300, 1, 299, 300, 0}, [] { return updateBase; });
+  expectRoundTrip("empty", {}, [] { return updateBase; });
+  expectRoundTrip("repeated", {5, 5, 5, 5}, [] { return updateBase; });
+  expectRoundTrip("growing", {0, 300, 1, 299, 300, 0}, [] { return updateBase; });
 }
 
 TEST(Mtf, RejectsNegativeSymbolsAndIndexes) {
@@ -71,24 +76,24 @@ TEST(Mtf, RoundTripsEveryPreservedUpdateVariant) {
     input.push_back((i * 37 + 11) % 17);
   }
 
-  expectRoundTrip(input, [] { return updateBase; });
-  expectRoundTrip(input, [] { return updateM1ff; });
-  expectRoundTrip(input, [] {
+  expectRoundTrip("base", input, [] { return updateBase; });
+  expectRoundTrip("m1ff", input, [] { return updateM1ff; });
+  expectRoundTrip("m1ff2", input, [] {
     return [previous = std::array<uint64_t, 2> {}](std::vector<uint64_t> &dictionary, size_t index) mutable {
       updateM1ff2(dictionary, index, previous.data());
     };
   });
-  expectRoundTrip(input, [] {
+  expectRoundTrip("sticky", input, [] {
     return [](std::vector<uint64_t> &dictionary, size_t index) {
       updateSticky(dictionary, index, 0.5);
     };
   });
-  expectRoundTrip(input, [] {
+  expectRoundTrip("k-step", input, [] {
     return [](std::vector<uint64_t> &dictionary, size_t index) {
       update_k(dictionary, index, 2);
     };
   });
-  expectRoundTrip(input, [] {
+  expectRoundTrip("count-threshold", input, [] {
     return [counts = std::map<uint64_t, size_t> {}](std::vector<uint64_t> &dictionary, size_t index) mutable {
       updateC(dictionary, index, 2, counts);
     };

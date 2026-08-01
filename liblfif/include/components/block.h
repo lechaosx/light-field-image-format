@@ -12,12 +12,17 @@ class DynamicBlock {
   std::array<size_t, D>  m_size;
   std::vector<T>         m_data;
 
-public:
-  DynamicBlock(const std::array<size_t, D> &size): DynamicBlock(size.data()) {}
+  [[nodiscard]] size_t flatIndex(const std::array<size_t, D> &position) const {
+    size_t index = 0;
+    for (size_t i = D; i > 0; --i) {
+      index = index * m_size[i - 1] + position[i - 1];
+    }
+    return index;
+  }
 
+public:
   #pragma omp declare simd
-  DynamicBlock(const size_t size[D]) {
-    std::copy(size, size + D, std::begin(m_size));
+  explicit DynamicBlock(const std::array<size_t, D> &size): m_size(size) {
     size_t values = 1;
     for (const size_t extent : m_size) {
       if (extent != 0 && values > std::numeric_limits<size_t>::max() / extent) {
@@ -40,26 +45,12 @@ public:
 
   #pragma omp declare simd
   T &operator[](const std::array<size_t, D> &pos) {
-    size_t index = 0;
-
-    for (size_t i = 1; i <= D; i++) {
-      index *= m_size[D - i];
-      index += pos[D - i];
-    }
-
-    return m_data[index];
+    return m_data[flatIndex(pos)];
   }
 
   #pragma omp declare simd
   const T &operator[](const std::array<size_t, D> &pos) const {
-    size_t index = 0;
-
-    for (size_t i = 1; i <= D; i++) {
-      index *= m_size[D - i];
-      index += pos[D - i];
-    }
-
-    return m_data[index];
+    return m_data[flatIndex(pos)];
   }
 
   #pragma omp declare simd
@@ -81,10 +72,6 @@ public:
   void fill(T value) {
     std::fill(m_data.begin(), m_data.end(), value);
   }
-
-protected:
-  static void *operator new(size_t);
-  static void *operator new[](size_t);
 };
 
 template<size_t D, typename IF, typename OF>

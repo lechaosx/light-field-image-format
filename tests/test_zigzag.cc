@@ -13,9 +13,9 @@ namespace {
 template <size_t D>
 std::vector<std::array<size_t, D>> zigzagOrder(const std::array<size_t, D> &size) {
   std::vector<std::array<size_t, D>> order;
-  zigzagScan<D>(size, [&](const auto &position) {
+  for (const auto &position : zigzagScan(size)) {
     order.push_back(position);
-  });
+  }
   return order;
 }
 
@@ -50,6 +50,7 @@ TEST(Zigzag, GeneralizedMatchesLegacyTwoDimensionalScans) {
   EXPECT_EQ(zigzagOrder<2>({8, 8}), legacyZigzagOrder<2>({8, 8}));
   EXPECT_EQ(zigzagOrder<2>({4, 6}), legacyZigzagOrder<2>({4, 6}));
   EXPECT_EQ(zigzagOrder<2>({6, 4}), legacyZigzagOrder<2>({6, 4}));
+  EXPECT_EQ(zigzagOrder<2>({2, 2}), legacyZigzagOrder<2>({2, 2}));
   EXPECT_EQ(zigzagOrder<2>({3, 7}), legacyZigzagOrder<2>({3, 7}));
 }
 
@@ -57,6 +58,7 @@ TEST(Zigzag, GeneralizedMatchesLegacyThreeDimensionalScans) {
   EXPECT_EQ(zigzagOrder<3>({4, 4, 4}), legacyZigzagOrder<3>({4, 4, 4}));
   EXPECT_EQ(zigzagOrder<3>({2, 3, 4}), legacyZigzagOrder<3>({2, 3, 4}));
   EXPECT_EQ(zigzagOrder<3>({3, 2, 5}), legacyZigzagOrder<3>({3, 2, 5}));
+  EXPECT_EQ(zigzagOrder<3>({2, 2, 2}), legacyZigzagOrder<3>({2, 2, 2}));
 }
 
 TEST(Zigzag, GeneralizedMatchesLegacyFourDimensionalScans) {
@@ -76,9 +78,9 @@ TEST(Zigzag, SkipFirstVisitsEveryPositionExceptDc) {
   const auto full = zigzagOrder<2>({8, 8});
   const std::array<size_t, 2> size {8, 8};
   std::vector<std::array<size_t, 2>> skipped;
-  zigzagScanSkipFirst<2>(size, [&](const auto &position) {
+  for (const auto &position : zigzagScanSkipFirst(size)) {
     skipped.push_back(position);
-  });
+  }
 
   std::set<std::array<size_t, 2>> expected(full.begin(), full.end());
   expected.erase({0, 0});

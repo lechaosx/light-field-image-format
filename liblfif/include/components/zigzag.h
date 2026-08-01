@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <numeric>
+#include <vector>
 
 template<size_t Remaining, size_t D, typename F>
 void zigzagScanCore(
@@ -44,11 +45,17 @@ void zigzagScanCore(
   }
 }
 
-template<size_t D, typename F>
-void zigzagScanStart(
+template<size_t D>
+std::vector<std::array<size_t, D>> zigzagScanStart(
     const std::array<size_t, D> &size,
-    std::array<size_t, D> position,
-    F &&callback) {
+    std::array<size_t, D> position) {
+  std::vector<std::array<size_t, D>> positions;
+  size_t position_count = 1;
+  for (const size_t extent : size) {
+    position_count *= extent;
+  }
+  positions.reserve(position_count);
+
   std::array<size_t, D> rotation;
   std::iota(rotation.begin(), rotation.end(), 0);
 
@@ -63,24 +70,27 @@ void zigzagScanStart(
   };
 
   do {
-    zigzagScanCore<D>(size, position, rotation, callback);
+    auto record = [&](const auto &current) {
+      positions.push_back(current);
+    };
+    zigzagScanCore<D>(size, position, rotation, record);
   } while (move());
+
+  return positions;
 }
 
-template<size_t D, typename F>
-void zigzagScan(
-    const std::array<size_t, D> &size,
-    F &&callback) {
-  zigzagScanStart(size, std::array<size_t, D> {}, callback);
+template<size_t D>
+std::vector<std::array<size_t, D>> zigzagScan(
+    const std::array<size_t, D> &size) {
+  return zigzagScanStart(size, std::array<size_t, D> {});
 }
 
-template<size_t D, typename F>
-void zigzagScanSkipFirst(
-    const std::array<size_t, D> &size,
-    F &&callback) {
+template<size_t D>
+std::vector<std::array<size_t, D>> zigzagScanSkipFirst(
+    const std::array<size_t, D> &size) {
   std::array<size_t, D> position {};
   position[0] = 1;
-  zigzagScanStart(size, position, callback);
+  return zigzagScanStart(size, position);
 }
 
 template<size_t D>
@@ -88,8 +98,8 @@ DynamicBlock<size_t, D> zigzagTable(
     const std::array<size_t, D> &size) {
   DynamicBlock<size_t, D> block(size);
   size_t index {};
-  zigzagScan(size, [&](const auto &position) {
+  for (const auto &position : zigzagScan(size)) {
     block[position] = index++;
-  });
+  }
   return block;
 }
