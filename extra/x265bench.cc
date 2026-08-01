@@ -6,21 +6,23 @@ extern "C" {
 }
 
 #include <cmath>
+#include <cstdio>
 #include <getopt.h>
 
 #include <fstream>
 #include <functional>
-#include <iostream>
 #include <limits>
+#include <print>
 #include <stdexcept>
 #include <string>
 
 void print_usage(char *argv0) {
-  std::cerr << "Usage: " << std::endl;
-  std::cerr << argv0
-            << " -i <input-file-mask> -o <output-file-name> [-f "
-               "<fist-bitrate>] [-l <last-bitrate>] [-a] [-I]"
-            << std::endl;
+  std::println(stderr, "Usage:");
+  std::println(
+      stderr,
+      "{} -i <input-file-mask> -o <output-file-name> [-f "
+      "<fist-bitrate>] [-l <last-bitrate>] [-a] [-I]",
+      argv0);
 }
 
 void encode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt,
@@ -360,7 +362,7 @@ int main(int argc, char *argv[]) {
     double out_bpp = compressed_size * 8.0 / image_pixels;
     double psnr = 10 * log10((255 * 255) / mse);
 
-    std::cerr << bpp << " " << psnr << " " << out_bpp << std::endl;
+    std::println(stderr, "{} {} {}", bpp, psnr, out_bpp);
     output << bpp << " " << psnr << " " << out_bpp << std::endl;
 
     if (std::abs(bpp - out_bpp) > 2) {

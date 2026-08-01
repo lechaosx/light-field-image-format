@@ -2,21 +2,23 @@
 #include "plenoppm.h"
 
 #include <cmath>
+#include <cstdio>
 #include <getopt.h>
 
 #include <fstream>
 #include <functional>
-#include <iostream>
 #include <limits>
+#include <print>
 #include <stdexcept>
 #include <string>
 
 void print_usage(char *argv0) {
-  std::cerr << "Usage: " << std::endl;
-  std::cerr << argv0
-            << " -i <input-file-mask> -o <output-file-name> [-f "
-               "<fist-bitrate>] [-l <last-bitrate>] [-a] [-n]"
-            << std::endl;
+  std::println(stderr, "Usage:");
+  std::println(
+      stderr,
+      "{} -i <input-file-mask> -o <output-file-name> [-f "
+      "<fist-bitrate>] [-l <last-bitrate>] [-a] [-n]",
+      argv0);
 }
 
 void encode(AVCodecContext *context, AVFrame *frame, AVPacket *pkt,
@@ -253,7 +255,7 @@ int main(int argc, char *argv[]) {
   }
 
   for (double bpp = f_b; bpp <= l_b; bpp *= 1.25893) {
-    std::cerr << "BPP: " << bpp << "\n";
+    std::println(stderr, "BPP: {}", bpp);
 
     size_t compressed_size = 0;
 
@@ -326,7 +328,7 @@ int main(int argc, char *argv[]) {
     };
 
     for (size_t image = 0; image < image_count; image++) {
-      std::cerr << "IMG: " << image << "\n";
+      std::println(stderr, "IMG: {}", image);
 
       const uint8_t *inData[1] = {images[image].pixels().data()};
       int inLinesize[1] = {3 * width};
@@ -355,7 +357,7 @@ int main(int argc, char *argv[]) {
     double out_bpp = compressed_size * 8.0 / image_pixels;
     double psnr = 10 * log10((255 * 255) / mse);
 
-    std::cerr << bpp << " " << psnr << " " << out_bpp << std::endl;
+    std::println(stderr, "{} {} {}", bpp, psnr, out_bpp);
     output << bpp << " " << psnr << " " << out_bpp << std::endl;
 
     if (std::abs(bpp - out_bpp) > 2) {

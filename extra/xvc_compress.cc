@@ -4,20 +4,23 @@
 #include <xvcenc.h>
 
 #include <cmath>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <getopt.h>
-#include <iostream>
 #include <limits>
 #include <memory>
+#include <print>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 
 void print_usage(char *argv0) {
-  std::cerr << "Usage: " << std::endl;
-  std::cerr << argv0 << " -i <input-file-mask> -o <output-file-name> -q <qp>"
-            << std::endl;
+  std::println(stderr, "Usage:");
+  std::println(
+      stderr,
+      "{} -i <input-file-mask> -o <output-file-name> -q <qp>",
+      argv0);
 }
 
 template <typename F>

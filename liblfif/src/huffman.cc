@@ -43,7 +43,7 @@ void HuffmanEncoder::generateHuffmanCodelengths(const HuffmanWeights &huffman_we
     A.push_back({pair.second, pair.first});
   }
 
-  std::sort(A.begin(), A.end());
+  std::ranges::sort(A);
 
   // SOURCE: http://hjemmesider.diku.dk/~jyrki/Paper/WADS95.pdf
 
@@ -97,7 +97,7 @@ void HuffmanEncoder::generateHuffmanCodelengths(const HuffmanWeights &huffman_we
     u = 0;
   }
 
-  std::sort(A.begin(), A.end());
+  std::ranges::sort(A);
 
   m_huffman_codelengths = A;
 }

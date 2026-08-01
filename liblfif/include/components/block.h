@@ -23,13 +23,16 @@ class DynamicBlock {
 public:
   #pragma omp declare simd
   explicit DynamicBlock(const std::array<size_t, D> &size): m_size(size) {
-    size_t values = 1;
-    for (const size_t extent : m_size) {
-      if (extent != 0 && values > std::numeric_limits<size_t>::max() / extent) {
-        throw std::length_error("block dimensions overflow");
-      }
-      values *= extent;
-    }
+    const size_t values = std::ranges::fold_left(
+        m_size,
+        size_t {1},
+        [](size_t product, size_t extent) {
+          if (extent != 0
+              && product > std::numeric_limits<size_t>::max() / extent) {
+            throw std::length_error("block dimensions overflow");
+          }
+          return product * extent;
+        });
     m_data.resize(values);
   }
 
@@ -70,7 +73,7 @@ public:
 
   #pragma omp declare simd
   void fill(T value) {
-    std::fill(m_data.begin(), m_data.end(), value);
+    std::ranges::fill(m_data, value);
   }
 };
 

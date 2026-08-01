@@ -1,40 +1,66 @@
 #pragma once
 
 #include <array>
+#include <concepts>
 #include <cstddef>
+#include <functional>
 #include <generator>
+#include <numeric>
+#include <ranges>
+#include <span>
+#include <utility>
 
 template<class T>
 inline constexpr T constpow(const T base, const unsigned exponent) {
   return (exponent == 0) ? 1 : (base * constpow(base, exponent - 1));
 }
 
-template<size_t D, typename T>
-std::generator<std::array<size_t, D>> iterate_dimensions(T range) {
-  std::array<size_t, D> position {};
+template<typename F, typename T>
+concept LinearReference = requires(F &&function, size_t index) {
+  { std::forward<F>(function)(index) } -> std::same_as<T &>;
+};
 
-  if constexpr (D == 0) {
+template<size_t Remaining, size_t D>
+std::generator<const std::array<size_t, D> &> iterate_dimensions_core(
+    const std::array<size_t, D> &range,
+    std::array<size_t, D> &position) {
+  if constexpr (Remaining == 0) {
     co_yield position;
-    co_return;
   }
-
-  for (size_t dimension {}; dimension < D; ++dimension) {
-    if (range[dimension] == 0) {
-      co_return;
+  else {
+    for (position[Remaining - 1] = 0;
+         position[Remaining - 1] < range[Remaining - 1];
+         ++position[Remaining - 1]) {
+      co_yield std::ranges::elements_of(
+          iterate_dimensions_core<Remaining - 1>(range, position));
     }
   }
+}
 
-  while (true) {
+template<size_t D>
+std::generator<std::array<size_t, D>> iterate_dimensions(
+    std::array<size_t, D> range) {
+  std::array<size_t, D> position {};
+  for (const auto &current : iterate_dimensions_core<D>(range, position)) {
+    co_yield current;
+  }
+}
+
+template<size_t Remaining, size_t D>
+std::generator<const std::array<size_t, D> &> block_for_core(
+    const std::array<size_t, D> &start,
+    const std::array<size_t, D> &step,
+    const std::array<size_t, D> &stop,
+    std::array<size_t, D> &position) {
+  if constexpr (Remaining == 0) {
     co_yield position;
-
-    for (size_t dimension {}; dimension < D; ++dimension) {
-      if (++position[dimension] < range[dimension]) {
-        break;
-      }
-      position[dimension] = 0;
-      if (dimension == D - 1) {
-        co_return;
-      }
+  }
+  else {
+    for (position[Remaining - 1] = start[Remaining - 1];
+         position[Remaining - 1] < stop[Remaining - 1];
+         position[Remaining - 1] += step[Remaining - 1]) {
+      co_yield std::ranges::elements_of(
+          block_for_core<Remaining - 1>(start, step, stop, position));
     }
   }
 }
@@ -44,26 +70,9 @@ std::generator<std::array<size_t, D>> block_for(
     std::array<size_t, D> start,
     std::array<size_t, D> step,
     std::array<size_t, D> stop) {
-  for (size_t dimension {}; dimension < D; ++dimension) {
-    if (start[dimension] >= stop[dimension]) {
-      co_return;
-    }
-  }
-
-  auto position = start;
-  while (true) {
-    co_yield position;
-
-    for (size_t dimension {}; dimension < D; ++dimension) {
-      position[dimension] += step[dimension];
-      if (position[dimension] < stop[dimension]) {
-        break;
-      }
-      position[dimension] = start[dimension];
-      if (dimension == D - 1) {
-        co_return;
-      }
-    }
+  std::array<size_t, D> position {};
+  for (const auto &current : block_for_core<D>(start, step, stop, position)) {
+    co_yield current;
   }
 }
 
@@ -79,13 +88,18 @@ size_t make_cube_index(const std::array<size_t, D> &pos) {
   return index;
 }
 
-template<size_t D, typename T>
-size_t get_stride(const T &size) {
-  size_t stride {1};
-  for (size_t dimension {}; dimension < D; ++dimension) {
-    stride *= size[dimension];
-  }
-  return stride;
+template<size_t D, size_t N>
+requires (D <= N)
+size_t get_stride(const std::array<size_t, N> &size) {
+  return std::reduce(
+      size.begin(), size.begin() + D, size_t {1}, std::multiplies {});
+}
+
+template<size_t D, size_t N>
+requires (D <= N)
+size_t get_stride(std::span<const size_t, N> size) {
+  return std::reduce(
+      size.begin(), size.begin() + D, size_t {1}, std::multiplies {});
 }
 
 template<size_t D, typename T>

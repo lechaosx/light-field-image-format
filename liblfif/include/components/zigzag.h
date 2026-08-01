@@ -5,17 +5,17 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <generator>
 #include <numeric>
-#include <vector>
+#include <ranges>
 
-template<size_t Remaining, size_t D, typename F>
-void zigzagScanCore(
+template<size_t Remaining, size_t D>
+std::generator<const std::array<size_t, D> &> zigzagScanCore(
     const std::array<size_t, D> &size,
     std::array<size_t, D> &position,
-    std::array<size_t, D> &rotation,
-    F &callback) {
+    std::array<size_t, D> &rotation) {
   if constexpr (Remaining == 1) {
-    callback(position);
+    co_yield position;
   }
   else {
     auto move = [&] {
@@ -29,16 +29,15 @@ void zigzagScanCore(
           }
         }
       }
-
       return false;
     };
 
     do {
-      zigzagScanCore<Remaining - 1>(
-          size, position, rotation, callback);
+      co_yield std::ranges::elements_of(
+          zigzagScanCore<Remaining - 1>(size, position, rotation));
     } while (move());
 
-    std::rotate(
+    std::ranges::rotate(
         rotation.begin(),
         rotation.begin() + Remaining - 1,
         rotation.begin() + Remaining);
@@ -46,18 +45,11 @@ void zigzagScanCore(
 }
 
 template<size_t D>
-std::vector<std::array<size_t, D>> zigzagScanStart(
+std::generator<const std::array<size_t, D> &> zigzagScanStart(
     const std::array<size_t, D> &size,
-    std::array<size_t, D> position) {
-  std::vector<std::array<size_t, D>> positions;
-  size_t position_count = 1;
-  for (const size_t extent : size) {
-    position_count *= extent;
-  }
-  positions.reserve(position_count);
-
-  std::array<size_t, D> rotation;
-  std::iota(rotation.begin(), rotation.end(), 0);
+    std::array<size_t, D> &position) {
+  std::array<size_t, D> rotation {};
+  std::ranges::iota(rotation, size_t {0});
 
   auto move = [&] {
     for (size_t i = 0; i < D; ++i) {
@@ -70,27 +62,24 @@ std::vector<std::array<size_t, D>> zigzagScanStart(
   };
 
   do {
-    auto record = [&](const auto &current) {
-      positions.push_back(current);
-    };
-    zigzagScanCore<D>(size, position, rotation, record);
+    co_yield std::ranges::elements_of(
+        zigzagScanCore<D>(size, position, rotation));
   } while (move());
-
-  return positions;
 }
 
 template<size_t D>
-std::vector<std::array<size_t, D>> zigzagScan(
-    const std::array<size_t, D> &size) {
-  return zigzagScanStart(size, std::array<size_t, D> {});
+std::generator<const std::array<size_t, D> &> zigzagScan(
+    std::array<size_t, D> size) {
+  std::array<size_t, D> position {};
+  co_yield std::ranges::elements_of(zigzagScanStart(size, position));
 }
 
 template<size_t D>
-std::vector<std::array<size_t, D>> zigzagScanSkipFirst(
-    const std::array<size_t, D> &size) {
+std::generator<const std::array<size_t, D> &> zigzagScanSkipFirst(
+    std::array<size_t, D> size) {
   std::array<size_t, D> position {};
   position[0] = 1;
-  return zigzagScanStart(size, position);
+  co_yield std::ranges::elements_of(zigzagScanStart(size, position));
 }
 
 template<size_t D>

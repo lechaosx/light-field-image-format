@@ -8,11 +8,12 @@
 #include <array>
 #include <bit>
 #include <charconv>
+#include <cstdio>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <limits>
+#include <print>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -35,14 +36,15 @@ struct CompressOptions {
   std::array<int64_t, 2> disparity_shift {};
 };
 
-void printUsage(std::ostream &output) {
-  output
-      << "Usage:\n"
-      << "  lfif compress INPUT OUTPUT [--shape EXTENTS] [--block EXTENTS]\n"
-      << "      [--transform wavelet|dct] [--discarded-bits N] [--predict]\n"
-      << "      [--disparity XxY | --auto-disparity]\n"
-      << "  lfif decompress INPUT OUTPUT_MASK\n"
-      << "  lfif inspect INPUT\n";
+void printUsage(FILE *output) {
+  std::print(
+      output,
+      "Usage:\n"
+      "  lfif compress INPUT OUTPUT [--shape EXTENTS] [--block EXTENTS]\n"
+      "      [--transform wavelet|dct] [--discarded-bits N] [--predict]\n"
+      "      [--disparity XxY | --auto-disparity]\n"
+      "  lfif decompress INPUT OUTPUT_MASK\n"
+      "  lfif inspect INPUT\n");
 }
 
 uint64_t parseNumber(std::string_view text, std::string_view name) {
@@ -334,11 +336,11 @@ void decompress(
 void printExtents(const std::vector<uint64_t> &extents) {
   for (size_t i = 0; i < extents.size(); ++i) {
     if (i != 0) {
-      std::cout << 'x';
+      std::print("x");
     }
-    std::cout << extents[i];
+    std::print("{}", extents[i]);
   }
-  std::cout << '\n';
+  std::println();
 }
 
 void inspect(const std::filesystem::path &input_name) {
@@ -354,37 +356,40 @@ void inspect(const std::filesystem::path &input_name) {
       || static_cast<uint64_t>(end_position - payload_position) < header.payload_size) {
     throw std::runtime_error("truncated LFIF payload");
   }
-  std::cout << "dimensions: " << header.extents.size() << '\n';
-  std::cout << "extents: ";
+  std::println("dimensions: {}", header.extents.size());
+  std::print("extents: ");
   printExtents(header.extents);
-  std::cout << "block extents: ";
+  std::print("block extents: ");
   printExtents(header.block_extents);
-  std::cout << "sample depth: " << static_cast<unsigned>(header.sample_depth) << '\n';
-  std::cout << "channels: " << static_cast<unsigned>(header.channels) << '\n';
-  std::cout << "sample format: unsigned integer\n";
-  std::cout << "transform: "
-            << (header.transform == lfif::Transform::wavelet ? "wavelet" : "dct")
-            << '\n';
-  std::cout << "entropy codec: CABAC\n";
-  std::cout << "color space: RGB\n";
-  std::cout << "prediction: " << (header.prediction ? "yes" : "no") << '\n';
-  std::cout << "discarded bits: " << static_cast<unsigned>(header.discarded_bits) << '\n';
-  std::cout << "disparity compensation: "
-            << (header.disparity_compensated ? "yes" : "no") << '\n';
-  std::cout << "disparity shifts: " << header.disparity_shift[0]
-            << ", " << header.disparity_shift[1] << '\n';
-  std::cout << "payload bytes: " << header.payload_size << '\n';
+  std::println("sample depth: {}", static_cast<unsigned>(header.sample_depth));
+  std::println("channels: {}", static_cast<unsigned>(header.channels));
+  std::println("sample format: unsigned integer");
+  std::println(
+      "transform: {}",
+      header.transform == lfif::Transform::wavelet ? "wavelet" : "dct");
+  std::println("entropy codec: CABAC");
+  std::println("color space: RGB");
+  std::println("prediction: {}", header.prediction ? "yes" : "no");
+  std::println("discarded bits: {}", static_cast<unsigned>(header.discarded_bits));
+  std::println(
+      "disparity compensation: {}",
+      header.disparity_compensated ? "yes" : "no");
+  std::println(
+      "disparity shifts: {}, {}",
+      header.disparity_shift[0],
+      header.disparity_shift[1]);
+  std::println("payload bytes: {}", header.payload_size);
 }
 
 }
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    printUsage(std::cerr);
+    printUsage(stderr);
     throw std::invalid_argument("missing command");
   }
   if (std::string_view(argv[1]) == "--help" || std::string_view(argv[1]) == "-h") {
-    printUsage(std::cout);
+    printUsage(stdout);
     return 0;
   }
 

@@ -13,8 +13,10 @@ inline int64_t shift_right_and_round(int64_t value, unsigned bits) {
   return (value + (int64_t {1} << (bits - 1))) >> bits;
 }
 
-template<size_t D, typename F>
-void fdwt(const std::array<size_t, D> &block_size, F &&block) {
+template<size_t D>
+void fdwt(
+    const std::array<size_t, D> &block_size,
+    LinearReference<int32_t> auto &&block) {
   if constexpr (D == 1) {
     DynamicBlock<int32_t, 1> inputs({block_size[0]});
 
@@ -82,8 +84,10 @@ void fdwt(const std::array<size_t, D> &block_size, F &&block) {
   }
 }
 
-template<size_t D, typename F>
-void idwt(const std::array<size_t, D> &block_size, F &&block) {
+template<size_t D>
+void idwt(
+    const std::array<size_t, D> &block_size,
+    LinearReference<int32_t> auto &&block) {
   if constexpr (D == 1) {
     DynamicBlock<int32_t, 1> inputs({block_size[0]});
     const size_t bigger_half = (block_size[0] + 1) >> 1;

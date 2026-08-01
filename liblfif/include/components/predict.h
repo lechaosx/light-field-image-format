@@ -24,7 +24,7 @@ void interpolate(
     int64_t frac = main_ref_pos[D - 1] % multiplier;
 
     auto inputF1 = [&](size_t index) {
-      return main_ref(pos * get_stride<D - 1>(size.data()) + index);
+      return main_ref(pos * get_stride<D - 1>(size) + index);
     };
 
     if (frac == 0) {
@@ -40,7 +40,7 @@ void interpolate(
       T val2 {};
 
       auto inputF2 = [&](size_t index) {
-        return main_ref((pos + 1) * get_stride<D - 1>(size.data()) + index);
+        return main_ref((pos + 1) * get_stride<D - 1>(size) + index);
       };
 
       interpolate<D - 1>(
@@ -77,15 +77,15 @@ void low_pass_sum(std::span<const size_t, D> size, F &&input) {
   else {
     for (size_t slice = 0; slice < size[D - 1]; slice++) {
       auto inputF = [&](size_t index) -> auto & {
-        return input(slice * get_stride<D - 1>(size.data()) + index);
+        return input(slice * get_stride<D - 1>(size) + index);
       };
 
       low_pass_sum<D - 1>(size.template first<D - 1>(), inputF);
     }
 
-    for (size_t noodle = 0; noodle < get_stride<D - 1>(size.data()); noodle++) {
+    for (size_t noodle = 0; noodle < get_stride<D - 1>(size); noodle++) {
       auto inputF = [&](size_t index) -> auto & {
-        return input(index * get_stride<D - 1>(size.data()) + noodle);
+        return input(index * get_stride<D - 1>(size) + noodle);
       };
 
       low_pass_sum<1>(size.template last<1>(), inputF);
@@ -297,7 +297,7 @@ T predict_DC(const std::array<size_t, D> &size, F &inputF) {
       neighbour_block_size[i] = size[idx];
     }
 
-    samples_cnt += get_stride<D - 1>(neighbour_block_size.data());
+    samples_cnt += get_stride<D - 1>(neighbour_block_size);
 
     for (const auto &pos :
          iterate_dimensions<D - 1>(neighbour_block_size)) {

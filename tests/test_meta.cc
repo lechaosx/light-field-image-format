@@ -5,6 +5,14 @@
 #include <array>
 #include <vector>
 
+template<typename T>
+concept TwoDimensionalStrideInput = requires(T size) {
+  get_stride<2>(size);
+};
+
+static_assert(TwoDimensionalStrideInput<std::array<size_t, 2>>);
+static_assert(!TwoDimensionalStrideInput<const size_t *>);
+
 TEST(Meta, IteratesDimensionsInStorageOrder) {
   std::vector<std::array<size_t, 2>> positions;
 
@@ -60,4 +68,24 @@ TEST(Meta, IteratesCompileTimeCubeInStorageOrder) {
                            {0, 1},
                            {1, 1},
                        }));
+}
+
+TEST(Meta, EmptyDimensionProducesNoPositions) {
+  size_t positions {};
+  for ([[maybe_unused]] const auto &position :
+       iterate_dimensions<3>(std::array<size_t, 3> {2, 0, 3})) {
+    ++positions;
+  }
+  EXPECT_EQ(positions, 0);
+}
+
+TEST(Meta, EmptyBlockRangeProducesNoPositions) {
+  size_t positions {};
+  for ([[maybe_unused]] const auto &position : block_for<2>(
+      std::array<size_t, 2> {2, 0},
+      std::array<size_t, 2> {1, 1},
+      std::array<size_t, 2> {2, 3})) {
+    ++positions;
+  }
+  EXPECT_EQ(positions, 0);
 }

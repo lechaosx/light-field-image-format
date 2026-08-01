@@ -47,3 +47,8 @@ TEST(DynamicBlock, RejectsDimensionProductOverflow) {
       (DynamicBlock<int, 2> {{std::numeric_limits<size_t>::max(), 2}}),
       std::length_error);
 }
+
+TEST(DynamicBlock, AcceptsZeroExtentBeforeLargeExtents) {
+  DynamicBlock<int, 3> block({0, std::numeric_limits<size_t>::max(), 2});
+  EXPECT_EQ(block.stride(3), 0);
+}

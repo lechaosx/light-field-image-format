@@ -4,7 +4,11 @@
 #include "zigzag.h"
 #include "endian.h"
 
+#include <algorithm>
+#include <bit>
+#include <functional>
 #include <iosfwd>
+#include <span>
 
 using REFBLOCKUNIT = double;
 
@@ -23,10 +27,13 @@ void constructByReference(const ReferenceBlock<D> &reference, TraversalTable<D> 
     srt[i].second = i;
   }
 
-  // The DC coefficient remains first while the AC coefficients are reordered.
-  stable_sort(&srt[0] + 1, &srt[srt.stride(D)], [](auto &left, auto &right) {
-    return left.first > right.first;
-  });
+  const size_t values = srt.stride(D);
+  if (values > 1) {
+    std::ranges::stable_sort(
+        std::span {&srt[0] + 1, values - 1},
+        std::ranges::greater {},
+        &std::pair<double, size_t>::first);
+  }
 
   for (size_t i = 0; i < reference.stride(D); i++) {
     output[srt[i].second] = i;
@@ -99,7 +106,7 @@ void constructZigzag(TraversalTable<D> &output) {
 
 template <size_t D>
 void writeTraversalToStream(const TraversalTable<D> &input, std::ostream &stream) {
-  size_t max_bits = ceil(log2(input.stride(D)));
+  const size_t max_bits = std::bit_width(input.stride(D) - 1);
 
   if (max_bits <= 8) {
     for (size_t i = 0; i < input.stride(D); i++) {
@@ -128,7 +135,7 @@ template <size_t D>
 TraversalTable<D> readTraversalFromStream(const std::array<size_t, D> &BS, std::istream &stream) {
   TraversalTable<D> table(BS);
 
-  size_t max_bits = ceil(log2(table.stride(D)));
+  const size_t max_bits = std::bit_width(table.stride(D) - 1);
 
   if (max_bits <= 8) {
     for (size_t i = 0; i < table.stride(D); i++) {

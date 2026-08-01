@@ -6,20 +6,22 @@ extern "C" {
 }
 
 #include <cmath>
+#include <cstdio>
 #include <getopt.h>
 
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <limits>
+#include <print>
 #include <stdexcept>
 #include <string>
 
 void print_usage(char *argv0) {
-  std::cerr << "Usage: " << std::endl;
-  std::cerr << argv0
-            << " -i <input-file-mask> -o <output-file-name> -b <bitrate>"
-            << std::endl;
+  std::println(stderr, "Usage:");
+  std::println(
+      stderr,
+      "{} -i <input-file-mask> -o <output-file-name> -b <bitrate>",
+      argv0);
 }
 
 template <typename F>

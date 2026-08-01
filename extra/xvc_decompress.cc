@@ -8,20 +8,21 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <getopt.h>
-#include <iostream>
 #include <limits>
 #include <memory>
 #include <new>
+#include <print>
 #include <stdexcept>
 #include <string>
 
 void print_usage(char *argv0) {
-  std::cerr << "Usage: " << std::endl;
-  std::cerr << argv0 << " -i <input-file-name> -o <output-file-mask>"
-            << std::endl;
+  std::println(stderr, "Usage:");
+  std::println(
+      stderr, "{} -i <input-file-name> -o <output-file-mask>", argv0);
 }
 
 template <typename F>

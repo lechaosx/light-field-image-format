@@ -53,11 +53,11 @@ public:
       next(size.template first<D - 1>()) {}
 };
 
-template<size_t D, typename F>
+template<size_t D>
 void fdct(
     const std::array<size_t, D> &block_size,
     const DCTCoefs<D> &coefs,
-    F &&block) {
+    LinearReference<float> auto &&block) {
   if constexpr (D == 1) {
     DynamicBlock<float, 1> inputs({block_size[0]});
 
@@ -97,11 +97,11 @@ void fdct(
   }
 }
 
-template<size_t D, typename F>
+template<size_t D>
 void idct(
     const std::array<size_t, D> &block_size,
     const DCTCoefs<D> &coefs,
-    F &&block) {
+    LinearReference<float> auto &&block) {
   if constexpr (D == 1) {
     DynamicBlock<float, 1> inputs({block_size[0]});
 

@@ -6,9 +6,9 @@
 #include <cmath>
 #include <cstdio>
 #include <fstream>
-#include <iostream>
 #include <limits>
 #include <memory>
+#include <print>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -17,11 +17,12 @@
 #include <jpeglib.h>
 
 void print_usage(char *argv0) {
-  std::cerr << "Usage: " << std::endl;
-  std::cerr << argv0
-            << " -i <input-file-mask> -o <output-file-name> [-f "
-               "<fist-quality>] [-l <last-quality>] [-s <quality-step>] [-a]"
-            << std::endl;
+  std::println(stderr, "Usage:");
+  std::println(
+      stderr,
+      "{} -i <input-file-mask> -o <output-file-name> [-f "
+      "<fist-quality>] [-l <last-quality>] [-s <quality-step>] [-a]",
+      argv0);
 }
 
 uint8_t parseQuality(std::string_view input) {
@@ -197,7 +198,7 @@ int main(int argc, char *argv[]) {
   const size_t image_pixels = frame_pixels * image_count;
 
   for (size_t quality = q_first; quality <= q_last; quality += q_step) {
-    std::cerr << "Q" << quality << " STARTED" << std::endl;
+    std::println(stderr, "Q{} STARTED", quality);
 
     size_t compressed_size = 0;
     double mse = 0;
@@ -266,7 +267,7 @@ int main(int argc, char *argv[]) {
     double bpp = compressed_size * 8.0 / image_pixels;
     double psnr = 10 * log10((255 * 255) / mse);
 
-    std::cerr << quality << " " << psnr << " " << bpp << std::endl;
+    std::println(stderr, "{} {} {}", quality, psnr, bpp);
     output << quality << " " << psnr << " " << bpp << std::endl;
   }
 

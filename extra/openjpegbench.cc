@@ -5,12 +5,13 @@
 #include <algorithm>
 #include <cerrno>
 #include <cmath>
+#include <cstdio>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <limits>
 #include <memory>
+#include <print>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -65,19 +66,20 @@ struct TemporaryFile {
 }
 
 void print_usage(char *argv0) {
-  std::cerr << "Usage: " << std::endl;
-  std::cerr << argv0
-            << " -i <input-file-mask> -o <output-file-name> [-f <fist-psnr>] "
-               "[-l <last-psnr>] [-s <psnr-step>] [-a]"
-            << std::endl;
+  std::println(stderr, "Usage:");
+  std::println(
+      stderr,
+      "{} -i <input-file-mask> -o <output-file-name> [-f <fist-psnr>] "
+      "[-l <last-psnr>] [-s <psnr-step>] [-a]",
+      argv0);
 }
 
 static void error_callback(const char *msg, void *) {
-  std::cerr << "[ERROR] " << msg;
+  std::print(stderr, "[ERROR] {}", msg);
 }
 
 static void warning_callback(const char *msg, void *) {
-  std::cerr << "[WARNING] " << msg;
+  std::print(stderr, "[WARNING] {}", msg);
 }
 
 static void info_callback(const char *, void *) {}
@@ -266,7 +268,7 @@ int main(int argc, char *argv[]) {
 
   for (float param_psnr = psnr_first; param_psnr <= psnr_last;
        param_psnr += psnr_step) {
-    std::cerr << "PSNR: " << param_psnr << "\n";
+    std::println(stderr, "PSNR: {}", param_psnr);
 
     double mse = 0;
     size_t compressed_size = 0;
@@ -370,7 +372,7 @@ int main(int argc, char *argv[]) {
     double bpp = compressed_size * 8.0 / image_pixels;
     double psnr = 10 * log10((255 * 255) / mse);
 
-    std::cerr << param_psnr << " " << psnr << " " << bpp << std::endl;
+    std::println(stderr, "{} {} {}", param_psnr, psnr, bpp);
     output << param_psnr << " " << psnr << " " << bpp << std::endl;
   }
 

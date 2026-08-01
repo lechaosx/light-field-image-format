@@ -14,6 +14,22 @@
 #include <stdexcept>
 #include <vector>
 
+namespace {
+
+struct FloatReference {
+  float value {};
+  float &operator()(size_t) { return value; }
+};
+
+struct FloatValue {
+  float operator()(size_t) { return 0; }
+};
+
+static_assert(LinearReference<FloatReference, float>);
+static_assert(!LinearReference<FloatValue, float>);
+
+}
+
 TEST(Dct, OneDimensionalRoundTrip) {
   const std::array<size_t, 1> size {8};
   const std::vector<float> expected {3.0F, -2.0F, 7.0F, 1.0F, 0.0F, 4.0F, -5.0F, 9.0F};

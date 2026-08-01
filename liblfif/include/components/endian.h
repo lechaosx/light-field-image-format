@@ -6,22 +6,12 @@
 #include <ostream>
 
 template<std::integral T>
-constexpr T endianSwap(T data) {
-  if constexpr (sizeof(T) == 1) {
-    return data;
-  }
-  else {
-    return std::byteswap(data);
-  }
-}
-
-template<std::integral T>
 constexpr T bigEndianSwap(T data) {
   if constexpr (std::endian::native == std::endian::big) {
     return data;
   }
   else {
-    return endianSwap(data);
+    return std::byteswap(data);
   }
 }
 
@@ -31,7 +21,7 @@ constexpr T littleEndianSwap(T data) {
     return data;
   }
   else {
-    return endianSwap(data);
+    return std::byteswap(data);
   }
 }
 

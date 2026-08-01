@@ -3,20 +3,21 @@
 #include "plenoppm.h"
 
 #include <cmath>
+#include <cstdio>
 #include <getopt.h>
 
 #include <array>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <limits>
+#include <print>
 #include <stdexcept>
 #include <string>
 
 void print_usage(char *argv0) {
-  std::cerr << "Usage: " << std::endl;
-  std::cerr << argv0 << " -i <input-file-name> -o <output-file-mask>"
-            << std::endl;
+  std::println(stderr, "Usage:");
+  std::println(
+      stderr, "{} -i <input-file-name> -o <output-file-mask>", argv0);
 }
 
 template <typename F>
