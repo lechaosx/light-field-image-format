@@ -1,13 +1,4 @@
-/**
-* @file runlength.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 13. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Module for performing run-length encoding.
-*/
-
-#ifndef RUNLENGTH_H
-#define RUNLENGTH_H
+#pragma once
 
 #include "quant_table.h"
 #include "huffman.h"
@@ -16,80 +7,111 @@
 
 #include <bit>
 #include <cstdint>
+#include <limits>
+#include <stdexcept>
 
-using RLAMPUNIT = int64_t;    /**< @brief Unit intended to contain amplitude value in un-length pair.*/
-using HuffmanClass = uint8_t; /**< @brief Unit intended to contain number of bits of amplitude.*/
+using RLAMPUNIT = int64_t;
+using HuffmanClass = uint8_t;
 
-/**
- * @brief Class which describes one run-length pair.
- */
 class RunLengthPair {
 public:
-  size_t    zeroes;    /**< @brief Number of subsequent zeroes in one run-length.*/
-  RLAMPUNIT amplitude; /**< @brief The non-zero amplitude. */
+  size_t zeroes;
+  RLAMPUNIT amplitude;
 
-  /**
-   * @brief Method which encodes the pair to stream by Huffman encoder.
-   * @param encoder The Huffman encoder.
-   * @param stream The stream to which the symbol shall be encoded.
-   * @param class_bits Minimum number of bits needed to contain the maximum possible amplitude size.
-   */
-  void huffmanEncodeToStream(const HuffmanEncoder &encoder, OBitstream &stream, size_t class_bits) const;
+  void huffmanEncodeToStream(
+      const HuffmanEncoder &encoder,
+      auto &stream,
+      size_t class_bits) const {
+    encoder.encodeSymbolToStream(huffmanSymbol(class_bits), stream);
 
-  /**
-   * @brief Method which decodes the pair from stream by Huffman decoder.
-   * @param decoder The Huffman decoder.
-   * @param stream The stream from which the symbol shall be decoded.
-   * @param class_bits Minimum number of bits needed to contain the maximum possible amplitude size.
-   */
-  void huffmanDecodeFromStream(const HuffmanDecoder &decoder, IBitstream &stream, size_t class_bits);
+    const uint64_t magnitude = amplitude < 0
+        ? static_cast<uint64_t>(-(amplitude + 1)) + 1
+        : static_cast<uint64_t>(amplitude);
+    const uint64_t encoded_amplitude =
+        amplitude < 0 ? ~magnitude : magnitude;
+    const HuffmanClass amp_class = huffmanClass();
+    for (size_t bit = amp_class; bit > 0; --bit) {
+      stream.writeBit((encoded_amplitude >> (bit - 1)) & 1);
+    }
+  }
 
-  /**
-   * @brief Method which adds pair to the weight map.
-   * @param weights Weight map.
-   * @param class_bits Minimum number of bits needed to contain the maximum possible amplitude size.
-   */
-   void addToWeights(HuffmanWeights &weights, size_t class_bits) const {
+  void huffmanDecodeFromStream(
+      const HuffmanDecoder &decoder,
+      auto &stream,
+      size_t class_bits) {
+    constexpr size_t symbol_bits = std::numeric_limits<HuffmanSymbol>::digits;
+    if (class_bits > symbol_bits) {
+      throw std::invalid_argument("run-length class width exceeds symbol");
+    }
+    const HuffmanSymbol class_mask = class_bits == symbol_bits
+        ? std::numeric_limits<HuffmanSymbol>::max()
+        : static_cast<HuffmanSymbol>((uint32_t {1} << class_bits) - 1);
+    const HuffmanSymbol huffman_symbol =
+        decoder.decodeSymbolFromStream(stream);
+    const HuffmanClass amp_class = huffman_symbol & class_mask;
+    if (amp_class > std::numeric_limits<uint64_t>::digits) {
+      throw std::runtime_error("run-length amplitude exceeds codec width");
+    }
+    zeroes = huffman_symbol >> class_bits;
+
+    uint64_t encoded_amplitude {};
+    for (HuffmanClass i = 0; i < amp_class; ++i) {
+      encoded_amplitude =
+          (encoded_amplitude << 1) | stream.readBit();
+    }
+
+    if (amp_class == 0) {
+      amplitude = 0;
+      return;
+    }
+
+    const uint64_t sign_threshold = uint64_t {1} << (amp_class - 1);
+    if (encoded_amplitude >= sign_threshold) {
+      if (encoded_amplitude
+          > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+        throw std::runtime_error("run-length amplitude exceeds codec width");
+      }
+      amplitude = static_cast<int64_t>(encoded_amplitude);
+      return;
+    }
+
+    const uint64_t amplitude_mask =
+        amp_class == std::numeric_limits<uint64_t>::digits
+        ? std::numeric_limits<uint64_t>::max()
+        : (uint64_t {1} << amp_class) - 1;
+    const uint64_t magnitude = amplitude_mask - encoded_amplitude;
+    amplitude =
+        amp_class == std::numeric_limits<uint64_t>::digits
+            && magnitude == sign_threshold
+        ? std::numeric_limits<int64_t>::min()
+        : -static_cast<int64_t>(magnitude);
+  }
+
+  void addToWeights(HuffmanWeights &weights, size_t class_bits) const {
     weights[huffmanSymbol(class_bits)]++;
   }
 
-  /**
-   * @brief Checks if the pair is EOB.
-   * @return True if EOB, false else.
-   */
-  bool eob() const {
+  [[nodiscard]] bool eob() const {
     return (!zeroes) && (!amplitude);
   }
 
-  /**
-   * @brief Computes number of bits from symbol will be used for zeroes.
-   * @param class_bits Minimum number of bits needed to contain the maximum possible amplitude size.
-   * @return Number of bits.
-   */
-  static size_t zeroesBits(size_t class_bits) {
+  [[nodiscard]] static size_t zeroesBits(size_t class_bits) {
     return sizeof(HuffmanSymbol) * 8 - class_bits;
   }
 
-  /**
-   * @brief Computes number of bits from symbol will be used for amplitude class.
-   * @param amp_bits Minimum number of bits needed to contain the maximum possible amplitude.
-   * @return Minimum number of bits needed to contain the maximum possible amplitude size.
-   */
-  static size_t classBits(size_t amp_bits) {
+  [[nodiscard]] static size_t classBits(size_t amp_bits) {
     return std::bit_width(amp_bits);
   }
 
-  HuffmanClass huffmanClass() const {
+  [[nodiscard]] HuffmanClass huffmanClass() const {
     const uint64_t magnitude = amplitude < 0
         ? static_cast<uint64_t>(-(amplitude + 1)) + 1
         : static_cast<uint64_t>(amplitude);
     return static_cast<HuffmanClass>(std::bit_width(magnitude));
   }
 
-  HuffmanSymbol huffmanSymbol(size_t class_bits) const {
+  [[nodiscard]] HuffmanSymbol huffmanSymbol(size_t class_bits) const {
     return zeroes << class_bits | huffmanClass();
   }
 
 };
-
-#endif

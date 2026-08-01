@@ -105,7 +105,6 @@
               pkgs.pkg-config
               pkgs.gdb
               pkgs.clang-tools
-              pkgs.doxygen
               pkgs.gtest
               pkgs.ffmpeg
               pkgs.ffmpeg.dev

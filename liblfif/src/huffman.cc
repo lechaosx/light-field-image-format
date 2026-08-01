@@ -1,10 +1,4 @@
-/******************************************************************************\
-* SOUBOR: huffman.cc
-* AUTOR: Drahomir Dlabaja (xdlaba02)
-\******************************************************************************/
-
 #include "components/huffman.h"
-#include "components/bitstream.h"
 #include "components/endian.h"
 
 #include <algorithm>
@@ -38,10 +32,6 @@ void HuffmanEncoder::writeToStream(std::ostream &stream) const {
   for (auto &pair: m_huffman_codelengths) {
     writeValueToStream(pair.second, stream);
   }
-}
-
-void HuffmanEncoder::encodeSymbolToStream(HuffmanSymbol symbol, OBitstream &stream) const {
-  stream.write(m_huffman_map.at(symbol));
 }
 
 void HuffmanEncoder::generateHuffmanCodelengths(const HuffmanWeights &huffman_weights) {
@@ -189,37 +179,4 @@ void HuffmanDecoder::readFromStream(std::istream &stream) {
   }
   m_huffman_counts = std::move(counts);
   m_huffman_symbols = std::move(symbols);
-}
-
-HuffmanSymbol HuffmanDecoder::decodeSymbolFromStream(IBitstream &stream) const {
-  const size_t index = decodeOneHuffmanSymbolIndex(stream);
-  if (index >= m_huffman_symbols.size()) {
-    throw std::runtime_error("invalid Huffman symbol index");
-  }
-  return m_huffman_symbols[index];
-}
-
-size_t HuffmanDecoder::decodeOneHuffmanSymbolIndex(IBitstream &stream) const {
-  if (m_huffman_counts.size() == 1 && m_huffman_counts[0] == 1) {
-    return 0;
-  }
-
-  uint64_t code  = 0;
-  uint64_t first = 0;
-  size_t  index = 0;
-  HuffmanCodelength count = 0;
-
-  for (size_t len = 1; len < m_huffman_counts.size(); len++) {
-    code |= stream.readBit();
-    count = m_huffman_counts[len];
-    if (code >= first && code - first < count) {
-      return index + static_cast<size_t>(code - first);
-    }
-    index += count;
-    first += count;
-    first <<= 1;
-    code  <<= 1;
-  }
-
-  throw std::runtime_error("invalid Huffman codeword");
 }

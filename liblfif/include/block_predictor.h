@@ -24,7 +24,7 @@ class BlockPredictor {
         return 0.f;
       }
 
-      //resi pokud se prediktor chce divat na vzorky, ktere jeste nebyly komprimovane
+      // Prevent prediction from reading samples that have not been decoded yet.
       for (size_t i = 1; i <= D; i++) {
         size_t idx = D - i;
 
@@ -92,11 +92,11 @@ public:
     auto prediction_error = [&]() {
       Score error {};
 
-      iterate_dimensions<D>(input_block.size(), [&](const auto &pos) {
+      for (const auto &pos : iterate_dimensions<D>(input_block.size())) {
         const Score difference = static_cast<Score>(input_block[pos])
             - static_cast<Score>(prediction_block[pos]);
         error += difference * difference;
-      });
+      }
 
       return error;
     };
@@ -117,7 +117,9 @@ public:
     eval_prediction({1, {}});
     eval_prediction({2, {}});
 
-    iterate_cube<5, D>([&](const std::array<size_t, D> &pos) {
+    std::array<size_t, D> direction_range;
+    direction_range.fill(5);
+    for (const auto &pos : iterate_dimensions<D>(direction_range)) {
       std::array<int8_t, D> direction {};
 
       for (size_t i = 0; i < D; i++) {
@@ -143,11 +145,11 @@ public:
       };
 
       if (!have_positive() || !have_eight()) {
-        return;
+        continue;
       }
 
       eval_prediction({3, direction});
-    });
+    }
 
     return best_prediction_type;
   }
@@ -157,7 +159,7 @@ public:
 
     predict(prediction_block, offset, type);
 
-    iterate_dimensions<D>(block.size(), [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<D>(block.size())) {
       if constexpr (std::is_integral_v<T>) {
         const int64_t value =
             static_cast<int64_t>(block[pos])
@@ -171,7 +173,7 @@ public:
       else {
         block[pos] -= prediction_block[pos];
       }
-    });
+    }
   }
 
   void backwardPass(DynamicBlock<T, D> &block, const std::array<size_t, D> &offset, PredictionType<D> type) {
@@ -179,7 +181,7 @@ public:
 
     predict(prediction_block, offset, type);
 
-    iterate_dimensions<D>(block.size(), [&](const auto &pos) {
+    for (const auto &pos : iterate_dimensions<D>(block.size())) {
       if constexpr (std::is_integral_v<T>) {
         const int64_t value =
             static_cast<int64_t>(block[pos])
@@ -193,7 +195,7 @@ public:
       else {
         block[pos] += prediction_block[pos];
       }
-    });
+    }
 
     moveBlock<D>([&](const auto &pos) { return block[pos]; }, block.size(), {},
                  [&](const auto &pos, const auto &val) { return decoded_image[pos] = val; }, decoded_image.size(), offset,

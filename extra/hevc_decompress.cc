@@ -1,8 +1,3 @@
-/******************************************************************************\
-* SOUBOR: hevc_decompress.cc
-* AUTOR: Drahomir Dlabaja (xdlaba02)
-\******************************************************************************/
-
 #include "ffmpeg_raii.h"
 #include "file_mask.h"
 #include "plenoppm.h"

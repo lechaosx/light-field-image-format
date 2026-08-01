@@ -1,15 +1,6 @@
-/**
-* @file block.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 12. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Functions for block extraction and insertion.
-*/
-
 #pragma once
 
-#include <cmath>
-
+#include <algorithm>
 #include <array>
 #include <limits>
 #include <stdexcept>
@@ -72,17 +63,17 @@ public:
   }
 
   #pragma omp declare simd
-  const std::array<size_t, D> &size() const {
+  [[nodiscard]] const std::array<size_t, D> &size() const {
     return m_size;
   }
 
   #pragma omp declare simd
-  size_t stride(size_t depth = D) const {
+  [[nodiscard]] size_t stride(size_t depth = D) const {
     return depth ? m_size[depth - 1] * stride(depth - 1) : 1;
   }
 
   #pragma omp declare simd
-  size_t size(size_t i) const {
+  [[nodiscard]] size_t size(size_t i) const {
     return m_size[i];
   }
 
@@ -96,20 +87,40 @@ protected:
   static void *operator new[](size_t);
 };
 
-template<size_t D>
-struct moveBlock {
-  template <typename IF, typename OF>
-  moveBlock(
-      IF &&input, const std::array<size_t, D> &input_size, const std::array<size_t, D> &input_offset,
-      OF &&output, const std::array<size_t, D> &output_size, const std::array<size_t, D> &output_offset,
-      const std::array<size_t, D> &size) {
+template<size_t D, typename IF, typename OF>
+void moveBlock(
+    IF &&input, const std::array<size_t, D> &input_size, const std::array<size_t, D> &input_offset,
+    OF &&output, const std::array<size_t, D> &output_size, const std::array<size_t, D> &output_offset,
+    const std::array<size_t, D> &size) {
+  if constexpr (D == 1) {
+    size_t input_pos = input_offset[0];
+    size_t output_pos = output_offset[0];
 
+    const size_t input_end = std::min(input_offset[0] + size[0], input_size[0]);
+    const size_t output_end = std::min(output_offset[0] + size[0], output_size[0]);
+
+    std::array<size_t, 1> full_input_pos {};
+    std::array<size_t, 1> full_output_pos {};
+
+    while (input_pos < input_end && output_pos < output_end) {
+      full_input_pos[0] = input_pos;
+      full_output_pos[0] = output_pos;
+      output(full_output_pos, input(full_input_pos));
+      input_pos++;
+      output_pos++;
+    }
+
+    while (output_pos < output_end) {
+      full_output_pos[0] = output_pos;
+      output(full_output_pos, input(full_input_pos));
+      output_pos++;
+    }
+  } else {
     std::array<size_t, D - 1> input_subsize    {};
     std::array<size_t, D - 1> input_suboffset  {};
     std::array<size_t, D - 1> output_subsize   {};
     std::array<size_t, D - 1> output_suboffset {};
     std::array<size_t, D - 1> subsize          {};
-
 
     for (size_t i = 0; i < D - 1; i++) {
       input_subsize[i]    = input_size[i];
@@ -166,43 +177,4 @@ struct moveBlock {
       output_pos++;
     }
   }
-};
-
-template<>
-struct moveBlock<1> {
-
-  /**
-   * @brief The parital specialization for getting one sample.
-   * @see getBlock<BS, D>::getBlock
-   */
-  template <typename IF, typename OF>
-  moveBlock(
-      IF &&input, const std::array<size_t, 1> &input_size, const std::array<size_t, 1> &input_offset,
-      OF &&output, const std::array<size_t, 1> &output_size, const std::array<size_t, 1> &output_offset,
-      const std::array<size_t, 1> &size) {
-    size_t input_pos = input_offset[0];
-    size_t output_pos = output_offset[0];
-
-    const size_t input_end = std::min(input_offset[0] + size[0], input_size[0]);
-    const size_t output_end = std::min(output_offset[0] + size[0], output_size[0]);
-
-    std::array<size_t, 1> full_input_pos {};
-    std::array<size_t, 1> full_output_pos {};
-
-    while (input_pos < input_end && output_pos < output_end) {
-      full_input_pos[0]  = input_pos;
-      full_output_pos[0] = output_pos;
-
-      output(full_output_pos, input(full_input_pos));
-      input_pos++;
-      output_pos++;
-    }
-
-    while (output_pos < output_end) {
-      full_output_pos[0] = output_pos;
-
-      output(full_output_pos, input(full_input_pos));
-      output_pos++;
-    }
-  }
-};
+}

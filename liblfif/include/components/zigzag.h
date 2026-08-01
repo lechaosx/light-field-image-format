@@ -1,31 +1,29 @@
-/**
-* @file zigzag.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 13. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief The algorithm for generating zig-zag matrices.
-*/
-
 #pragma once
 
 #include "block.h"
 
-#include <cstdint>
-#include <vector>
-#include <array>
-#include <numeric>
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <numeric>
 
-template <size_t D>
-struct zigzagScanCore {
-  template <typename F>
-  zigzagScanCore(const size_t size[D], size_t pos[D], size_t rot[D], F &&callback) {
-    auto move = [&]() {
-      if (pos[rot[D - 1]] < size[rot[D - 1]] - 1) {
-        for (size_t i = 2; i <= D; i++) {
-          if (pos[rot[D - i]] > 0) {
-            pos[rot[D - i]]--;
-            pos[rot[D - 1]]++;
+template<size_t Remaining, size_t D, typename F>
+void zigzagScanCore(
+    const std::array<size_t, D> &size,
+    std::array<size_t, D> &position,
+    std::array<size_t, D> &rotation,
+    F &callback) {
+  if constexpr (Remaining == 1) {
+    callback(position);
+  }
+  else {
+    auto move = [&] {
+      if (position[rotation[Remaining - 1]]
+          < size[rotation[Remaining - 1]] - 1) {
+        for (size_t i = 2; i <= Remaining; ++i) {
+          if (position[rotation[Remaining - i]] > 0) {
+            --position[rotation[Remaining - i]];
+            ++position[rotation[Remaining - 1]];
             return true;
           }
         }
@@ -35,33 +33,29 @@ struct zigzagScanCore {
     };
 
     do {
-      zigzagScanCore<D - 1>(size, pos, rot, callback);
+      zigzagScanCore<Remaining - 1>(
+          size, position, rotation, callback);
     } while (move());
 
-    std::rotate(rot, rot + D - 1, rot + D);
+    std::rotate(
+        rotation.begin(),
+        rotation.begin() + Remaining - 1,
+        rotation.begin() + Remaining);
   }
-};
+}
 
-template <>
-struct zigzagScanCore<1> {
-  template <typename F>
-  zigzagScanCore(const size_t[1], size_t pos[1], size_t[1], F &&callback) {
-    callback(pos);
-  }
-};
+template<size_t D, typename F>
+void zigzagScanStart(
+    const std::array<size_t, D> &size,
+    std::array<size_t, D> position,
+    F &&callback) {
+  std::array<size_t, D> rotation;
+  std::iota(rotation.begin(), rotation.end(), 0);
 
-template <size_t D, typename F>
-void zigzagScanStart(const size_t size[D], size_t pos[D], F &&callback) {
-  size_t rot[D] {};
-
-  for (size_t i = 0; i < D; i++) {
-    rot[i] = i;
-  }
-
-  auto move = [&]() {
-    for (size_t i = 0 ; i < D; i++) {
-      if (pos[rot[i]] < size[rot[i]] - 1) {
-        pos[rot[i]]++;
+  auto move = [&] {
+    for (size_t i = 0; i < D; ++i) {
+      if (position[rotation[i]] < size[rotation[i]] - 1) {
+        ++position[rotation[i]];
         return true;
       }
     }
@@ -69,188 +63,33 @@ void zigzagScanStart(const size_t size[D], size_t pos[D], F &&callback) {
   };
 
   do {
-    zigzagScanCore<D>(size, pos, rot, callback);
-  } while(move());
+    zigzagScanCore<D>(size, position, rotation, callback);
+  } while (move());
 }
 
-template <size_t D, typename F>
-void zigzagScan(const size_t size[D], F &&callback) {
-  size_t pos[D] {};
-  zigzagScanStart<D>(size, pos, callback);
+template<size_t D, typename F>
+void zigzagScan(
+    const std::array<size_t, D> &size,
+    F &&callback) {
+  zigzagScanStart(size, std::array<size_t, D> {}, callback);
 }
 
-template <size_t D, typename F>
-void zigzagScanSkipFirst(const size_t size[D], F &&callback) {
-  size_t pos[D] {};
-  pos[0] = 1;
-  zigzagScanStart<D>(size, pos, callback);
+template<size_t D, typename F>
+void zigzagScanSkipFirst(
+    const std::array<size_t, D> &size,
+    F &&callback) {
+  std::array<size_t, D> position {};
+  position[0] = 1;
+  zigzagScanStart(size, position, callback);
 }
 
-template <size_t D>
-DynamicBlock<size_t, D> zigzagTable(const std::array<size_t, D> &size) {
+template<size_t D>
+DynamicBlock<size_t, D> zigzagTable(
+    const std::array<size_t, D> &size) {
   DynamicBlock<size_t, D> block(size);
-  size_t i = 0;
-  zigzagScan<D>(size.data(), [&](size_t pos[D]) {
-    std::array<size_t, D> pos_array {};
-    std::copy(pos, pos + D, std::begin(pos_array));
-    block[pos_array] = i++; }
-  );
+  size_t index {};
+  zigzagScan(size, [&](const auto &position) {
+    block[position] = index++;
+  });
   return block;
-}
-
-template <typename F>
-void zigzagScan2D(const size_t size[2], F &&callback) {
-  std::array<size_t, 2> rot { 0, 1 };
-  std::array<size_t, 2> pos {};
-
-  while (true) {
-    while (true) {
-      callback(pos.data());
-
-      if (pos[rot[0]] > 0 && pos[rot[1]] < size[rot[1]] - 1) {
-        pos[rot[0]]--;
-        pos[rot[1]]++;
-      }
-      else {
-        break;
-      }
-    }
-
-    std::rotate(std::begin(rot), std::begin(rot) + 1, std::begin(rot) + 2);
-
-    if (pos[rot[0]] < size[rot[0]] - 1) {
-      pos[rot[0]]++;
-    }
-    else if (pos[rot[1]] < size[rot[1]] - 1){
-      pos[rot[1]]++;
-    }
-    else {
-      break;
-    }
-  }
-}
-
-template <typename F>
-void zigzagScan3D(const size_t size[3], F &&callback) {
-  std::array<size_t, 3> rot { 0, 1, 2 };
-  std::array<size_t, 3> pos {};
-
-  while (true) {
-    while (true) {
-      while (true) {
-        callback(pos.data());
-
-        if (pos[rot[0]] > 0 && pos[rot[1]] < size[rot[1]] - 1) {
-          pos[rot[0]]--;
-          pos[rot[1]]++;
-        }
-        else {
-          break;
-        }
-      }
-
-      std::rotate(std::begin(rot), std::begin(rot) + 1, std::begin(rot) + 2);
-
-      if (pos[rot[1]] > 0 && pos[rot[2]] < size[rot[2]] - 1) {
-        pos[rot[1]]--;
-        pos[rot[2]]++;
-      }
-      else if (pos[rot[0]] > 0 && pos[rot[2]] < size[rot[2]] - 1) {
-        pos[rot[0]]--;
-        pos[rot[2]]++;
-      }
-      else {
-        break;
-      }
-    }
-
-    std::rotate(std::begin(rot), std::begin(rot) + 2, std::begin(rot) + 3);
-
-    if (pos[rot[0]] < size[rot[0]] - 1) {
-      pos[rot[0]]++;
-    }
-    else if (pos[rot[1]] < size[rot[1]] - 1) {
-      pos[rot[1]]++;
-    }
-    else if (pos[rot[2]] < size[rot[2]] - 1) {
-      pos[rot[2]]++;
-    }
-    else {
-      break;
-    }
-  }
-}
-
-template <typename F>
-void zigzagScan4D(const size_t size[4], F &&callback) {
-  std::array<size_t, 4> rot { 0, 1, 2, 3 };
-  std::array<size_t, 4> pos {};
-
-  while (true) {
-    while (true) {
-      while (true) {
-        while (true) {
-          callback(pos.data());
-
-          if (pos[rot[0]] > 0 && pos[rot[1]] < size[rot[1]] - 1) {
-            pos[rot[0]]--;
-            pos[rot[1]]++;
-          }
-          else {
-            break;
-          }
-        }
-
-        std::rotate(std::begin(rot), std::begin(rot) + 1, std::begin(rot) + 2);
-
-        if (pos[rot[1]] > 0 && pos[rot[2]] < size[rot[2]] - 1) {
-          pos[rot[1]]--;
-          pos[rot[2]]++;
-        }
-        else if (pos[rot[0]] > 0 && pos[rot[2]] < size[rot[2]] - 1) {
-          pos[rot[0]]--;
-          pos[rot[2]]++;
-        }
-        else {
-          break;
-        }
-      }
-
-      std::rotate(std::begin(rot), std::begin(rot) + 2, std::begin(rot) + 3);
-
-      if (pos[rot[2]] > 0 && pos[rot[3]] < size[rot[3]] - 1) {
-        pos[rot[2]]--;
-        pos[rot[3]]++;
-      }
-      else if (pos[rot[1]] > 0 && pos[rot[3]] < size[rot[3]] - 1) {
-        pos[rot[1]]--;
-        pos[rot[3]]++;
-      }
-      else if (pos[rot[0]] > 0 && pos[rot[3]] < size[rot[3]] - 1) {
-        pos[rot[0]]--;
-        pos[rot[3]]++;
-      }
-      else {
-        break;
-      }
-    }
-
-    std::rotate(std::begin(rot), std::begin(rot) + 3, std::begin(rot) + 4);
-
-    if (pos[rot[0]] < size[rot[0]] - 1) {
-      pos[rot[0]]++;
-    }
-    else if (pos[rot[1]] < size[rot[1]] - 1) {
-      pos[rot[1]]++;
-    }
-    else if (pos[rot[2]] < size[rot[2]] - 1) {
-      pos[rot[2]]++;
-    }
-    else if (pos[rot[3]] < size[rot[3]] - 1) {
-      pos[rot[3]]++;
-    }
-    else {
-      break;
-    }
-  }
 }

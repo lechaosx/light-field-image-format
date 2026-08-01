@@ -1,11 +1,3 @@
-/**
-* @file lfwf_encoder.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 28. 1. 2021
-* @copyright 2021 Drahomír Dlabaja
-* @brief Class for encoding an image with wavelets.
-*/
-
 #pragma once
 
 #include "components/bitstream.h"
@@ -18,6 +10,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <ostream>
 
 template <size_t D>
 struct LFWFEncoder {
@@ -33,10 +26,8 @@ struct LFWFEncoder {
     DynamicBlock<int32_t, D> block_U(this->block_size);
     DynamicBlock<int32_t, D> block_V(this->block_size);
 
-    DWTBlockTransformer<D> block_transformer(this->discarded_bits);
-
-    DWTBlockStreamEncoder<D> block_encoder_Y {};
-    DWTBlockStreamEncoder<D> block_encoder_UV {};
+    DWTBlockStream<D> block_stream_Y {};
+    DWTBlockStream<D> block_stream_UV {};
 
     std::array<size_t, D> predictor_size {};
     if (this->predicted) {
@@ -47,13 +38,15 @@ struct LFWFEncoder {
     BlockPredictor<D, int32_t> predictor_U(predictor_size);
     BlockPredictor<D, int32_t> predictor_V(predictor_size);
 
-    PredictionTypeEncoder<D> prediction_type_encoder {};
+    PredictionTypeStream<D> prediction_type_stream {};
 
-    OBitstream   bitstream {};
-    CABACEncoder cabac     {};
-
-    bitstream.open(output);
-    cabac.init(bitstream);
+    OBitstream bitstream([&](uint8_t byte) {
+      output.put(static_cast<char>(byte));
+      if (!output) {
+        throw std::ios_base::failure("failed to write bitstream");
+      }
+    });
+    CABACEncoder cabac([&](bool bit) { bitstream.writeBit(bit); });
 
     std::array<size_t, D> aligned_image_size {};
     for (size_t i = 0; i < D; i++) {
@@ -63,7 +56,8 @@ struct LFWFEncoder {
       aligned_image_size[i] = blocks * this->block_size[i];
     }
 
-    block_for<D>({}, this->block_size, aligned_image_size, [&](const std::array<size_t, D> &offset) {
+    for (const auto &offset :
+         block_for<D>({}, this->block_size, aligned_image_size)) {
       moveBlock<D>(puller, this->size, offset,
                    [&](const auto &block_pos, const auto &value) {
                      block_Y[block_pos] = ((value[0] + (value[1] << 1) + value[2]) >> 2) - (1 << (this->depth_bits - 1));
@@ -82,26 +76,26 @@ struct LFWFEncoder {
         predictor_V.forwardPass(block_V, offset, prediction_type);
       }
 
-      block_transformer.forwardPass(block_Y);
-      block_transformer.forwardPass(block_U);
-      block_transformer.forwardPass(block_V);
+      dwtForward(block_Y, this->discarded_bits);
+      dwtForward(block_U, this->discarded_bits);
+      dwtForward(block_V, this->discarded_bits);
 
-      block_encoder_Y.encodeBlock(block_Y, cabac);
-      block_encoder_UV.encodeBlock(block_U, cabac);
-      block_encoder_UV.encodeBlock(block_V, cabac);
+      encodeDwtBlock(block_stream_Y, block_Y, cabac);
+      encodeDwtBlock(block_stream_UV, block_U, cabac);
+      encodeDwtBlock(block_stream_UV, block_V, cabac);
 
       if (this->predicted) {
-        block_transformer.inversePass(block_Y);
-        block_transformer.inversePass(block_U);
-        block_transformer.inversePass(block_V);
+        dwtInverse(block_Y, this->discarded_bits);
+        dwtInverse(block_U, this->discarded_bits);
+        dwtInverse(block_V, this->discarded_bits);
 
         predictor_Y.backwardPass(block_Y, offset, prediction_type);
         predictor_U.backwardPass(block_U, offset, prediction_type);
         predictor_V.backwardPass(block_V, offset, prediction_type);
 
-        prediction_type_encoder.encodePredictionType(prediction_type, cabac);
+        encodePredictionType(prediction_type_stream, prediction_type, cabac);
       }
-    });
+    }
 
     cabac.terminate();
     bitstream.flush();

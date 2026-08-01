@@ -1,13 +1,4 @@
-/**
-* @file traversal_table.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 13. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Module for generating linearization matrices.
-*/
-
-#ifndef TRAVERSAL_TABLE_H
-#define TRAVERSAL_TABLE_H
+#pragma once
 
 #include "quant_table.h"
 #include "zigzag.h"
@@ -15,11 +6,8 @@
 
 #include <iosfwd>
 
-using REFBLOCKUNIT = double; /**< @brief Type intended to be used in reference block.*/
+using REFBLOCKUNIT = double;
 
-/**
- * @brief Reference block type.
- */
 template<size_t D>
 using ReferenceBlock = DynamicBlock<REFBLOCKUNIT, D>;
 
@@ -61,13 +49,13 @@ template <size_t D>
 void constructByRadius(TraversalTable<D> &output) {
   ReferenceBlock<D> dummy(output.size());
 
-  iterate_dimensions<D>(output.size(), [&](const std::array<size_t, D> &pos) {
+  for (const auto &pos : iterate_dimensions<D>(output.size())) {
     for (size_t i {}; i < D; i++) {
       dummy[pos] += pos[i] * pos[i];
     }
 
     dummy[pos] *= -1;
-  });
+  }
 
   constructByReference(dummy, output);
 }
@@ -76,13 +64,13 @@ template <size_t D>
 void constructByDiagonals(TraversalTable<D> &output) {
   ReferenceBlock<D> dummy(output.size());
 
-  iterate_dimensions<D>(output.size(), [&](const std::array<size_t, D> &pos) {
+  for (const auto &pos : iterate_dimensions<D>(output.size())) {
     for (size_t i {}; i < D; i++) {
       dummy[pos] += pos[i];
     }
 
     dummy[pos] *= -1;
-  });
+  }
 
   constructByReference(dummy, output);
 }
@@ -93,13 +81,13 @@ void constructByHyperboloid(TraversalTable<D> &output) {
 
   dummy.fill(1);
 
-  iterate_dimensions<D>(output.size(), [&](const std::array<size_t, D> &pos) {
+  for (const auto &pos : iterate_dimensions<D>(output.size())) {
     for (size_t i {}; i < D; i++) {
       dummy[pos] *= pos[i] + 1;
     }
 
     dummy[pos] *= -1;
-  });
+  }
 
   constructByReference(dummy, output);
 }
@@ -165,5 +153,3 @@ TraversalTable<D> readTraversalFromStream(const std::array<size_t, D> &BS, std::
 
   return table;
 }
-
-#endif

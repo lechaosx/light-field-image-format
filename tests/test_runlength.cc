@@ -4,6 +4,8 @@
 #include <components/huffman.h>
 #include <components/runlength.h>
 
+#include "bitstream_io.h"
+
 #include <cstdint>
 #include <limits>
 #include <sstream>
@@ -42,13 +44,13 @@ TEST(RunLength, RoundTripsSignedAmplitudes) {
   decoder.readFromStream(table);
 
   std::stringstream stream;
-  OBitstream output(stream);
+  OBitstream output(byteSink(stream));
   for (const RunLengthPair &pair : expected) {
     pair.huffmanEncodeToStream(encoder, output, class_bits);
   }
   output.flush();
 
-  IBitstream input(stream);
+  IBitstream input(byteSource(stream));
   for (const RunLengthPair &expected_pair : expected) {
     RunLengthPair decoded {};
     decoded.huffmanDecodeFromStream(decoder, input, class_bits);

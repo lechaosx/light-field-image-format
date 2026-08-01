@@ -4,6 +4,8 @@
 #include <components/endian.h>
 #include <components/huffman.h>
 
+#include "bitstream_io.h"
+
 #include <sstream>
 #include <vector>
 
@@ -24,13 +26,13 @@ TEST(Huffman, RoundTripsSymbolStream) {
   decoder.readFromStream(table);
 
   std::stringstream stream;
-  OBitstream output(stream);
+  OBitstream output(byteSink(stream));
   for (const HuffmanSymbol symbol : expected) {
     encoder.encodeSymbolToStream(symbol, output);
   }
   output.flush();
 
-  IBitstream input(stream);
+  IBitstream input(byteSource(stream));
   std::vector<HuffmanSymbol> decoded;
   for (size_t i = 0; i < expected.size(); ++i) {
     decoded.push_back(decoder.decodeSymbolFromStream(input));
@@ -48,7 +50,7 @@ TEST(Huffman, RoundTripsSingleSymbolAlphabet) {
   decoder.readFromStream(table);
 
   std::istringstream encoded;
-  IBitstream input(encoded);
+  IBitstream input(byteSource(encoded));
   EXPECT_EQ(decoder.decodeSymbolFromStream(input), 42);
 }
 
@@ -63,7 +65,7 @@ TEST(Huffman, RejectsUnmatchedCodeword) {
   decoder.readFromStream(table);
 
   std::istringstream encoded(std::string(1, '\1'));
-  IBitstream input(encoded);
+  IBitstream input(byteSource(encoded));
   EXPECT_THROW(decoder.decodeSymbolFromStream(input), std::runtime_error);
 }
 

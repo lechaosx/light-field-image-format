@@ -1,12 +1,4 @@
-/**
-* @file mtf.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 1. 9. 2020
-* @brief
-*/
-
-#ifndef MTF_H
-#define MTF_H
+#pragma once
 
 #include <algorithm>
 #include <cstdint>
@@ -132,5 +124,3 @@ void updateC(std::vector<uint64_t> &dictionary, size_t i, size_t c, std::map<uin
 
   counts[*it]++;
 }
-
-#endif

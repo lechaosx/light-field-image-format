@@ -1,11 +1,3 @@
-/**
-* @file lfif_decoder.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 12. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Functions for decoding an image.
-*/
-
 #pragma once
 
 #include "components/bitstream.h"
@@ -20,6 +12,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <istream>
 #include <stdexcept>
 
 template <size_t D>
@@ -44,13 +37,22 @@ struct LFIFDecoder {
       aligned_image_size[i] = blocks * this->block_size[i];
     }
 
-    IBitstream   bitstream {};
-    CABACDecoder cabac     {};
+    IBitstream bitstream([&]() -> uint8_t {
+      const auto value = input.get();
+      if (value == std::istream::traits_type::eof()) {
+        throw std::ios_base::failure(
+            input.eof()
+                ? "unexpected end of bitstream"
+                : "failed to read bitstream");
+      }
+      return static_cast<uint8_t>(value);
+    });
+    CABACDecoder cabac([&] { return bitstream.readBit(); });
 
-    DCTBlockTransformer<D> block_transformer(this->block_size, this->discarded_bits);
+    DCTCoefs<D> dct_coefs(this->block_size);
 
-    DCTBlockStreamDecoder<D> block_decoder_Y(this->block_size);
-    DCTBlockStreamDecoder<D> block_decoder_UV(this->block_size);
+    DCTBlockStream<D> block_stream_Y(this->block_size);
+    DCTBlockStream<D> block_stream_UV(this->block_size);
 
     std::array<size_t, D> predictor_size {};
     if (this->predicted) {
@@ -61,22 +63,21 @@ struct LFIFDecoder {
     BlockPredictor<D, float> predictor_U(predictor_size);
     BlockPredictor<D, float> predictor_V(predictor_size);
 
-    PredictionTypeDecoder<D> prediction_type_decoder {};
+    PredictionTypeStream<D> prediction_type_stream {};
 
-    bitstream.open(input);
-    cabac.init(bitstream);
+    for (const auto &offset :
+         block_for<D>({}, this->block_size, aligned_image_size)) {
+      decodeDctBlock(block_stream_Y, cabac, block_Y);
+      decodeDctBlock(block_stream_UV, cabac, block_U);
+      decodeDctBlock(block_stream_UV, cabac, block_V);
 
-    block_for<D>({}, this->block_size, aligned_image_size, [&](const std::array<size_t, D> &offset) {
-      block_decoder_Y.decodeBlock(cabac,  block_Y);
-      block_decoder_UV.decodeBlock(cabac, block_U);
-      block_decoder_UV.decodeBlock(cabac, block_V);
-
-      block_transformer.inversePass(block_Y);
-      block_transformer.inversePass(block_U);
-      block_transformer.inversePass(block_V);
+      dctInverse(block_Y, dct_coefs, this->discarded_bits);
+      dctInverse(block_U, dct_coefs, this->discarded_bits);
+      dctInverse(block_V, dct_coefs, this->discarded_bits);
 
       if (this->predicted) {
-        auto prediction_type = prediction_type_decoder.decodePredictionType(cabac);
+        auto prediction_type =
+            decodePredictionType(prediction_type_stream, cabac);
 
         predictor_Y.backwardPass(block_Y, offset, prediction_type);
         predictor_U.backwardPass(block_U, offset, prediction_type);
@@ -108,8 +109,7 @@ struct LFIFDecoder {
                    }, this->block_size, {},
                    pusher, this->size, offset,
                    this->block_size);
-    });
+    }
 
-    cabac.terminate();
   }
 };

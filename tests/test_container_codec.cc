@@ -4,6 +4,8 @@
 #include <components/cabac.h>
 #include <lfif/codec.h>
 
+#include "bitstream_io.h"
+
 #include <cstdint>
 #include <iostream>
 #include <limits>
@@ -324,9 +326,8 @@ TEST(ContainerCodec, RejectsMissingLargePayloadBeforeAllocatingItsDeclaredSize) 
 
 TEST(ContainerCodec, RejectsWaveletCoefficientOutsideSignedMagnitudeRange) {
   std::stringstream payload;
-  OBitstream bits(payload);
-  CABACEncoder encoder;
-  encoder.init(bits);
+  OBitstream bits(byteSink(payload));
+  CABACEncoder encoder([&](bool bit) { bits.writeBit(bit); });
   CABAC::ContextModel y_significant {};
   CABAC::ContextModel y_greater_one {};
   CABAC::ContextModel y_greater_two {};
@@ -362,9 +363,8 @@ TEST(ContainerCodec, RejectsWaveletCoefficientOutsideSignedMagnitudeRange) {
 
 TEST(ContainerCodec, ClampsFullRangeWaveletReconstructionWithoutOverflow) {
   std::stringstream payload;
-  OBitstream bits(payload);
-  CABACEncoder encoder;
-  encoder.init(bits);
+  OBitstream bits(byteSink(payload));
+  CABACEncoder encoder([&](bool bit) { bits.writeBit(bit); });
   CABAC::ContextModel y_significant {};
   CABAC::ContextModel y_greater_one {};
   CABAC::ContextModel y_greater_two {};
@@ -401,9 +401,8 @@ TEST(ContainerCodec, ClampsFullRangeWaveletReconstructionWithoutOverflow) {
 
 TEST(ContainerCodec, RejectsDctCoefficientOutsideSignedMagnitudeRange) {
   std::stringstream payload;
-  OBitstream bits(payload);
-  CABACEncoder encoder;
-  encoder.init(bits);
+  OBitstream bits(byteSink(payload));
+  CABACEncoder encoder([&](bool bit) { bits.writeBit(bit); });
   CABAC::ContextModel y_coded_diagonal {};
   CABAC::ContextModel y_last_diagonal {};
   CABAC::ContextModel y_significant {};

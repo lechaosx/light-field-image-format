@@ -1,8 +1,3 @@
-/******************************************************************************\
-* SOUBOR: ppm.cc
-* AUTOR: Drahomir Dlabaja (xdlaba02)
-\******************************************************************************/
-
 #include "ppm.h"
 
 #include <charconv>
@@ -131,10 +126,9 @@ PPM PPM::map(const std::filesystem::path &file_name) {
     throw std::system_error(
         errno, std::generic_category(), "cannot open PPM " + file_name.string());
   }
-  const auto close_file = [](int *file) noexcept { close(*file); };
-  std::unique_ptr<int, decltype(close_file)> close_descriptor {
-    &descriptor, close_file
-  };
+  const auto descriptor_guard = std::unique_ptr<int, decltype([](int *file) {
+    close(*file);
+  })>(&descriptor);
 
   struct stat file_stat {};
   if (fstat(descriptor, &file_stat) < 0) {
@@ -154,15 +148,7 @@ PPM PPM::map(const std::filesystem::path &file_name) {
     throw std::system_error(
         mapping_error, std::generic_category(), "cannot map PPM " + file_name.string());
   }
-  const auto unmap_file = [map_size](void *file) noexcept { munmap(file, map_size); };
-  std::unique_ptr<void, decltype(unmap_file)> unmap {mapping, unmap_file};
-  const int close_status = close(descriptor);
-  const int close_error = errno;
-  close_descriptor.release();
-  if (close_status < 0) {
-    throw std::system_error(
-        close_error, std::generic_category(), "cannot close PPM " + file_name.string());
-  }
+  PPM::Mapping mapped_file(mapping, map_size);
 
   const ParsedHeader header =
       parseHeader(std::span(static_cast<const uint8_t *>(mapping), map_size));
@@ -176,8 +162,7 @@ PPM PPM::map(const std::filesystem::path &file_name) {
   }
 
   PPM ppm;
-  ppm.m_file = unmap.release();
-  ppm.m_map_size = map_size;
+  ppm.m_mapping = std::move(mapped_file);
   ppm.m_header_offset = header.data_offset;
   ppm.m_data_size = *pixel_data_size;
   ppm.m_width = header.width;
@@ -197,38 +182,27 @@ PPM PPM::map(const std::filesystem::path &file_name) {
   return ppm;
 }
 
-PPM::PPM(PPM &&other) noexcept {
-  *this = std::move(other);
-}
+PPM::Mapping::Mapping(void *data, size_t size): data(data), size(size) {}
 
-PPM &PPM::operator=(PPM &&other) noexcept {
+PPM::Mapping::Mapping(Mapping &&other) noexcept:
+    data(std::exchange(other.data, nullptr)),
+    size(std::exchange(other.size, 0)) {}
+
+PPM::Mapping &PPM::Mapping::operator=(Mapping &&other) noexcept {
   if (this != &other) {
-    release();
-    m_width = std::exchange(other.m_width, 0);
-    m_height = std::exchange(other.m_height, 0);
-    m_color_depth = std::exchange(other.m_color_depth, 0);
-    m_file = std::exchange(other.m_file, nullptr);
-    m_map_size = std::exchange(other.m_map_size, 0);
-    m_header_offset = std::exchange(other.m_header_offset, 0);
-    m_data_size = std::exchange(other.m_data_size, 0);
-    m_writable = std::exchange(other.m_writable, false);
+    if (data) {
+      munmap(data, size);
+    }
+    data = std::exchange(other.data, nullptr);
+    size = std::exchange(other.size, 0);
   }
   return *this;
 }
 
-PPM::~PPM() {
-  release();
-}
-
-void PPM::release() {
-  if (m_file) {
-    munmap(m_file, m_map_size);
+PPM::Mapping::~Mapping() {
+  if (data) {
+    munmap(data, size);
   }
-  m_file = nullptr;
-  m_map_size = 0;
-  m_header_offset = 0;
-  m_data_size = 0;
-  m_writable = false;
 }
 
 PPM PPM::create(
@@ -267,10 +241,9 @@ PPM PPM::create(
     throw std::system_error(
         errno, std::generic_category(), "cannot create PPM " + file_name.string());
   }
-  const auto close_file = [](int *file) noexcept { close(*file); };
-  std::unique_ptr<int, decltype(close_file)> close_descriptor {
-    &descriptor, close_file
-  };
+  const auto descriptor_guard = std::unique_ptr<int, decltype([](int *file) {
+    close(*file);
+  })>(&descriptor);
   if (ftruncate(descriptor, static_cast<off_t>(map_size)) < 0) {
     throw std::system_error(
         errno, std::generic_category(), "cannot size PPM " + file_name.string());
@@ -283,20 +256,11 @@ PPM PPM::create(
     throw std::system_error(
         mapping_error, std::generic_category(), "cannot map PPM " + file_name.string());
   }
-  const auto unmap_file = [map_size](void *file) noexcept { munmap(file, map_size); };
-  std::unique_ptr<void, decltype(unmap_file)> unmap {mapping, unmap_file};
-  const int close_status = close(descriptor);
-  const int close_error = errno;
-  close_descriptor.release();
-  if (close_status < 0) {
-    throw std::system_error(
-        close_error, std::generic_category(), "cannot close PPM " + file_name.string());
-  }
+  PPM::Mapping mapped_file(mapping, map_size);
 
   std::memcpy(mapping, header.data(), header.size());
   PPM ppm;
-  ppm.m_file = unmap.release();
-  ppm.m_map_size = map_size;
+  ppm.m_mapping = std::move(mapped_file);
   ppm.m_header_offset = header.size();
   ppm.m_data_size = *pixel_data_size;
   ppm.m_width = width;
@@ -307,10 +271,10 @@ PPM PPM::create(
 }
 
 void PPM::flush() {
-  if (!m_file || !m_writable) {
+  if (!m_mapping.data || !m_writable) {
     throw std::logic_error("cannot flush read-only or empty PPM");
   }
-  if (msync(m_file, m_map_size, MS_SYNC) < 0) {
+  if (msync(m_mapping.data, m_mapping.size, MS_SYNC) < 0) {
     throw std::system_error(errno, std::generic_category(), "cannot flush PPM");
   }
 }

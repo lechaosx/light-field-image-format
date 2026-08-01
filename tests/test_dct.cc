@@ -5,6 +5,8 @@
 #include <dct_block_stream.h>
 #include <dct_block_transformer.h>
 
+#include "bitstream_io.h"
+
 #include <array>
 #include <cmath>
 #include <limits>
@@ -17,7 +19,7 @@ TEST(Dct, OneDimensionalRoundTrip) {
     const std::array<size_t, 1> size {8};
     const std::vector<float> expected {3.0F, -2.0F, 7.0F, 1.0F, 0.0F, 4.0F, -5.0F, 9.0F};
     std::vector<float> values = expected;
-    DCTCoefs<1> coefficients(size.data());
+  DCTCoefs<1> coefficients(size);
     auto sample = [&](size_t index) -> float & { return values[index]; };
 
     fdct<1>(size, coefficients, sample);
@@ -38,8 +40,8 @@ TEST(Dct, PreservesRoundingAtHalfBoundary) {
       block[i] = input[i];
     }
 
-    DCTBlockTransformer<1> transformer(block_size, 0);
-    transformer.forwardPass(block);
+    DCTCoefs<1> coefficients(block_size);
+    dctForward(block, coefficients, 0);
 
     EXPECT_EQ(block[7], 39);
   }
@@ -49,10 +51,9 @@ TEST(DctBlockStream, RejectsNonfiniteCoefficient) {
   DynamicBlock<float, 1> block({1});
   block[0] = std::numeric_limits<float>::infinity();
   std::stringstream stream;
-  OBitstream output(stream);
-  CABACEncoder encoder;
-  encoder.init(output);
-  DCTBlockStreamEncoder<1> block_encoder({1});
+  OBitstream output(byteSink(stream));
+  CABACEncoder encoder([&](bool bit) { output.writeBit(bit); });
+  DCTBlockStream<1> block_stream({1});
 
-  EXPECT_THROW(block_encoder.encodeBlock(block, encoder), std::overflow_error);
+  EXPECT_THROW(encodeDctBlock(block_stream, block, encoder), std::overflow_error);
 }

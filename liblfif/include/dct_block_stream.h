@@ -16,50 +16,40 @@
 #include <stdexcept>
 
 template<size_t D>
-class DCTCompressedBlockStreamState {
-protected:
+struct DCTBlockStream {
   size_t diagonals;
-
   size_t threshold;
   std::vector<CABAC::ContextModel> significant_coef_flag_high_ctx;
   std::vector<CABAC::ContextModel> significant_coef_flag_low_ctx;
-
   std::vector<CABAC::ContextModel> coded_diag_flag_ctx;
   std::vector<CABAC::ContextModel> last_coded_diag_flag_ctx;
   std::vector<CABAC::ContextModel> coef_greater_one_ctx;
   std::vector<CABAC::ContextModel> coef_greater_two_ctx;
   std::vector<CABAC::ContextModel> coef_abs_level_ctx;
-
   std::array<size_t, D> block_size;
 
-  DCTCompressedBlockStreamState(const std::array<size_t, D> &block_size) {
-    this->block_size = block_size;
-
-    diagonals = num_diagonals<D>(block_size);
-
-    threshold = diagonals / 2;
-
-    coded_diag_flag_ctx.resize(diagonals);
-    last_coded_diag_flag_ctx.resize(diagonals);
-    significant_coef_flag_high_ctx.resize(D + 1);
-    significant_coef_flag_low_ctx.resize(D + 1);
-    coef_greater_one_ctx.resize(diagonals);
-    coef_greater_two_ctx.resize(diagonals);
-    coef_abs_level_ctx.resize(diagonals);
-  }
+  explicit DCTBlockStream(const std::array<size_t, D> &size)
+      : diagonals(num_diagonals<D>(size)),
+        threshold(diagonals / 2),
+        significant_coef_flag_high_ctx(D + 1),
+        significant_coef_flag_low_ctx(D + 1),
+        coded_diag_flag_ctx(diagonals),
+        last_coded_diag_flag_ctx(diagonals),
+        coef_greater_one_ctx(diagonals),
+        coef_greater_two_ctx(diagonals),
+        coef_abs_level_ctx(diagonals),
+        block_size(size) {}
 };
 
 template<size_t D>
-class DCTBlockStreamEncoder: public DCTCompressedBlockStreamState<D> {
-public:
+void encodeDctBlock(
+    DCTBlockStream<D> &stream,
+    const DynamicBlock<float, D> &block,
+    auto &encoder) {
+    std::vector<bool> nonzero_diags(stream.diagonals);
 
-  DCTBlockStreamEncoder(const std::array<size_t, D> &block_size): DCTCompressedBlockStreamState<D>(block_size) {}
-
-  void encodeBlock(const DynamicBlock<float, D> &block, CABACEncoder &encoder) {
-    std::vector<bool> nonzero_diags(this->diagonals);
-
-    for (size_t diag = 0; diag < this->diagonals; diag++) {
-      diagonalScan(this->block_size, diag, [&](const std::array<size_t, D> &pos) {
+    for (size_t diag = 0; diag < stream.diagonals; diag++) {
+      diagonalScan(stream.block_size, diag, [&](const std::array<size_t, D> &pos) {
         if (block[pos]) {
           nonzero_diags[diag] = true;
         }
@@ -67,34 +57,34 @@ public:
     }
 
     size_t diags_cnt = 0;
-    for (size_t diag = 0; diag < this->diagonals; diag++) {
+    for (size_t diag = 0; diag < stream.diagonals; diag++) {
       if (nonzero_diags[diag]) {
         diags_cnt++;
       }
     }
 
-    for (size_t diag = 0; diag < this->diagonals; diag++) {
-      encoder.encodeBit(this->coded_diag_flag_ctx[diag], nonzero_diags[diag]);
+    for (size_t diag = 0; diag < stream.diagonals; diag++) {
+      encoder.encodeBit(stream.coded_diag_flag_ctx[diag], nonzero_diags[diag]);
 
       if (nonzero_diags[diag]) {
         diags_cnt--;
 
         if (diags_cnt) {
-          encoder.encodeBit(this->last_coded_diag_flag_ctx[diag], 0);
+          encoder.encodeBit(stream.last_coded_diag_flag_ctx[diag], 0);
         }
         else {
-          encoder.encodeBit(this->last_coded_diag_flag_ctx[diag], 1);
+          encoder.encodeBit(stream.last_coded_diag_flag_ctx[diag], 1);
           break;
         }
       }
     }
 
-    for (size_t d = 1; d <= this->diagonals; d++) {
-      size_t diag = this->diagonals - d;
+    for (size_t d = 1; d <= stream.diagonals; d++) {
+      size_t diag = stream.diagonals - d;
       int64_t zero_coef_distr = 0;
 
       if (nonzero_diags[diag]) {
-        diagonalScan(this->block_size, diag, [&](std::array<size_t, D> pos) {
+        diagonalScan(stream.block_size, diag, [&](std::array<size_t, D> pos) {
           const double coefficient = block[pos];
           constexpr double maximum_coefficient =
               std::numeric_limits<int32_t>::max();
@@ -115,20 +105,20 @@ public:
 
           for (size_t dim = 0; dim < D; dim++) {
             pos[dim]++;
-            if (pos[dim] < this->block_size[dim]) {
+            if (pos[dim] < stream.block_size[dim]) {
               nonzero_neighbours_cnt += (block[pos] != 0);
             }
             pos[dim]--;
           }
 
-          if (diag < this->threshold) {
+          if (diag < stream.threshold) {
             encoder.encodeBit(
-                this->significant_coef_flag_high_ctx[nonzero_neighbours_cnt],
+                stream.significant_coef_flag_high_ctx[nonzero_neighbours_cnt],
                 magnitude != 0);
           }
           else {
             encoder.encodeBit(
-                this->significant_coef_flag_low_ctx[nonzero_neighbours_cnt],
+                stream.significant_coef_flag_low_ctx[nonzero_neighbours_cnt],
                 magnitude != 0);
           }
 
@@ -139,15 +129,15 @@ public:
             zero_coef_distr--;
 
             encoder.encodeBit(
-                this->coef_greater_one_ctx[diag], magnitude > 1);
+                stream.coef_greater_one_ctx[diag], magnitude > 1);
 
             if (magnitude > 1) {
               encoder.encodeBit(
-                  this->coef_greater_two_ctx[diag], magnitude > 2);
+                  stream.coef_greater_two_ctx[diag], magnitude > 2);
 
               if (magnitude > 2) {
                 encoder.encodeEG(
-                    0, this->coef_abs_level_ctx[diag], magnitude - 3);
+                    0, stream.coef_abs_level_ctx[diag], magnitude - 3);
               }
             }
 
@@ -156,46 +146,43 @@ public:
         });
       }
 
-      if ((zero_coef_distr > 0) && (this->threshold > diag)) {
-        this->threshold--;
+      if ((zero_coef_distr > 0) && (stream.threshold > diag)) {
+        stream.threshold--;
       }
-      else if ((zero_coef_distr < 0) && (this->threshold < diag)) {
-        this->threshold++;
+      else if ((zero_coef_distr < 0) && (stream.threshold < diag)) {
+        stream.threshold++;
       }
     }
-  }
-};
+}
 
 
 template<size_t D>
-class DCTBlockStreamDecoder: public DCTCompressedBlockStreamState<D> {
-public:
-
-  DCTBlockStreamDecoder(const std::array<size_t, D> &block_size): DCTCompressedBlockStreamState<D>(block_size) {}
-
-  void decodeBlock(CABACDecoder &decoder, DynamicBlock<float, D> &block) {
+void decodeDctBlock(
+    DCTBlockStream<D> &stream,
+    auto &decoder,
+    DynamicBlock<float, D> &block) {
     constexpr uint64_t maximum_coefficient =
         static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
 
     block.fill(0.f);
-    std::vector<bool> nonzero_diags(this->diagonals);
+    std::vector<bool> nonzero_diags(stream.diagonals);
 
-    for (size_t diag = 0; diag < this->diagonals; diag++) {
-      nonzero_diags[diag] = decoder.decodeBit(this->coded_diag_flag_ctx[diag]);
+    for (size_t diag = 0; diag < stream.diagonals; diag++) {
+      nonzero_diags[diag] = decoder.decodeBit(stream.coded_diag_flag_ctx[diag]);
 
       if (nonzero_diags[diag]) {
-        if (decoder.decodeBit(this->last_coded_diag_flag_ctx[diag])) {
+        if (decoder.decodeBit(stream.last_coded_diag_flag_ctx[diag])) {
           break;
         }
       }
     }
 
-    for (size_t d = 1; d <= this->diagonals; d++) {
-      size_t diag = this->diagonals - d;
+    for (size_t d = 1; d <= stream.diagonals; d++) {
+      size_t diag = stream.diagonals - d;
       int64_t zero_coef_distr = 0;
 
       if (nonzero_diags[diag]) {
-        diagonalScan<D>(this->block_size, diag, [&](std::array<size_t, D> pos) {
+        diagonalScan<D>(stream.block_size, diag, [&](std::array<size_t, D> pos) {
           uint64_t magnitude {};
           bool negative {};
 
@@ -203,19 +190,19 @@ public:
 
           for (size_t dim = 0; dim < D; dim++) {
             pos[dim]++;
-            if (pos[dim] < this->block_size[dim]) {
+            if (pos[dim] < stream.block_size[dim]) {
               nonzero_neighbours_cnt += (block[pos] != 0);
             }
             pos[dim]--;
           }
 
-          if (diag < this->threshold) {
+          if (diag < stream.threshold) {
             magnitude = decoder.decodeBit(
-                this->significant_coef_flag_high_ctx[nonzero_neighbours_cnt]);
+                stream.significant_coef_flag_high_ctx[nonzero_neighbours_cnt]);
           }
           else {
             magnitude = decoder.decodeBit(
-                this->significant_coef_flag_low_ctx[nonzero_neighbours_cnt]);
+                stream.significant_coef_flag_low_ctx[nonzero_neighbours_cnt]);
           }
 
           if (!magnitude) {
@@ -224,20 +211,20 @@ public:
           else {
             zero_coef_distr--;
 
-            magnitude += decoder.decodeBit(this->coef_greater_one_ctx[diag]);
+            magnitude += decoder.decodeBit(stream.coef_greater_one_ctx[diag]);
             if (magnitude > maximum_coefficient) {
               throw std::runtime_error("coefficient magnitude exceeds codec limit");
             }
 
             if (magnitude > 1) {
-              magnitude += decoder.decodeBit(this->coef_greater_two_ctx[diag]);
+              magnitude += decoder.decodeBit(stream.coef_greater_two_ctx[diag]);
               if (magnitude > maximum_coefficient) {
                 throw std::runtime_error("coefficient magnitude exceeds codec limit");
               }
 
               if (magnitude > 2) {
                 magnitude += decoder.decodeEG(
-                    0, this->coef_abs_level_ctx[diag],
+                    0, stream.coef_abs_level_ctx[diag],
                     maximum_coefficient - magnitude);
               }
             }
@@ -250,12 +237,11 @@ public:
         });
       }
 
-      if ((zero_coef_distr > 0) && (this->threshold > diag)) {
-        this->threshold--;
+      if ((zero_coef_distr > 0) && (stream.threshold > diag)) {
+        stream.threshold--;
       }
-      else if ((zero_coef_distr < 0) && (this->threshold < diag)) {
-        this->threshold++;
+      else if ((zero_coef_distr < 0) && (stream.threshold < diag)) {
+        stream.threshold++;
       }
     }
-  }
-};
+}

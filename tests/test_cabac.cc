@@ -3,6 +3,8 @@
 #include <components/bitstream.h>
 #include <components/cabac.h>
 
+#include "bitstream_io.h"
+
 #include <cstdint>
 #include <limits>
 #include <sstream>
@@ -12,9 +14,8 @@ namespace {
 
 std::vector<bool> contextRoundTrip(const std::vector<bool> &bits) {
   std::stringstream stream;
-  OBitstream output(stream);
-  CABACEncoder encoder;
-  encoder.init(output);
+  OBitstream output(byteSink(stream));
+  CABACEncoder encoder([&](bool bit) { output.writeBit(bit); });
   CABAC::ContextModel encode_context {};
 
   for (const bool bit : bits) {
@@ -23,24 +24,21 @@ std::vector<bool> contextRoundTrip(const std::vector<bool> &bits) {
   encoder.terminate();
   output.flush();
 
-  IBitstream input(stream);
-  CABACDecoder decoder;
-  decoder.init(input);
+  IBitstream input(byteSource(stream));
+  CABACDecoder decoder([&] { return input.readBit(); });
   CABAC::ContextModel decode_context {};
 
   std::vector<bool> decoded;
   for (size_t i = 0; i < bits.size(); ++i) {
     decoded.push_back(decoder.decodeBit(decode_context));
   }
-  decoder.terminate();
   return decoded;
 }
 
 std::vector<bool> bypassRoundTrip(const std::vector<bool> &bits) {
   std::stringstream stream;
-  OBitstream output(stream);
-  CABACEncoder encoder;
-  encoder.init(output);
+  OBitstream output(byteSink(stream));
+  CABACEncoder encoder([&](bool bit) { output.writeBit(bit); });
 
   for (const bool bit : bits) {
     encoder.encodeBitBypass(bit);
@@ -48,15 +46,13 @@ std::vector<bool> bypassRoundTrip(const std::vector<bool> &bits) {
   encoder.terminate();
   output.flush();
 
-  IBitstream input(stream);
-  CABACDecoder decoder;
-  decoder.init(input);
+  IBitstream input(byteSource(stream));
+  CABACDecoder decoder([&] { return input.readBit(); });
 
   std::vector<bool> decoded;
   for (size_t i = 0; i < bits.size(); ++i) {
     decoded.push_back(decoder.decodeBitBypass());
   }
-  decoder.terminate();
   return decoded;
 }
 
@@ -81,18 +77,17 @@ TEST(Cabac, RoundTripsBypassBits) {
 TEST(Cabac, RoundTripsLargeUnaryValues) {
   const std::vector<uint64_t> expected {0, 1, 2, 255, 65535, 131071};
   std::stringstream stream;
-  OBitstream output(stream);
-  CABACEncoder encoder;
-  encoder.init(output);
+  OBitstream output(byteSink(stream));
+  CABACEncoder encoder([&](bool bit) { output.writeBit(bit); });
   CABAC::ContextModel encode_context {};
   for (const uint64_t value : expected) {
     encoder.encodeU(encode_context, value);
   }
   encoder.terminate();
+  output.flush();
 
-  IBitstream input(stream);
-  CABACDecoder decoder;
-  decoder.init(input);
+  IBitstream input(byteSource(stream));
+  CABACDecoder decoder([&] { return input.readBit(); });
   CABAC::ContextModel decode_context {};
   std::vector<uint64_t> decoded;
   for (size_t i = 0; i < expected.size(); ++i) {
@@ -103,33 +98,31 @@ TEST(Cabac, RoundTripsLargeUnaryValues) {
 
 TEST(Cabac, RejectsExpGolombValueAboveCallerLimit) {
   std::stringstream stream;
-  OBitstream output(stream);
-  CABACEncoder encoder;
-  encoder.init(output);
+  OBitstream output(byteSink(stream));
+  CABACEncoder encoder([&](bool bit) { output.writeBit(bit); });
   CABAC::ContextModel encode_context {};
   encoder.encodeEG(0, encode_context, 5);
   encoder.terminate();
+  output.flush();
 
-  IBitstream input(stream);
-  CABACDecoder decoder;
-  decoder.init(input);
+  IBitstream input(byteSource(stream));
+  CABACDecoder decoder([&] { return input.readBit(); });
   CABAC::ContextModel decode_context {};
   EXPECT_THROW(decoder.decodeEG(0, decode_context, 4), std::runtime_error);
 }
 
 TEST(Cabac, RoundTripsMaximumExpGolombValue) {
   std::stringstream stream;
-  OBitstream output(stream);
-  CABACEncoder encoder;
-  encoder.init(output);
+  OBitstream output(byteSink(stream));
+  CABACEncoder encoder([&](bool bit) { output.writeBit(bit); });
   CABAC::ContextModel encode_context {};
   encoder.encodeEG(
       0, encode_context, std::numeric_limits<uint64_t>::max());
   encoder.terminate();
+  output.flush();
 
-  IBitstream input(stream);
-  CABACDecoder decoder;
-  decoder.init(input);
+  IBitstream input(byteSource(stream));
+  CABACDecoder decoder([&] { return input.readBit(); });
   CABAC::ContextModel decode_context {};
   EXPECT_EQ(
       decoder.decodeEG(

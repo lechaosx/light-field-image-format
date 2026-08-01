@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <components/zigzag.h>
+#include "zigzag_oracle.h"
 
 #include <algorithm>
 #include <array>
@@ -12,10 +13,8 @@ namespace {
 template <size_t D>
 std::vector<std::array<size_t, D>> zigzagOrder(const std::array<size_t, D> &size) {
   std::vector<std::array<size_t, D>> order;
-  zigzagScan<D>(size.data(), [&](const size_t position[D]) {
-    std::array<size_t, D> value {};
-    std::copy(position, position + D, value.begin());
-    order.push_back(value);
+  zigzagScan<D>(size, [&](const auto &position) {
+    order.push_back(position);
   });
   return order;
 }
@@ -29,11 +28,11 @@ std::vector<std::array<size_t, D>> legacyZigzagOrder(const std::array<size_t, D>
     order.push_back(value);
   };
   if constexpr (D == 2) {
-    zigzagScan2D(size.data(), record);
+    oracle::zigzagScan2D(size.data(), record);
   } else if constexpr (D == 3) {
-    zigzagScan3D(size.data(), record);
+    oracle::zigzagScan3D(size.data(), record);
   } else if constexpr (D == 4) {
-    zigzagScan4D(size.data(), record);
+    oracle::zigzagScan4D(size.data(), record);
   }
   return order;
 }
@@ -77,8 +76,8 @@ TEST(Zigzag, SkipFirstVisitsEveryPositionExceptDc) {
   const auto full = zigzagOrder<2>({8, 8});
   const std::array<size_t, 2> size {8, 8};
   std::vector<std::array<size_t, 2>> skipped;
-  zigzagScanSkipFirst<2>(size.data(), [&](const size_t position[2]) {
-    skipped.push_back({position[0], position[1]});
+  zigzagScanSkipFirst<2>(size, [&](const auto &position) {
+    skipped.push_back(position);
   });
 
   std::set<std::array<size_t, 2>> expected(full.begin(), full.end());

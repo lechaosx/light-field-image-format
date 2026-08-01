@@ -5,6 +5,8 @@
 #include <dwt_block_stream.h>
 #include <dwt_block_transformer.h>
 
+#include "bitstream_io.h"
+
 #include <array>
 #include <cstdint>
 #include <limits>
@@ -52,19 +54,18 @@ TEST(DwtBlockStream, RoundTripsLargeSignedCoefficients) {
   }
 
   std::stringstream stream;
-  OBitstream output(stream);
-  CABACEncoder encoder;
-  encoder.init(output);
-  DWTBlockStreamEncoder<2> block_encoder {};
-  block_encoder.encodeBlock(expected, encoder);
+  OBitstream output(byteSink(stream));
+  CABACEncoder encoder([&](bool bit) { output.writeBit(bit); });
+  DWTBlockStream<2> block_stream {};
+  encodeDwtBlock(block_stream, expected, encoder);
   encoder.terminate();
+  output.flush();
 
-  IBitstream input(stream);
-  CABACDecoder decoder;
-  decoder.init(input);
+  IBitstream input(byteSource(stream));
+  CABACDecoder decoder([&] { return input.readBit(); });
   DynamicBlock<int32_t, 2> decoded(size);
-  DWTBlockStreamDecoder<2> block_decoder {};
-  block_decoder.decodeBlock(decoder, decoded);
+  DWTBlockStream<2> decoded_stream {};
+  decodeDwtBlock(decoded_stream, decoder, decoded);
 
   for (size_t i = 0; i < coefficients.size(); ++i) {
     EXPECT_EQ(decoded[i], expected[i]);
@@ -75,12 +76,11 @@ TEST(DwtBlockStream, RejectsUnrepresentableSignedMagnitude) {
   DynamicBlock<int32_t, 1> block({1});
   block[0] = std::numeric_limits<int32_t>::min();
   std::stringstream stream;
-  OBitstream output(stream);
-  CABACEncoder encoder;
-  encoder.init(output);
-  DWTBlockStreamEncoder<1> block_encoder;
+  OBitstream output(byteSink(stream));
+  CABACEncoder encoder([&](bool bit) { output.writeBit(bit); });
+  DWTBlockStream<1> block_stream;
 
-  EXPECT_THROW(block_encoder.encodeBlock(block, encoder), std::overflow_error);
+  EXPECT_THROW(encodeDwtBlock(block_stream, block, encoder), std::overflow_error);
 }
 
 TEST(Dwt, RejectsInverseArithmeticOverflow) {
@@ -95,13 +95,12 @@ TEST(Dwt, RejectsInverseArithmeticOverflow) {
 }
 
 TEST(DwtBlockTransformer, RejectsInverseBitRestorationOverflow) {
-  DWTBlockTransformer<1> transformer(1);
   for (const int32_t coefficient : {
            std::numeric_limits<int32_t>::max(),
            std::numeric_limits<int32_t>::min(),
        }) {
     DynamicBlock<int32_t, 1> block({1});
     block[0] = coefficient;
-    EXPECT_THROW(transformer.inversePass(block), std::overflow_error);
+    EXPECT_THROW(dwtInverse(block, 1), std::overflow_error);
   }
 }

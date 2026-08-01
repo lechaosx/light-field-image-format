@@ -9,39 +9,29 @@
 #include <array>
 
 template<size_t D>
-class DCTBlockTransformer {
-  DCTCoefs<D> dct_coefs;
-  std::array<size_t, D> block_size;
-  uint8_t discarded_bits;
-
-public:
-
-  DCTBlockTransformer(const std::array<size_t, D> &block_size, uint8_t discarded_bits): dct_coefs(block_size.data()) {
-    this->block_size = block_size;
-    this->discarded_bits = discarded_bits;
+void dctForward(
+    DynamicBlock<float, D> &block,
+    const DCTCoefs<D> &dct_coefs,
+    uint8_t discarded_bits) {
+  auto proxy = [&](size_t index) -> auto & {
+    return block[index];
+  };
+  fdct<D>(block.size(), dct_coefs, proxy);
+  for (const auto &pos : iterate_dimensions<D>(block.size())) {
+    block[pos] = std::round(ldexp(block[pos], -discarded_bits));
   }
+}
 
-  void forwardPass(DynamicBlock<float, D> &block) {
-    auto proxy = [&](size_t index) -> auto & {
-      return block[index];
-    };
-
-    fdct<D>(this->block_size, dct_coefs, proxy);
-
-    iterate_dimensions<D>(this->block_size, [&](const auto &pos) {
-      block[pos] = std::round(ldexp(block[pos], -this->discarded_bits));
-    });
+template<size_t D>
+void dctInverse(
+    DynamicBlock<float, D> &block,
+    const DCTCoefs<D> &dct_coefs,
+    uint8_t discarded_bits) {
+  for (const auto &pos : iterate_dimensions<D>(block.size())) {
+    block[pos] = ldexp(block[pos], discarded_bits);
   }
-
-  void inversePass(DynamicBlock<float, D> &block) {
-    iterate_dimensions<D>(this->block_size, [&](const auto &pos) {
-      block[pos] = ldexp(block[pos], this->discarded_bits);
-    });
-
-    auto proxy = [&](size_t index) -> auto & {
-      return block[index];
-    };
-
-    idct<D>(block.size(), dct_coefs, proxy);
-  }
-};
+  auto proxy = [&](size_t index) -> auto & {
+    return block[index];
+  };
+  idct<D>(block.size(), dct_coefs, proxy);
+}

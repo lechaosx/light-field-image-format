@@ -1,11 +1,3 @@
-/**
-* @file lfif_encoder.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 12. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Functions for encoding an image.
-*/
-
 #pragma once
 
 #include "components/bitstream.h"
@@ -19,6 +11,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <ostream>
 
 template <size_t D>
 struct LFIFEncoder {
@@ -34,10 +27,10 @@ struct LFIFEncoder {
     DynamicBlock<float, D> block_U(this->block_size);
     DynamicBlock<float, D> block_V(this->block_size);
 
-    DCTBlockTransformer<D> block_transformer(this->block_size, this->discarded_bits);
+    DCTCoefs<D> dct_coefs(this->block_size);
 
-    DCTBlockStreamEncoder<D> block_encoder_Y(this->block_size);
-    DCTBlockStreamEncoder<D> block_encoder_UV(this->block_size);
+    DCTBlockStream<D> block_stream_Y(this->block_size);
+    DCTBlockStream<D> block_stream_UV(this->block_size);
 
     std::array<size_t, D> predictor_size {};
     if (this->predicted) {
@@ -48,13 +41,15 @@ struct LFIFEncoder {
     BlockPredictor<D, float> predictor_U(predictor_size);
     BlockPredictor<D, float> predictor_V(predictor_size);
 
-    PredictionTypeEncoder<D> prediction_type_encoder {};
+    PredictionTypeStream<D> prediction_type_stream {};
 
-    OBitstream   bitstream {};
-    CABACEncoder cabac     {};
-
-    bitstream.open(output);
-    cabac.init(bitstream);
+    OBitstream bitstream([&](uint8_t byte) {
+      output.put(static_cast<char>(byte));
+      if (!output) {
+        throw std::ios_base::failure("failed to write bitstream");
+      }
+    });
+    CABACEncoder cabac([&](bool bit) { bitstream.writeBit(bit); });
 
     std::array<size_t, D> aligned_image_size {};
     for (size_t i = 0; i < D; i++) {
@@ -64,7 +59,8 @@ struct LFIFEncoder {
       aligned_image_size[i] = blocks * this->block_size[i];
     }
 
-    block_for<D>({}, this->block_size, aligned_image_size, [&](const std::array<size_t, D> &offset) {
+    for (const auto &offset :
+         block_for<D>({}, this->block_size, aligned_image_size)) {
       moveBlock<D>(puller, this->size, offset,
                    [&](const auto &block_pos, const auto &value) {
                      block_Y[block_pos] = YCbCr::RGBToY(value[0], value[1], value[2]) - pow(2, this->depth_bits - 1);
@@ -83,26 +79,26 @@ struct LFIFEncoder {
         predictor_V.forwardPass(block_V, offset, prediction_type);
       }
 
-      block_transformer.forwardPass(block_Y);
-      block_transformer.forwardPass(block_U);
-      block_transformer.forwardPass(block_V);
+      dctForward(block_Y, dct_coefs, this->discarded_bits);
+      dctForward(block_U, dct_coefs, this->discarded_bits);
+      dctForward(block_V, dct_coefs, this->discarded_bits);
 
-      block_encoder_Y.encodeBlock(block_Y, cabac);
-      block_encoder_UV.encodeBlock(block_U, cabac);
-      block_encoder_UV.encodeBlock(block_V, cabac);
+      encodeDctBlock(block_stream_Y, block_Y, cabac);
+      encodeDctBlock(block_stream_UV, block_U, cabac);
+      encodeDctBlock(block_stream_UV, block_V, cabac);
 
       if (this->predicted) {
-        block_transformer.inversePass(block_Y);
-        block_transformer.inversePass(block_U);
-        block_transformer.inversePass(block_V);
+        dctInverse(block_Y, dct_coefs, this->discarded_bits);
+        dctInverse(block_U, dct_coefs, this->discarded_bits);
+        dctInverse(block_V, dct_coefs, this->discarded_bits);
 
         predictor_Y.backwardPass(block_Y, offset, prediction_type);
         predictor_U.backwardPass(block_U, offset, prediction_type);
         predictor_V.backwardPass(block_V, offset, prediction_type);
 
-        prediction_type_encoder.encodePredictionType(prediction_type, cabac);
+        encodePredictionType(prediction_type_stream, prediction_type, cabac);
       }
-    });
+    }
 
     cabac.terminate();
     bitstream.flush();

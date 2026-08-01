@@ -2,6 +2,8 @@
 #include <lfif/format.h>
 #include <ppm.h>
 
+#include "tiler.h"
+
 #include <algorithm>
 #include <array>
 #include <bit>
@@ -29,6 +31,7 @@ struct CompressOptions {
   uint8_t discarded_bits {};
   bool prediction {};
   bool disparity_compensated {};
+  bool automatic_disparity {};
   std::array<int64_t, 2> disparity_shift {};
 };
 
@@ -37,7 +40,7 @@ void printUsage(std::ostream &output) {
       << "Usage:\n"
       << "  lfif compress INPUT OUTPUT [--shape EXTENTS] [--block EXTENTS]\n"
       << "      [--transform wavelet|dct] [--discarded-bits N] [--predict]\n"
-      << "      [--disparity XxY]\n"
+      << "      [--disparity XxY | --auto-disparity]\n"
       << "  lfif decompress INPUT OUTPUT_MASK\n"
       << "  lfif inspect INPUT\n";
 }
@@ -174,6 +177,8 @@ CompressOptions parseCompressOptions(int argc, char *argv[]) {
     } else if (option == "--disparity" && i + 1 < argc) {
       options.disparity_compensated = true;
       options.disparity_shift = parseDisparity(argv[++i]);
+    } else if (option == "--auto-disparity") {
+      options.automatic_disparity = true;
     } else if (option == "--transform" && i + 1 < argc) {
       const std::string_view transform = argv[++i];
       if (transform == "wavelet") {
@@ -192,6 +197,13 @@ CompressOptions parseCompressOptions(int argc, char *argv[]) {
   }
   if (options.disparity_compensated && options.view_shape.size() != 2) {
     throw std::invalid_argument("disparity requires two view dimensions");
+  }
+  if (options.automatic_disparity && options.view_shape.size() != 2) {
+    throw std::invalid_argument("automatic disparity requires two view dimensions");
+  }
+  if (options.automatic_disparity && options.disparity_compensated) {
+    throw std::invalid_argument(
+        "automatic and explicit disparity are mutually exclusive");
   }
   if (!block.empty()) {
     options.block_extents = parseExtents(block, "block extents");
@@ -237,6 +249,25 @@ void compress(int argc, char *argv[]) {
   }
   if (options.block_extents.size() != image_extents.size()) {
     throw std::invalid_argument("block extent count must match image dimensions");
+  }
+
+  if (options.automatic_disparity) {
+    const std::array<size_t, 4> size {
+        static_cast<size_t>(width),
+        static_cast<size_t>(height),
+        static_cast<size_t>(options.view_shape[0]),
+        static_cast<size_t>(options.view_shape[1]),
+    };
+    options.disparity_shift = find_best_shift_params(
+        [&](const std::array<size_t, 4> &position) {
+          const size_t view =
+              position[3] * size[2] + position[2];
+          const size_t pixel =
+              position[1] * size[0] + position[0];
+          return images[view].get(pixel);
+        },
+        size);
+    options.disparity_compensated = true;
   }
 
   lfif::Header header {

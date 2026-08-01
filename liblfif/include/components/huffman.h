@@ -1,61 +1,33 @@
-/**
-* @file huffman.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 12. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Functions for Huffman encoding and decoding.
-*/
-
 #pragma once
-
-class IBitstream;
-class OBitstream;
 
 #include <cstdint>
 
 #include <iosfwd>
-#include <vector>
+#include <stdexcept>
 #include <unordered_map>
+#include <vector>
 
-using HuffmanSymbol      = uint16_t;          /**< @brief Size of Huffman symbol is determined by this type.*/
-using HuffmanWeight      = uint64_t;          /**< @brief Type used for counting occurences of symbols.*/
-using HuffmanCodelength  = HuffmanSymbol;     /**< @brief Type used for determining code lenght. The maximum code length in Huffman encoding is equal to maximum value of encoded symbol.*/
-using HuffmanCodeword    = std::vector<bool>; /**< @brief Type used for variable length codeword.*/
+using HuffmanSymbol = uint16_t;
+using HuffmanWeight = uint64_t;
+using HuffmanCodelength = HuffmanSymbol;
+using HuffmanCodeword = std::vector<bool>;
 
-/**
-* @brief Map used for counting occurences of symbols for optimal Huffman encoding.
-*/
 using HuffmanWeights     = std::unordered_map<HuffmanSymbol, HuffmanWeight>;
 
-/**
-* @brief Map used for fast encoding symbols to codewords.
-*/
 using HuffmanMap         = std::unordered_map<HuffmanSymbol, HuffmanCodeword>;
 
-/**
-* @brief Class used for encoding fixed size symbols to variable length bit sequences.
-*/
 class HuffmanEncoder {
 public:
 
-  /**
-  * @brief Method which initializes encoder by count of occurences of each symbol.
-  * @param huffman_weights Occurences of symbols.
-  */
   void generateFromWeights(const HuffmanWeights &huffman_weights);
 
-  /**
-  * @brief Method which writes the encoder data to stream.
-  * @param stream Stream to which the data should be written.
-  */
   void writeToStream(std::ostream &stream) const;
 
-  /**
-  * @brief Method which encodes fixed size symbol to bitstream.
-  * @param symbol Symbol to be encoded.
-  * @param stream Bitstream to which symbol will be encoded.
-  */
-  void encodeSymbolToStream(const HuffmanSymbol symbol, OBitstream &stream) const;
+  void encodeSymbolToStream(
+      const HuffmanSymbol symbol,
+      auto &stream) const {
+    stream.write(m_huffman_map.at(symbol));
+  }
 
 private:
   void generateHuffmanCodelengths(const HuffmanWeights &huffman_weights);
@@ -65,27 +37,42 @@ private:
   HuffmanMap                                           m_huffman_map;
 };
 
-/**
-* @brief Class used for decoding variable length bit sequences to fixed size symbols.
-*/
 class HuffmanDecoder {
 public:
 
-  /**
-  * @brief Method which initializes decoder from data written by HuffmanEncoder::writeToStream.
-  * @param stream Stream from which the metadata will be read.
-  */
   void readFromStream(std::istream &stream);
 
-  /**
-  * @brief Method which decodes one symbol from bitstream.
-  * @param stream Stream from which the symbol will be read.
-  * @return Decoded symbol.
-  */
-  HuffmanSymbol decodeSymbolFromStream(IBitstream &stream) const;
+  HuffmanSymbol decodeSymbolFromStream(auto &stream) const {
+    const size_t index = decodeOneHuffmanSymbolIndex(stream);
+    if (index >= m_huffman_symbols.size()) {
+      throw std::runtime_error("invalid Huffman symbol index");
+    }
+    return m_huffman_symbols[index];
+  }
 
 private:
-  size_t decodeOneHuffmanSymbolIndex(IBitstream &stream) const;
+  size_t decodeOneHuffmanSymbolIndex(auto &stream) const {
+    if (m_huffman_counts.size() == 1 && m_huffman_counts[0] == 1) {
+      return 0;
+    }
+
+    uint64_t code {};
+    uint64_t first {};
+    size_t index {};
+
+    for (size_t length = 1; length < m_huffman_counts.size(); ++length) {
+      code |= stream.readBit();
+      const HuffmanCodelength count = m_huffman_counts[length];
+      if (code >= first && code - first < count) {
+        return index + static_cast<size_t>(code - first);
+      }
+      index += count;
+      first = (first + count) << 1;
+      code <<= 1;
+    }
+
+    throw std::runtime_error("invalid Huffman codeword");
+  }
 
   std::vector<HuffmanCodelength> m_huffman_counts;
   std::vector<HuffmanSymbol>     m_huffman_symbols;

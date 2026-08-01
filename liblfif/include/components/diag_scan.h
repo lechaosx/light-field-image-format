@@ -1,34 +1,26 @@
-/**
-* @file diag_scan.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 27. 1. 2021
-* @copyright 2021 Drahomír Dlabaja
-* @brief The algorithm for scan by diagonal slices from DC.
-*/
-
 #pragma once
 
-#include "block.h"
-
-#include <cstdint>
-#include <vector>
-#include <array>
-#include <numeric>
 #include <algorithm>
+#include <array>
+#include <cstddef>
 
-template <size_t D>
-struct diagonalScanCore {
-  template <typename F>
-  diagonalScanCore(const size_t size[D], size_t pos[D], F &&callback) {
-    size_t starting_pos[D];
-    std::copy(pos, pos + D, starting_pos);
+template<size_t Remaining, size_t D, typename F>
+void diagonalScanCore(
+    const std::array<size_t, D> &size,
+    std::array<size_t, D> &position,
+    F &callback) {
+  if constexpr (Remaining == 1) {
+    callback(position);
+  }
+  else {
+    const auto starting_position = position;
 
-    auto move = [&]() {
-      if (pos[D - 1] + 1 < size[D - 1]) {
-        for (size_t i = 2; i <= D; i++) {
-          if (pos[D - i] > 0) {
-            pos[D - i]--;
-            pos[D - 1]++;
+    auto move = [&] {
+      if (position[Remaining - 1] + 1 < size[Remaining - 1]) {
+        for (size_t i = 2; i <= Remaining; ++i) {
+          if (position[Remaining - i] > 0) {
+            --position[Remaining - i];
+            ++position[Remaining - 1];
             return true;
           }
         }
@@ -38,34 +30,25 @@ struct diagonalScanCore {
     };
 
     do {
-      diagonalScanCore<D - 1>(size, pos, callback);
+      diagonalScanCore<Remaining - 1>(size, position, callback);
     } while (move());
 
-    std::copy(starting_pos, starting_pos + D, pos);
+    position = starting_position;
   }
-};
+}
 
-template <>
-struct diagonalScanCore<1> {
-  template <typename F>
-  diagonalScanCore(const size_t[1], size_t[1], F &&callback) {
-    callback();
-  }
-};
+template<size_t D, typename F>
+void diagonalScan(
+    const std::array<size_t, D> &size,
+    size_t diagonal,
+    F &&callback) {
+  std::array<size_t, D> position {};
 
-template <size_t D, typename F>
-void diagonalScan(const std::array<size_t, D> &size, size_t diag, F &&callback) {
-  std::array<size_t, D> pos {};
-
-  for (size_t i = 0 ; i < D; i++) {
-    size_t min = std::min(diag, size[i] - 1);
-    pos[i] = min;
-    diag -= min;
+  for (size_t i = 0; i < D; ++i) {
+    const size_t coordinate = std::min(diagonal, size[i] - 1);
+    position[i] = coordinate;
+    diagonal -= coordinate;
   }
 
-  auto return_pos = [&]() {
-    callback(pos);
-  };
-
-  diagonalScanCore<D>(size.data(), pos.data(), return_pos);
+  diagonalScanCore<D>(size, position, callback);
 }

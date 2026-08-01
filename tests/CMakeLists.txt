@@ -8,11 +8,13 @@ add_executable(
   test_cabac.cc
   test_container_codec.cc
   test_dct.cc
+  test_diag_scan.cc
   test_dwt.cc
   test_format.cc
   test_huffman.cc
   test_lfif_roundtrip.cc
   test_lfwf_roundtrip.cc
+  test_meta.cc
   test_mtf.cc
   test_ppm.cc
   test_prediction.cc
@@ -39,6 +41,9 @@ target_link_libraries(create_test_lfif PRIVATE lfif_container)
 
 add_executable(compare_test_ppm compare_test_ppm.cc)
 target_link_libraries(compare_test_ppm PRIVATE ppm)
+
+add_executable(create_disparity_test_grid create_disparity_test_grid.cc)
+target_link_libraries(create_disparity_test_grid PRIVATE ppm)
 
 add_test(
   NAME OmniCli.CreateMissingPayload
@@ -288,6 +293,46 @@ set_tests_properties(
   OmniCli.DisparityInspect
   PROPERTIES
     DEPENDS OmniCli.DisparityCompress
+    PASS_REGULAR_EXPRESSION "disparity compensation: yes[\r\n]+disparity shifts: 1, -1"
+)
+
+add_test(
+  NAME OmniCli.CreateAutomaticDisparityInput
+  COMMAND
+    $<TARGET_FILE:create_disparity_test_grid>
+    ${CMAKE_CURRENT_BINARY_DIR}/automatic-disparity-
+)
+set_tests_properties(
+  OmniCli.CreateAutomaticDisparityInput
+  PROPERTIES FIXTURES_SETUP OmniCliAutomaticDisparityInput
+)
+add_test(
+  NAME OmniCli.AutomaticDisparityCompress
+  COMMAND
+    $<TARGET_FILE:lfif_cli>
+    compress
+    "${CMAKE_CURRENT_BINARY_DIR}/automatic-disparity-##.ppm"
+    ${CMAKE_CURRENT_BINARY_DIR}/automatic-disparity.lfif
+    --shape 2x2
+    --auto-disparity
+)
+set_tests_properties(
+  OmniCli.AutomaticDisparityCompress
+  PROPERTIES
+    FIXTURES_REQUIRED OmniCliAutomaticDisparityInput
+    FIXTURES_SETUP OmniCliAutomaticDisparityOutput
+)
+add_test(
+  NAME OmniCli.AutomaticDisparityInspect
+  COMMAND
+    $<TARGET_FILE:lfif_cli>
+    inspect
+    ${CMAKE_CURRENT_BINARY_DIR}/automatic-disparity.lfif
+)
+set_tests_properties(
+  OmniCli.AutomaticDisparityInspect
+  PROPERTIES
+    FIXTURES_REQUIRED OmniCliAutomaticDisparityOutput
     PASS_REGULAR_EXPRESSION "disparity compensation: yes[\r\n]+disparity shifts: 1, -1"
 )
 

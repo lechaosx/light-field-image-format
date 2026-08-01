@@ -1,11 +1,3 @@
-/**
-* @file lfif_decoder.h
-* @author Drahomír Dlabaja (xdlaba02)
-* @date 12. 5. 2019
-* @copyright 2019 Drahomír Dlabaja
-* @brief Functions for decoding an image.
-*/
-
 #pragma once
 
 #include "components/bitstream.h"
@@ -19,6 +11,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <istream>
 
 template <size_t D>
 struct LFWFDecoder {
@@ -42,13 +35,20 @@ struct LFWFDecoder {
       aligned_image_size[i] = blocks * this->block_size[i];
     }
 
-    IBitstream   bitstream {};
-    CABACDecoder cabac     {};
+    IBitstream bitstream([&]() -> uint8_t {
+      const auto value = input.get();
+      if (value == std::istream::traits_type::eof()) {
+        throw std::ios_base::failure(
+            input.eof()
+                ? "unexpected end of bitstream"
+                : "failed to read bitstream");
+      }
+      return static_cast<uint8_t>(value);
+    });
+    CABACDecoder cabac([&] { return bitstream.readBit(); });
 
-    DWTBlockTransformer<D> block_transformer(this->discarded_bits);
-
-    DWTBlockStreamDecoder<D> block_decoder_Y {};
-    DWTBlockStreamDecoder<D> block_decoder_UV {};
+    DWTBlockStream<D> block_stream_Y {};
+    DWTBlockStream<D> block_stream_UV {};
 
     std::array<size_t, D> predictor_size {};
     if (this->predicted) {
@@ -59,22 +59,21 @@ struct LFWFDecoder {
     BlockPredictor<D, int32_t> predictor_U(predictor_size);
     BlockPredictor<D, int32_t> predictor_V(predictor_size);
 
-    PredictionTypeDecoder<D> prediction_type_decoder {};
+    PredictionTypeStream<D> prediction_type_stream {};
 
-    bitstream.open(input);
-    cabac.init(bitstream);
+    for (const auto &offset :
+         block_for<D>({}, this->block_size, aligned_image_size)) {
+      decodeDwtBlock(block_stream_Y, cabac, block_Y);
+      decodeDwtBlock(block_stream_UV, cabac, block_U);
+      decodeDwtBlock(block_stream_UV, cabac, block_V);
 
-    block_for<D>({}, this->block_size, aligned_image_size, [&](const std::array<size_t, D> &offset) {
-      block_decoder_Y.decodeBlock(cabac,  block_Y);
-      block_decoder_UV.decodeBlock(cabac, block_U);
-      block_decoder_UV.decodeBlock(cabac, block_V);
-
-      block_transformer.inversePass(block_Y);
-      block_transformer.inversePass(block_U);
-      block_transformer.inversePass(block_V);
+      dwtInverse(block_Y, this->discarded_bits);
+      dwtInverse(block_U, this->discarded_bits);
+      dwtInverse(block_V, this->discarded_bits);
 
       if (this->predicted) {
-        auto prediction_type = prediction_type_decoder.decodePredictionType(cabac);
+        auto prediction_type =
+            decodePredictionType(prediction_type_stream, cabac);
 
         predictor_Y.backwardPass(block_Y, offset, prediction_type);
         predictor_U.backwardPass(block_U, offset, prediction_type);
@@ -101,8 +100,7 @@ struct LFWFDecoder {
                    }, this->block_size, {},
                    pusher, this->size, offset,
                    this->block_size);
-    });
+    }
 
-    cabac.terminate();
   }
 };

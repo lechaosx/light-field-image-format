@@ -3,7 +3,6 @@ add_library(
   STATIC
   src/bwt.cc
   src/huffman.cc
-  src/runlength.cc
 )
 
 target_include_directories(
