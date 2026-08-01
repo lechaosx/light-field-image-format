@@ -6,6 +6,7 @@
 
 #include "bitstream_io.h"
 
+#include <bit>
 #include <cstdint>
 #include <limits>
 #include <sstream>
@@ -28,11 +29,11 @@ TEST(RunLength, RoundTripsSignedAmplitudes) {
     {0, 0},
   };
   constexpr size_t amplitude_bits = 64;
-  const size_t class_bits = RunLengthPair::classBits(amplitude_bits);
+  const size_t class_bits = std::bit_width(amplitude_bits);
 
   HuffmanWeights weights;
   for (const RunLengthPair &pair : expected) {
-    pair.addToWeights(weights, class_bits);
+    addRunLengthToWeights(pair, weights, class_bits);
   }
 
   HuffmanEncoder encoder;
@@ -46,14 +47,14 @@ TEST(RunLength, RoundTripsSignedAmplitudes) {
   std::stringstream stream;
   OBitstream output(byteSink(stream));
   for (const RunLengthPair &pair : expected) {
-    pair.huffmanEncodeToStream(encoder, output, class_bits);
+    encodeRunLength(pair, encoder, output, class_bits);
   }
   output.flush();
 
   IBitstream input(byteSource(stream));
   for (const RunLengthPair &expected_pair : expected) {
-    RunLengthPair decoded {};
-    decoded.huffmanDecodeFromStream(decoder, input, class_bits);
+    const RunLengthPair decoded =
+        decodeRunLength(decoder, input, class_bits);
     EXPECT_EQ(decoded.zeroes, expected_pair.zeroes);
     EXPECT_EQ(decoded.amplitude, expected_pair.amplitude);
   }
